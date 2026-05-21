@@ -1,0 +1,280 @@
+{
+  "categoryId": "di",
+  "questions": [
+    {
+      "id": "di-001",
+      "category": "di",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is Dependency Injection (DI) and why do we need it?",
+      "answer": "<p>Dependency Injection is a design pattern where an object receives its dependencies from an external source — the IoC (Inversion of Control) container — rather than creating them itself with <code>new</code>.</p><p><strong>Why we need it:</strong></p><ul><li><strong>Loose coupling</strong> — the controller/class doesn't know which concrete implementation it gets, only the interface</li><li><strong>Testability</strong> — you can swap real services with mocks in unit tests without changing any code</li><li><strong>Lifetime management</strong> — the container manages when objects are created and disposed</li><li><strong>Single Responsibility</strong> — classes focus on logic, not on creating their own dependencies</li></ul><p>.NET has a <strong>built-in DI container</strong> configured in <code>Program.cs</code> via <code>builder.Services.Add*()</code> methods. It's one of the core pillars of the ASP.NET Core framework.</p>",
+      "projectExample": {
+        "source": "FolioTrack",
+        "file": "Program.cs",
+        "code": "builder.Services.AddScoped<IAuthService, AuthService>();\nbuilder.Services.AddScoped<DashboardService>();\nbuilder.Services.AddScoped<InvestmentService>();\nbuilder.Services.AddSingleton<FundHoldingsService>();\nbuilder.Services.AddHttpClient<MfApiService>();\n\n// Constructor injection — DI resolves automatically\npublic DashboardController(DashboardService dashboardService)\n{\n    _dashboardService = dashboardService;\n}",
+        "explanation": "In FolioTrack, every service is registered in Program.cs. DashboardController never calls 'new DashboardService()'. The DI container resolves and injects it automatically. One gap we identified: most services are injected as concrete classes, not interfaces — ideally should be IAuthService, not AuthService, for proper mocking."
+      },
+      "followUps": [
+        "What are the three service lifetimes in .NET Core DI?",
+        "What is the difference between DI (pattern) and IoC (principle)?",
+        "What is captive dependency and why is it dangerous?",
+        "Can you inject a Scoped service into a Singleton?"
+      ],
+      "tip": "Always inject the <strong>interface</strong>, not the concrete class (e.g., <code>IAuthService</code>, not <code>AuthService</code>). This enables mocking in unit tests. Mention the captive dependency anti-pattern — it shows you've faced real-world DI issues.",
+      "tags": ["di", "ioc", "constructor-injection", "services"],
+      "crossReferenceIds": ["middleware-001", "solid-005"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "di-002",
+      "category": "di",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "Explain the three service lifetimes in .NET Core: Transient, Scoped, Singleton.",
+      "answer": "<ul><li><strong>Transient</strong> (<code>AddTransient</code>): A <strong>new instance every time</strong> the service is requested. Best for lightweight, stateless services. No shared state between requests or calls.</li><li><strong>Scoped</strong> (<code>AddScoped</code>): One instance <strong>per HTTP request</strong> (per DI scope). Same instance is shared across everything in one request. Perfect for <code>DbContext</code>, repositories, and unit-of-work patterns.</li><li><strong>Singleton</strong> (<code>AddSingleton</code>): One instance for the <strong>entire application lifetime</strong>. Shared across all requests and threads. Use for caches, configuration, and stateless shared state. Must be thread-safe.</li></ul>",
+      "projectExample": {
+        "source": "FolioTrack + PaymentReminder",
+        "file": "Program.cs",
+        "code": "// FolioTrack — Scoped (per HTTP request)\nbuilder.Services.AddScoped<IAuthService, AuthService>();\nbuilder.Services.AddScoped<DashboardService>();\n\n// FolioTrack — Singleton (caches fund data across all requests)\nbuilder.Services.AddSingleton<FundHoldingsService>();\n\n// PaymentReminder — ALL Singleton (Worker Service, no HTTP scope)\nservices.AddSingleton<PaymentReminderService>();\nservices.AddSingleton<IConfigEmailSMTPDataService, ConfigEmailSMTPDataService>();",
+        "explanation": "FolioTrack uses Scoped for most services — one instance per HTTP request is natural for web APIs. FundHoldingsService is Singleton because it caches expensive API data across all requests. In PaymentReminder (a Worker Service), there's no concept of an HTTP request scope, so everything is Singleton."
+      },
+      "followUps": [
+        "Why is Singleton risky for SqlConnection or DbContext?",
+        "What happens if you inject a Scoped service into a Singleton?",
+        "When would you use Transient for a repository?",
+        "How does Worker Service lifetime differ from Web API?"
+      ],
+      "tip": "Rule of thumb: <strong>DbContext → Scoped</strong>, <strong>Repository → Scoped</strong>, <strong>HttpClient → Singleton via IHttpClientFactory</strong>, <strong>Stateless utility → Transient or Singleton</strong>, <strong>In-memory cache → Singleton</strong>. Worker Services use all Singletons because there's no HTTP request scope.",
+      "tags": ["di", "lifetime", "singleton", "scoped", "transient"],
+      "crossReferenceIds": ["di-003"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "di-003",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is captive dependency? How do you safely inject a Scoped service into a Singleton?",
+      "answer": "<p><strong>Captive dependency</strong> is when a longer-lived service (Singleton) captures a shorter-lived service (Scoped). The Scoped service gets created once and held for the Singleton's entire lifetime, effectively becoming a Singleton — breaking the Scoped contract and potentially causing stale data or shared state between requests.</p><p>ASP.NET Core's built-in DI container <strong>throws a runtime exception</strong> by default if you try this (in Development mode).</p><p><strong>Safe solution:</strong> Use <code>IServiceScopeFactory</code> to manually create a scope inside the Singleton and resolve the Scoped service within it.</p>",
+      "projectExample": {
+        "source": "PaymentReminder (Worker Service)",
+        "file": "PaymentReminderService.cs",
+        "code": "public class PaymentReminderService : BackgroundService\n{\n    private readonly IServiceScopeFactory _scopeFactory;\n\n    public PaymentReminderService(IServiceScopeFactory scopeFactory)\n    {\n        _scopeFactory = scopeFactory;\n    }\n\n    protected override async Task ExecuteAsync(CancellationToken ct)\n    {\n        while (!ct.IsCancellationRequested)\n        {\n            using var scope = _scopeFactory.CreateScope();\n            var reminderRepo = scope.ServiceProvider\n                .GetRequiredService<IReminderRepository>();\n\n            await reminderRepo.ProcessDueRemindersAsync();\n            await Task.Delay(TimeSpan.FromHours(1), ct);\n        }\n    }\n}",
+        "explanation": "BackgroundService is registered as Singleton. IReminderRepository uses DbContext which must be Scoped. We inject IServiceScopeFactory and create a new scope on each iteration — this gives a fresh DbContext per execution cycle, preventing stale EF Core change tracker state."
+      },
+      "followUps": [
+        "What error do you get when captive dependency is detected?",
+        "Can you disable the captive dependency check? Should you?",
+        "How does this pattern relate to the Unit of Work pattern?"
+      ],
+      "tip": "Any time you have a <strong>BackgroundService</strong> that needs <code>DbContext</code>, use <code>IServiceScopeFactory</code>. This comes up in almost every interview for Worker Service / background job experience.",
+      "tags": ["di", "captive-dependency", "scopefactory", "background-service"],
+      "crossReferenceIds": ["di-002", "async-003"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "di-004",
+      "category": "di",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the difference between IServiceCollection.Add() vs TryAdd()? What about AddScoped vs AddScopedKeyed?",
+      "answer": "<p><strong>Add*()</strong> always registers the service, even if already registered. If registered twice, both registrations exist and the last one wins for single-service injection, but both appear for <code>IEnumerable&lt;T&gt;</code>.</p><p><strong>TryAdd*()</strong> registers only if no registration exists for that service type. Safe for extension methods that shouldn't override user registrations.</p><p><strong>Keyed services (.NET 8+)</strong>: <code>AddKeyedScoped&lt;T&gt;(key)</code> lets you register multiple implementations of the same interface with different keys and inject them via <code>[FromKeyedServices(key)]</code>.</p>",
+      "projectExample": {
+        "source": "CSInvoice (Worker Service)",
+        "file": "Program.cs",
+        "code": "// TryAdd — safe registration that won't override existing\nservices.TryAddSingleton<IHttpClientFactory, DefaultHttpClientFactory>();\n\n// .NET 8 Keyed services\nbuilder.Services.AddKeyedScoped<IEmailService, GmailService>(\"gmail\");\nbuilder.Services.AddKeyedScoped<IEmailService, SmtpService>(\"smtp\");\n\n// Inject specific implementation\npublic class NotificationService(\n    [FromKeyedServices(\"smtp\")] IEmailService emailService) { }",
+        "explanation": "TryAdd is important when writing library code. Keyed services solve the 'multiple implementations of one interface' problem without needing factory patterns."
+      },
+      "followUps": [
+        "How do you inject multiple implementations of the same interface (without keyed services)?",
+        "What is AddEnumerable and when do you use it?"
+      ],
+      "tip": "Keyed services (AddKeyedScoped) were added in <strong>.NET 8</strong> — a great answer if the interviewer asks about new .NET 8 DI features.",
+      "tags": ["di", "keyed-services", "tryadd", "dotnet8"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "di-005",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How does property injection work in .NET Core? Why is constructor injection preferred?",
+      "answer": "<p>The built-in .NET DI container <strong>does not support property injection</strong> out of the box — it only does constructor injection. Property injection requires third-party containers like Autofac or Castle Windsor.</p><p><strong>Constructor injection is preferred because:</strong></p><ul><li>Dependencies are explicit and required — the object cannot be constructed without them</li><li>Immutable — set once in the constructor, never changed</li><li>Easier to unit test — you can see all dependencies from the constructor signature</li><li>Fails fast — missing dependency = exception at startup, not at runtime</li></ul><p>Property injection creates optional dependencies which can lead to null reference exceptions if not set.</p>",
+      "projectExample": {
+        "source": "FolioTrack",
+        "file": "Controllers/DashboardController.cs",
+        "code": "// Constructor injection — preferred approach\npublic class DashboardController : ControllerBase\n{\n    private readonly DashboardService _dashboardService;\n    private readonly ILogger<DashboardController> _logger;\n\n    public DashboardController(\n        DashboardService dashboardService,\n        ILogger<DashboardController> logger)\n    {\n        _dashboardService = dashboardService;\n        _logger = logger;\n    }\n}",
+        "explanation": "Every controller in FolioTrack uses constructor injection. Missing services would cause an exception at startup during DI container validation, not silently fail at runtime."
+      },
+      "followUps": [
+        "What happens if you have too many constructor parameters?",
+        "What is the service locator anti-pattern?",
+        "How do you use IServiceProvider directly (and when should you avoid it)?"
+      ],
+      "tip": "Interviewer tip: If a class has more than 4–5 constructor parameters, it's usually a sign that the class has too many responsibilities — it should be split (SRP). Mention this as self-awareness.",
+      "tags": ["di", "constructor-injection", "property-injection"],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "di-006",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is IOptions<T>, IOptionsSnapshot<T>, and IOptionsMonitor<T>? When do you use each?",
+      "answer": "<p>These are .NET's typed configuration options pattern — strongly-typed access to <code>appsettings.json</code> values.</p><ul><li><strong>IOptions&lt;T&gt;</strong>: Singleton. Reads config once at startup. Does not pick up changes to appsettings.json at runtime. Use for config that never changes.</li><li><strong>IOptionsSnapshot&lt;T&gt;</strong>: Scoped. Reads fresh config per request. Supports hot reload. Cannot be injected into Singletons (captive dependency).</li><li><strong>IOptionsMonitor&lt;T&gt;</strong>: Singleton. Watches for config changes in real-time and fires <code>OnChange</code> callback. Use in Singletons that need live config updates.</li></ul>",
+      "projectExample": {
+        "source": "PaymentReminder + FolioTrack",
+        "file": "Program.cs / appsettings.json",
+        "code": "// Register options\nbuilder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(\"JwtSettings\"));\nbuilder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection(\"Smtp\"));\n\n// appsettings.json\n{\n  \"JwtSettings\": { \"Key\": \"...\", \"Issuer\": \"...\", \"ExpiryDays\": 7 },\n  \"Smtp\": { \"Host\": \"smtp.gmail.com\", \"Port\": 587, \"Username\": \"...\" }\n}\n\n// Inject in service\npublic class JwtHelper(IOptions<JwtSettings> options)\n{\n    private readonly JwtSettings _settings = options.Value;\n}",
+        "explanation": "Both projects use IOptions<T> for JWT and SMTP config — startup configuration that doesn't need runtime updates. IOptionsMonitor would be overkill here. The key benefit: no magic strings for config keys, type safety, easy unit testing with fake options."
+      },
+      "followUps": [
+        "How do you validate IOptions<T> at startup?",
+        "What is options validation with DataAnnotations?"
+      ],
+      "tip": "Mention <code>builder.Services.AddOptions<T>().ValidateDataAnnotations().ValidateOnStart()</code> for startup validation — it catches missing config immediately instead of at runtime.",
+      "tags": ["di", "options-pattern", "configuration", "appsettings"],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "di-007",
+      "category": "di",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "How do you register open generic types in .NET DI? Give a real example.",
+      "answer": "<p>Open generic registration lets you register a generic service without specifying the type parameter — the DI container fills it in at resolution time.</p><p>Syntax: <code>services.AddScoped(typeof(IRepository&lt;&gt;), typeof(GenericRepository&lt;&gt;))</code></p><p>When you inject <code>IRepository&lt;Product&gt;</code>, the container automatically creates a <code>GenericRepository&lt;Product&gt;</code>. This is the basis of the generic repository pattern and eliminates boilerplate per-entity repository registrations.</p>",
+      "projectExample": {
+        "source": "Generic Repository Pattern",
+        "file": "Program.cs",
+        "code": "// Register open generic\nbuilder.Services.AddScoped(typeof(IRepository<>), typeof(EfCoreRepository<>));\n\n// Interface\npublic interface IRepository<T> where T : class\n{\n    Task<T?> GetByIdAsync(int id);\n    Task<IEnumerable<T>> GetAllAsync();\n    Task AddAsync(T entity);\n    Task SaveChangesAsync();\n}\n\n// Generic implementation\npublic class EfCoreRepository<T>(AppDbContext db) : IRepository<T> where T : class\n{\n    private readonly DbSet<T> _set = db.Set<T>();\n    public async Task<T?> GetByIdAsync(int id) => await _set.FindAsync(id);\n    public async Task<IEnumerable<T>> GetAllAsync() => await _set.ToListAsync();\n    public async Task AddAsync(T entity) => await _set.AddAsync(entity);\n    public async Task SaveChangesAsync() => await db.SaveChangesAsync();\n}",
+        "explanation": "One registration handles all entity types. InvestmentController can inject IRepository<Investment>, UserController can inject IRepository<User> — both resolved automatically without separate registrations."
+      },
+      "followUps": [
+        "How do you override the generic registration for a specific type?",
+        "Can you mix open generic and closed generic registrations?"
+      ],
+      "tip": "This pattern is common in enterprise codebases. If you've used it, say so — it shows you understand advanced DI patterns beyond the basics.",
+      "tags": ["di", "open-generic", "repository-pattern", "generic"],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "di-008",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is IHttpClientFactory and why should you always use it instead of new HttpClient()?",
+      "answer": "<p>Creating <code>new HttpClient()</code> for each request causes <strong>socket exhaustion</strong> — each instance holds a socket open even after disposal because of TCP TIME_WAIT. This exhausts available ports under load.</p><p><strong>IHttpClientFactory</strong> manages a pool of <code>HttpMessageHandler</code> instances, reusing connections while properly rotating them after a configurable period (default 2 minutes). It integrates with .NET's DI and supports Polly for retry/circuit-breaker policies.</p>",
+      "projectExample": {
+        "source": "CSInvoice + FolioTrack",
+        "file": "Program.cs",
+        "code": "// Typed client registration\nbuilder.Services.AddHttpClient<MfApiService>(client =>\n{\n    client.BaseAddress = new Uri(\"https://api.mfapi.in/\");\n    client.Timeout = TimeSpan.FromSeconds(30);\n});\n\n// Named client\nbuilder.Services.AddHttpClient(\"OdooClient\", client =>\n{\n    client.BaseAddress = new Uri(config[\"OdooBaseUrl\"]);\n    client.DefaultRequestHeaders.Add(\"Accept\", \"application/json\");\n});\n\n// Inject typed client\npublic class MfApiService(HttpClient httpClient) { }\n\n// Inject named client via factory\npublic class OdooService(IHttpClientFactory factory)\n{\n    private readonly HttpClient _client = factory.CreateClient(\"OdooClient\");\n}",
+        "explanation": "CSInvoice originally used 'new HttpClient()' inside loops — this caused socket exhaustion under load. Fixed by switching to IHttpClientFactory with typed clients. FolioTrack uses AddHttpClient<MfApiService>() for the mutual fund API calls — cleaner and properly pooled."
+      },
+      "followUps": [
+        "How do you add Polly retry policy to IHttpClientFactory?",
+        "What is the difference between typed, named, and basic clients?",
+        "What is handler lifetime and why does it matter?"
+      ],
+      "tip": "Mentioning CSInvoice's socket exhaustion bug and fix is a great real-world story for this question. Always use <code>IHttpClientFactory</code> or <code>AddHttpClient&lt;T&gt;()</code> — never <code>new HttpClient()</code> inside a class.",
+      "tags": ["di", "httpclient", "httpclientfactory", "polly", "socket-exhaustion"],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "di-009",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the service locator pattern? Why is it considered an anti-pattern?",
+      "answer": "<p>The <strong>service locator pattern</strong> is when a class calls <code>IServiceProvider.GetService&lt;T&gt;()</code> directly to resolve its dependencies instead of declaring them in the constructor.</p><p><strong>Why it's an anti-pattern:</strong></p><ul><li>Dependencies are <strong>hidden</strong> — you can't tell what a class needs without reading the code</li><li><strong>Testability breaks</strong> — you can't easily mock because the class controls its own resolution</li><li><strong>Runtime failures</strong> — missing registration causes exception at the call site, not at startup</li><li><strong>Violates DIP</strong> — the class is coupled to the container, not just the abstraction</li></ul><p><strong>When it IS acceptable:</strong> In factory classes, background services, or middleware that genuinely need dynamic resolution at runtime (and that's the only use).</p>",
+      "projectExample": {
+        "source": "Any .NET project",
+        "file": "Bad vs Good pattern",
+        "code": "// ❌ Anti-pattern — service locator\npublic class ReportService\n{\n    private readonly IServiceProvider _sp;\n    public ReportService(IServiceProvider sp) => _sp = sp;\n\n    public void Generate()\n    {\n        var db = _sp.GetService<AppDbContext>(); // hidden dependency!\n    }\n}\n\n// ✅ Correct — constructor injection\npublic class ReportService(AppDbContext db)\n{\n    // dependency is explicit and testable\n    public void Generate() => db.Reports.ToList();\n}",
+        "explanation": "Constructor injection makes dependencies explicit. If ReportService needs AppDbContext, that's immediately visible from the constructor. With service locator, a reviewer or tester has to read the entire method body to discover what the class actually needs."
+      },
+      "followUps": [
+        "When is using IServiceProvider directly acceptable?",
+        "What is the difference between service locator and factory pattern?"
+      ],
+      "tip": "A great interview signal: say 'I avoid service locator in application code. It's only justified in factory methods or infrastructure-level code where types are determined at runtime.'",
+      "tags": ["di", "service-locator", "anti-pattern", "solid"],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "di-010",
+      "category": "di",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "How do you configure DI in a Worker Service (.NET BackgroundService)? How does it differ from Web API?",
+      "answer": "<p>Worker Services use the same .NET Generic Host and DI container as Web APIs, but without ASP.NET Core middleware. The key differences:</p><ul><li><strong>No HTTP request scope</strong> — there are no per-request scopes. Everything is either Singleton or explicitly scoped via IServiceScopeFactory.</li><li><strong>All services default to Singleton</strong> — because BackgroundService is registered as Singleton, its direct dependencies must also be Singleton (or use scope factory).</li><li><strong>Host lifecycle</strong> — <code>IHostedService</code> / <code>BackgroundService</code> starts on <code>StartAsync</code> and runs <code>ExecuteAsync</code> in a background task.</li></ul>",
+      "projectExample": {
+        "source": "PaymentReminder / CSInvoice",
+        "file": "Program.cs",
+        "code": "// Worker Service — Generic Host (no AddControllersWithViews)\nvar host = Host.CreateDefaultBuilder(args)\n    .ConfigureServices((ctx, services) =>\n    {\n        // Register background service\n        services.AddHostedService<PaymentReminderWorker>();\n\n        // All Singleton (no HTTP scope in worker)\n        services.AddSingleton<IEmailService, SmtpEmailService>();\n        services.AddSingleton<IConfigService, JsonConfigService>();\n\n        // DbContext as Scoped (used via IServiceScopeFactory)\n        services.AddDbContext<AppDbContext>(opts =>\n            opts.UseSqlServer(ctx.Configuration.GetConnectionString(\"Default\")));\n    })\n    .Build();\n\nawait host.RunAsync();",
+        "explanation": "PaymentReminder runs as a Windows Service / Docker container. IEmailService is Singleton because it's stateless and thread-safe. DbContext is Scoped and accessed via IServiceScopeFactory inside ExecuteAsync — creating a new scope per execution cycle to avoid stale EF Core change tracker."
+      },
+      "followUps": [
+        "How do you stop a BackgroundService gracefully with CancellationToken?",
+        "What is the difference between IHostedService and BackgroundService?",
+        "How do you schedule a BackgroundService to run every N minutes?"
+      ],
+      "tip": "Real interview signal: know that Worker Services don't have HTTP request scope and explain IServiceScopeFactory. Most developers know Web API DI but fewer know the Worker Service nuances.",
+      "tags": ["di", "worker-service", "background-service", "ihostedservice"],
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "di-011",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What are extension methods for IServiceCollection and why do you create them?",
+      "answer": "<p>Extension methods on <code>IServiceCollection</code> let you group related service registrations into named methods, keeping <code>Program.cs</code> clean and making the registration intent explicit.</p><p>Instead of registering 15 services directly in Program.cs, you create <code>builder.Services.AddApplicationServices()</code>, <code>AddInfrastructure()</code>, etc. This follows the <strong>SRP principle</strong> — each extension method owns one area of registration.</p>",
+      "projectExample": {
+        "source": "FolioTrack (refactored pattern)",
+        "file": "ServiceCollectionExtensions.cs",
+        "code": "// Extension method groups registrations by concern\npublic static class ServiceCollectionExtensions\n{\n    public static IServiceCollection AddApplicationServices(this IServiceCollection services)\n    {\n        services.AddScoped<DashboardService>();\n        services.AddScoped<InvestmentService>();\n        services.AddScoped<PortfolioService>();\n        return services; // fluent\n    }\n\n    public static IServiceCollection AddInfrastructure(\n        this IServiceCollection services, IConfiguration config)\n    {\n        services.AddDbContext<AppDbContext>(o =>\n            o.UseMySql(config.GetConnectionString(\"Default\"),\n                ServerVersion.AutoDetect(config.GetConnectionString(\"Default\"))));\n\n        services.AddHttpClient<MfApiService>();\n        services.AddSingleton<FundHoldingsService>();\n        return services;\n    }\n}\n\n// Program.cs becomes clean:\nbuilder.Services.AddApplicationServices();\nbuilder.Services.AddInfrastructure(builder.Configuration);",
+        "explanation": "FolioTrack's Program.cs had all registrations inline. Extracting to extension methods makes it readable: you can see at a glance what 'application services' vs 'infrastructure' means, and adding new services doesn't bloat Program.cs."
+      },
+      "followUps": [
+        "How does this relate to Clean Architecture layer separation?",
+        "What are the assembly scanning patterns for auto-registration?"
+      ],
+      "tip": "Extension methods for IServiceCollection are a standard clean architecture pattern. Mention it shows you think about <strong>maintainability</strong>, not just making the code work.",
+      "tags": ["di", "extension-methods", "clean-architecture", "program-cs"],
+      "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "di-012",
+      "category": "di",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is Scrutor? How does assembly scanning work for automatic DI registration?",
+      "answer": "<p><strong>Scrutor</strong> is a NuGet package that extends <code>IServiceCollection</code> with assembly scanning capabilities. Instead of manually registering each service, you can auto-register all classes that implement a specific interface or match a convention.</p><p>It uses a fluent API with <code>services.Scan()</code> to find and register services by convention. The built-in .NET container doesn't support scanning natively — Scrutor adds this capability cleanly without replacing the container.</p>",
+      "projectExample": {
+        "source": "Enterprise .NET Pattern",
+        "file": "Program.cs",
+        "code": "// Install: dotnet add package Scrutor\n\n// Auto-register all classes in 'Services' namespace\n// that implement an interface ending with 'Service'\nservices.Scan(scan => scan\n    .FromAssemblyOf<Program>()\n    .AddClasses(classes => classes.InNamespaces(\"MyApp.Services\"))\n    .AsImplementedInterfaces()\n    .WithScopedLifetime());\n\n// Equivalent to manually writing:\n// services.AddScoped<IAuthService, AuthService>();\n// services.AddScoped<IDashboardService, DashboardService>();\n// ... for every service class",
+        "explanation": "In large projects with 20+ services, manual registration becomes maintenance burden. Scrutor auto-discovers by convention. Adding a new AuthService that implements IAuthService registers it automatically — no Program.cs change needed."
+      },
+      "followUps": [
+        "What are the risks of automatic assembly scanning?",
+        "How do you exclude specific classes from auto-registration?"
+      ],
+      "tip": "Scrutor is not in every project but knowing it exists shows depth. The interviewer may have used it — bring it up when discussing large-scale DI management.",
+      "tags": ["di", "scrutor", "assembly-scanning", "auto-registration"],
+      "sortOrder": 12,
+      "isActive": true
+    }
+  ]
+}

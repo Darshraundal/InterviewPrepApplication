@@ -1,0 +1,53 @@
+@model InterviewPrepPortal.ViewModels.Account.RegisterViewModel
+@{
+    ViewData["Title"] = "Create Account";
+    Layout = "_Layout";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h2>🚀 Create Account</h2>
+        <p class="auth-sub">Start tracking your interview prep journey</p>
+
+        <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+        <form asp-action="Register" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post">
+            @Html.AntiForgeryToken()
+
+            <div class="form-group">
+                <label asp-for="DisplayName">Your Name</label>
+                <input asp-for="DisplayName" placeholder="Darshan Raundal" autocomplete="name" />
+                <span asp-validation-for="DisplayName" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Email">Email Address</label>
+                <input asp-for="Email" type="email" placeholder="you@example.com" autocomplete="email" />
+                <span asp-validation-for="Email" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password">Password <span style="font-size:.72rem;color:var(--ip-text-3);">(min 8 characters)</span></label>
+                <input asp-for="Password" type="password" placeholder="••••••••" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="field-validation-error"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ConfirmPassword">Confirm Password</label>
+                <input asp-for="ConfirmPassword" type="password" placeholder="••••••••" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="field-validation-error"></span>
+            </div>
+
+            <button type="submit" class="btn-primary-full">Create Account</button>
+        </form>
+
+        <div class="auth-footer">
+            Already have an account?
+            <a asp-action="Login">Sign in</a>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

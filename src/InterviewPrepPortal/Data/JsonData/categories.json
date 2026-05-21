@@ -1,0 +1,154 @@
+{
+  "categories": [
+    {
+      "id": "di",
+      "name": "Dependency Injection",
+      "slug": "dependency-injection",
+      "emoji": "💉",
+      "description": "IoC container, service lifetimes, captive dependencies, constructor injection",
+      "sortOrder": 1,
+      "tags": ["di", "ioc", "lifetime", "singleton", "scoped", "transient"],
+      "isActive": true
+    },
+    {
+      "id": "database",
+      "name": "Database & SQL",
+      "slug": "database-sql",
+      "emoji": "🗄️",
+      "description": "SQL queries, stored procedures, indexing, joins, performance, transactions",
+      "sortOrder": 2,
+      "tags": ["sql", "database", "stored-procedure", "index", "join", "transaction"],
+      "isActive": true
+    },
+    {
+      "id": "webapi",
+      "name": "Web API",
+      "slug": "web-api",
+      "emoji": "🌐",
+      "description": "REST, HTTP verbs, routing, model binding, filters, versioning, Swagger",
+      "sortOrder": 3,
+      "tags": ["webapi", "rest", "http", "routing", "filters", "swagger"],
+      "isActive": true
+    },
+    {
+      "id": "mvc",
+      "name": "MVC",
+      "slug": "mvc",
+      "emoji": "🏛️",
+      "description": "Model-View-Controller pattern, Razor views, partial views, TempData, routing",
+      "sortOrder": 4,
+      "tags": ["mvc", "razor", "views", "routing", "filters"],
+      "isActive": true
+    },
+    {
+      "id": "oops",
+      "name": "OOPS",
+      "slug": "oops",
+      "emoji": "🧩",
+      "description": "Encapsulation, inheritance, polymorphism, abstraction, interfaces vs abstract classes",
+      "sortOrder": 5,
+      "tags": ["oops", "inheritance", "polymorphism", "abstraction", "encapsulation"],
+      "isActive": true
+    },
+    {
+      "id": "solid",
+      "name": "SOLID Principles",
+      "slug": "solid",
+      "emoji": "💎",
+      "description": "Single Responsibility, Open/Closed, Liskov, Interface Segregation, Dependency Inversion",
+      "sortOrder": 6,
+      "tags": ["solid", "srp", "ocp", "lsp", "isp", "dip"],
+      "isActive": true
+    },
+    {
+      "id": "angular",
+      "name": "Angular",
+      "slug": "angular",
+      "emoji": "🅰️",
+      "description": "Components, services, lifecycle hooks, RxJS, routing, forms, HTTP client",
+      "sortOrder": 7,
+      "tags": ["angular", "rxjs", "components", "services", "lifecycle", "forms"],
+      "isActive": true
+    },
+    {
+      "id": "auth",
+      "name": "Authentication & Authorization",
+      "slug": "authentication",
+      "emoji": "🔐",
+      "description": "JWT, OAuth, OIDC, ASP.NET Core Identity, roles, claims, policies",
+      "sortOrder": 8,
+      "tags": ["jwt", "oauth", "oidc", "identity", "auth", "claims", "roles"],
+      "isActive": true
+    },
+    {
+      "id": "async",
+      "name": "Async, Threading & Tasks",
+      "slug": "async-threading",
+      "emoji": "⚡",
+      "description": "async/await, Task, Thread, deadlocks, cancellation tokens, parallel programming",
+      "sortOrder": 9,
+      "tags": ["async", "await", "task", "thread", "concurrency", "parallel"],
+      "isActive": true
+    },
+    {
+      "id": "efcore",
+      "name": "EF Core & Dapper",
+      "slug": "ef-core-dapper",
+      "emoji": "🧬",
+      "description": "Entity Framework Core, LINQ, migrations, Dapper, ORM patterns, N+1 problem",
+      "sortOrder": 10,
+      "tags": ["efcore", "dapper", "linq", "migrations", "orm", "dbcontext"],
+      "isActive": true
+    },
+    {
+      "id": "middleware",
+      "name": "Middleware & Filters",
+      "slug": "middleware-filters",
+      "emoji": "🔧",
+      "description": "Custom middleware, action filters, exception handling, pipeline order, CORS",
+      "sortOrder": 11,
+      "tags": ["middleware", "filters", "pipeline", "cors", "exception"],
+      "isActive": true
+    },
+    {
+      "id": "patterns",
+      "name": "Design Patterns",
+      "slug": "design-patterns",
+      "emoji": "🎨",
+      "description": "Repository, Unit of Work, Factory, Strategy, Decorator, Observer, Singleton",
+      "sortOrder": 12,
+      "tags": ["patterns", "repository", "factory", "strategy", "decorator", "observer"],
+      "isActive": true
+    },
+    {
+      "id": "microservices",
+      "name": "Microservices & Architecture",
+      "slug": "microservices",
+      "emoji": "🏗️",
+      "description": "Microservices, clean architecture, CQRS, event-driven, API gateway, Docker",
+      "sortOrder": 13,
+      "tags": ["microservices", "architecture", "cqrs", "event-driven", "docker"],
+      "isActive": true
+    },
+    {
+      "id": "coding",
+      "name": "Coding Problems",
+      "slug": "coding",
+      "emoji": "💻",
+      "description": "Algorithm and data structure problems: arrays, strings, sorting, searching, recursion",
+      "sortOrder": 14,
+      "tags": ["algorithm", "array", "string", "sorting", "recursion", "linked-list"],
+      "isActive": true
+    },
+    {
+      "id": "behavioral",
+      "name": "Behavioral & HR",
+      "slug": "behavioral",
+      "emoji": "🤝",
+      "description": "Soft skills, teamwork, conflict resolution, project challenges, career goals",
+      "sortOrder": 15,
+      "tags": ["behavioral", "hr", "soft-skills", "teamwork", "leadership"],
+      "isActive": true
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+1) Difference between Truncate and Delete
+2) Difference between Cross Join and Full Outer Join
+3) Can NULL value compared in Join
+4) Difference between Stored Procedures and Functions
+5) Is DML statements allowed to write in Function, if yes/no than Why ?
+6) Difference between Materialized Views and Normal Views
+7) What are Magic Tables and when can we use them?
+8) What is CTE ? and What is Recursive CTE ?
+9) Difference between Temp Table and Table Variable
+10) Ways of handling Error in SQL ?
+11) Difference between Rank(), Dense_Rank() and Row_Number()
+12) What is Index ad type of Index ?
+13) What are Table Scan and Index Scan ?
+14) Steps to improve performance of SP or Script
+15) Syntax of reseeding identity column
+16) How to get Identity (primary key Value) of any table while Inserting Record in it
+17) Difference between Scope_Identity() , @@Identity and Ident_Current(TableName)
+18) Types of Backup and explaination
+19) What is OLTP and OLAP ?
+20) How to delete duplicate values/rows which dont have primary Key or any different identifier in it?
+21) What are High availability Solutions ? (Mirroring, Log Shipping, Replication, Failover Clustering)
+22) What are command used in DCL?
+(Grant/ Deny/ Revoke)
+23) What is Fill Factor and Default Fill factor in SQL?
+24) Types of Recovery Models we have in SQL
+25) Normalization
+26) Index fragmentation
+27) Isolation level

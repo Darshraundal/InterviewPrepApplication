@@ -1,0 +1,70 @@
+{
+  "categoryId": "solid",
+  "questions": [
+    {
+      "id": "solid-001",
+      "category": "solid",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the Single Responsibility Principle (SRP)?",
+      "answer": "<p><strong>SRP</strong> states that a class should have only one reason to change — it should do one thing and do it well. \"One reason to change\" is more precise than \"one thing\": a class has one responsibility, so only one type of requirement change should require modifying it.</p><p><strong>Violation example:</strong></p><pre><code class=\"language-csharp\">// BAD: Three reasons to change (data access, business logic, email)\npublic class InvoiceService\n{\n    public void ProcessInvoice(Invoice invoice)\n    {\n        // 1. DB access\n        _db.SaveInvoice(invoice);\n\n        // 2. Business logic\n        if (invoice.Amount > 10000) ApplyDiscount(invoice);\n\n        // 3. Email sending\n        _smtp.SendEmail(invoice.ClientEmail, \"Invoice generated\");\n    }\n}</code></pre><p><strong>Fixed:</strong></p><pre><code class=\"language-csharp\">// Three classes, each with one responsibility\npublic class InvoiceRepository    { void Save(Invoice i) { ... } }\npublic class InvoicePricingService { void ApplyDiscount(Invoice i) { ... } }\npublic class InvoiceNotifier     { Task SendReceiptAsync(Invoice i) { ... } }\n\npublic class InvoiceProcessor  // orchestrates, doesn't do the work itself\n{\n    public async Task ProcessAsync(Invoice invoice)\n    {\n        _repo.Save(invoice);\n        _pricing.ApplyDiscount(invoice);\n        await _notifier.SendReceiptAsync(invoice);\n    }\n}</code></pre><p>In the PaymentReminder project, I violated SRP initially by having a single Worker class that fetched invoices, built emails, and called SMTP. Splitting into <code>InvoiceFetcher</code>, <code>EmailBuilder</code>, and <code>EmailSender</code> made each unit independently testable and easier to maintain.</p>",
+      "followUps": ["How does SRP relate to cohesion?", "How do you know when a class violates SRP?"],
+      "tip": "<strong>Red flag for SRP violation:</strong> If describing the class's purpose requires the word \"and\" — \"it saves invoices AND sends emails AND applies discounts\" — it violates SRP. Each \"and\" is a separate responsibility.",
+      "tags": ["solid", "srp", "design"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "solid-002",
+      "category": "solid",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the Open/Closed Principle (OCP)?",
+      "answer": "<p><strong>OCP</strong> states that classes should be <strong>open for extension but closed for modification</strong>. You should be able to add new behavior without changing existing, tested code.</p><p><strong>Violation: adding a new notification type requires modifying existing code:</strong></p><pre><code class=\"language-csharp\">// BAD: every new notification type requires modifying this method\npublic void SendNotification(string type, string message)\n{\n    if (type == \"email\")  SendEmail(message);\n    else if (type == \"sms\")  SendSms(message);\n    else if (type == \"push\")  SendPush(message); // had to add this\n}</code></pre><p><strong>Fixed with polymorphism:</strong></p><pre><code class=\"language-csharp\">// GOOD: add new types by adding new classes, not modifying existing ones\npublic interface INotificationSender\n{\n    string Type { get; }\n    Task SendAsync(string message, CancellationToken ct);\n}\n\npublic class EmailSender : INotificationSender { ... }\npublic class SmsSender : INotificationSender { ... }\npublic class PushSender : INotificationSender { ... }  // NEW: no existing code changes\n\npublic class NotificationRouter\n{\n    private readonly IEnumerable&lt;INotificationSender&gt; _senders;\n\n    public async Task SendAsync(string type, string message, CancellationToken ct)\n    {\n        var sender = _senders.Single(s => s.Type == type);\n        await sender.SendAsync(message, ct);\n    }\n}</code></pre><p>In the PaymentReminder service I used this pattern for notification channels. Adding WhatsApp notifications later required only a new <code>WhatsAppSender</code> class — zero changes to existing code.</p>",
+      "followUps": ["How do you implement OCP using the Strategy pattern?", "Is OCP realistic — don't you always have to modify something?"],
+      "tip": "<strong>OCP is about anticipated change points.</strong> You can't make everything extensible without modification. Identify where requirements are likely to change (notification types, payment methods, export formats) and design those extension points. The rest can be closed.",
+      "tags": ["solid", "ocp", "design", "patterns"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "solid-003",
+      "category": "solid",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the Liskov Substitution Principle (LSP)?",
+      "answer": "<p><strong>LSP</strong> states that if <code>S</code> is a subtype of <code>T</code>, then anywhere you use <code>T</code>, you can substitute <code>S</code> without breaking the program. Subclasses must honor the contract of the base class.</p><p><strong>Classic violation — the Square/Rectangle problem:</strong></p><pre><code class=\"language-csharp\">public class Rectangle\n{\n    public virtual int Width { get; set; }\n    public virtual int Height { get; set; }\n    public int Area() => Width * Height;\n}\n\npublic class Square : Rectangle  // LSP violation!\n{\n    public override int Width  { set { base.Width = base.Height = value; } }\n    public override int Height { set { base.Width = base.Height = value; } }\n}\n\n// Consumer that expects Rectangle contract is broken:\nvoid ResizeAndCalculate(Rectangle r)\n{\n    r.Width = 5;\n    r.Height = 10;\n    Assert(r.Area() == 50);  // FAILS for Square: area is 100!\n}</code></pre><p><strong>Fix:</strong> Don't use inheritance here — Square and Rectangle are not substitutable. Use separate classes or an <code>IShape</code> interface.</p><p><strong>Practical LSP checks:</strong></p><ul><li>Derived class should not throw exceptions the base doesn't</li><li>Derived class should not strengthen preconditions or weaken postconditions</li><li>Derived class should not remove behaviors the base provides</li></ul>",
+      "followUps": ["What is the precondition/postcondition rule in LSP?", "How does LSP relate to interface segregation?"],
+      "tip": "<strong>LSP in practice:</strong> If you find yourself checking <code>if (obj is DerivedClass)</code> before calling methods, you're violating LSP — the derived class isn't truly substitutable. Refactor to polymorphism instead of type checks.",
+      "tags": ["solid", "lsp", "inheritance", "design"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "solid-004",
+      "category": "solid",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the Interface Segregation Principle (ISP)?",
+      "answer": "<p><strong>ISP</strong> states that clients should not be forced to depend on interfaces they don't use. Fat interfaces should be split into smaller, more focused ones.</p><p><strong>Violation — fat interface:</strong></p><pre><code class=\"language-csharp\">// BAD: every implementer must implement methods they don't need\npublic interface IWorker\n{\n    void Work();\n    void Eat();  // robots don't eat!\n    void Sleep(); // robots don't sleep!\n}\n\npublic class RobotWorker : IWorker\n{\n    public void Work() { /* actual logic */ }\n    public void Eat() => throw new NotImplementedException();  // forced!\n    public void Sleep() => throw new NotImplementedException(); // forced!\n}</code></pre><p><strong>Fixed — segregated interfaces:</strong></p><pre><code class=\"language-csharp\">public interface IWorkable  { void Work(); }\npublic interface IFeedable  { void Eat(); }\npublic interface ISleepable { void Sleep(); }\n\npublic class HumanWorker : IWorkable, IFeedable, ISleepable\n{\n    public void Work()  { ... }\n    public void Eat()   { ... }\n    public void Sleep() { ... }\n}\n\npublic class RobotWorker : IWorkable  // only what it needs\n{\n    public void Work() { ... }\n}</code></pre><p>In my services layer: instead of one <code>IUserService</code> with 20 methods, I have <code>IUserAuthService</code>, <code>IUserProfileService</code>, and <code>IUserNotificationService</code>. A controller that only needs auth doesn't depend on profile or notification methods.</p>",
+      "followUps": ["How does ISP relate to cohesion?", "How fine-grained should interfaces be?"],
+      "tip": "<strong>NotImplementedException is a red flag for ISP violation.</strong> If an implementer throws NotImplementedException for interface methods, the interface is too broad and should be split.",
+      "tags": ["solid", "isp", "interface", "design"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "solid-005",
+      "category": "solid",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the Dependency Inversion Principle (DIP)?",
+      "answer": "<p><strong>DIP</strong> has two rules:</p><ol><li>High-level modules should not depend on low-level modules. Both should depend on abstractions.</li><li>Abstractions should not depend on details. Details (implementations) should depend on abstractions.</li></ol><p><strong>Without DIP:</strong></p><pre><code class=\"language-csharp\">// BAD: high-level InvoiceService directly depends on low-level EmailSender\npublic class InvoiceService\n{\n    private readonly SmtpEmailSender _emailSender = new SmtpEmailSender();  // concrete!\n\n    public async Task CreateInvoiceAsync(Invoice invoice)\n    {\n        await _db.SaveAsync(invoice);\n        await _emailSender.SendAsync(invoice.ClientEmail, \"Invoice created\");\n        // Can't swap to SendGrid without changing InvoiceService\n    }\n}</code></pre><p><strong>With DIP:</strong></p><pre><code class=\"language-csharp\">// GOOD: both depend on the abstraction IEmailSender\npublic class InvoiceService\n{\n    private readonly IEmailSender _emailSender;  // abstraction\n\n    public InvoiceService(IEmailSender emailSender)  // injected\n        => _emailSender = emailSender;\n\n    public async Task CreateInvoiceAsync(Invoice invoice)\n    {\n        await _db.SaveAsync(invoice);\n        await _emailSender.SendAsync(invoice.ClientEmail, \"Invoice created\");\n        // Swap SmtpEmailSender → SendGridEmailSender: zero changes here\n    }\n}\n\n// In tests: inject FakeEmailSender — no SMTP needed</code></pre><p>DIP is what makes Dependency Injection work. The DI container wires up the concrete implementations; your business code never sees them.</p>",
+      "followUps": ["How does DIP relate to DI (Dependency Injection)?", "What is inversion of control (IoC)?"],
+      "tip": "<strong>DIP ≠ DI.</strong> DIP is the principle (depend on abstractions). DI is one mechanism to achieve it. You could satisfy DIP with the Service Locator pattern too (though it's an anti-pattern). DI via constructor injection is the cleanest implementation of DIP.",
+      "tags": ["solid", "dip", "dependency-injection", "design"],
+      "sortOrder": 5,
+      "isActive": true
+    }
+  ]
+}

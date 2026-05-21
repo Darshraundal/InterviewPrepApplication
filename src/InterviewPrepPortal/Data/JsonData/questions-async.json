@@ -1,0 +1,140 @@
+{
+  "categoryId": "async",
+  "questions": [
+    {
+      "id": "async-001",
+      "category": "async",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is async/await in C# and how does it work?",
+      "answer": "<p><strong>async/await</strong> is C#'s way of writing asynchronous code that reads like synchronous code. The compiler transforms <code>async</code> methods into a state machine — the method is split at each <code>await</code> point, and the runtime resumes execution when the awaited operation completes.</p><p><strong>Key points:</strong></p><ul><li><code>async</code> keyword marks a method as asynchronous. It allows <code>await</code> inside it.</li><li><code>await</code> suspends the current method without blocking the thread. The thread is returned to the thread pool to handle other work.</li><li>Return types should be <code>Task</code> (void equivalent), <code>Task&lt;T&gt;</code> (result), or <code>ValueTask&lt;T&gt;</code> (performance variant).</li></ul><pre><code class=\"language-csharp\">// Without async: thread blocked during HTTP call\npublic Invoice GetInvoice(int id) {\n    return _httpClient.GetFromJson&lt;Invoice&gt;($\"/api/invoices/{id}\").Result; // BLOCKS!\n}\n\n// With async: thread free during HTTP call\npublic async Task&lt;Invoice?&gt; GetInvoiceAsync(int id) {\n    return await _httpClient.GetFromJsonAsync&lt;Invoice&gt;($\"/api/invoices/{id}\");\n}</code></pre><p>In ASP.NET Core, every incoming request gets a thread. If that thread blocks on a DB call or HTTP call, it's wasted — can't handle other requests. Async frees it during the wait, enabling the same number of threads to handle far more concurrent requests.</p>",
+      "followUps": ["What does await actually do under the hood?", "What is the difference between async void and async Task?", "What is a SynchronizationContext?"],
+      "tip": "<strong>Never use .Result or .Wait() on a Task in ASP.NET Core</strong> — it blocks the thread AND can cause deadlocks in contexts with a SynchronizationContext (like old ASP.NET or WinForms). Always await.",
+      "tags": ["async", "await", "task", "concurrency"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "async-002",
+      "category": "async",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What causes a deadlock with async/await and how do you fix it?",
+      "answer": "<p>The classic deadlock pattern: calling <code>.Result</code> or <code>.Wait()</code> on a Task inside a context that has a <code>SynchronizationContext</code> (WinForms, old ASP.NET, unit test runners).</p><p><strong>How it deadlocks:</strong></p><ol><li>UI thread (SynchronizationContext) calls <code>GetDataAsync().Result</code> — blocks UI thread.</li><li><code>GetDataAsync()</code> completes and tries to post the continuation back to the UI thread's SynchronizationContext.</li><li>But the UI thread is blocked waiting for <code>GetDataAsync()</code> to complete.</li><li>Circular wait = deadlock.</li></ol><pre><code class=\"language-csharp\">// DEADLOCK in WinForms/old ASP.NET\npublic string GetData() {\n    return GetDataAsync().Result;  // blocks context thread\n}\n\n// Fix 1: go async all the way\npublic async Task&lt;string&gt; GetData() {\n    return await GetDataAsync();  // never block\n}\n\n// Fix 2: ConfigureAwait(false) — avoids SynchronizationContext\npublic async Task&lt;string&gt; GetDataAsync() {\n    var data = await _httpClient.GetStringAsync(url)\n        .ConfigureAwait(false);  // continuation runs on thread pool, not SyncContext\n    return data;\n}</code></pre><p>In ASP.NET Core there's no SynchronizationContext, so <code>.Result</code> doesn't deadlock — but it still blocks the thread, hurting throughput.</p>",
+      "followUps": ["What is ConfigureAwait(false) and when do you need it?", "What is SynchronizationContext?"],
+      "tip": "<strong>Library code should always use ConfigureAwait(false)</strong> to avoid capturing the caller's SynchronizationContext. Application code (controllers, UI code-behind) doesn't need it because there's an expectation to return to the original context.",
+      "tags": ["async", "await", "deadlock", "synchronization-context"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "async-003",
+      "category": "async",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between Task.WhenAll and Task.WhenAny?",
+      "answer": "<p>Both combine multiple Tasks but with different completion semantics:</p><p><strong>Task.WhenAll</strong> — waits for ALL tasks to complete. If any throws, it rethrows after all complete (wraps multiple exceptions in AggregateException).</p><pre><code class=\"language-csharp\">// Run 3 HTTP calls in parallel, wait for all\nvar portfolioTask = _portfolioSvc.GetAsync(id);\nvar holdingsTask = _holdingsSvc.GetByPortfolioAsync(id);\nvar perfTask = _performanceSvc.GetAsync(id);\n\nawait Task.WhenAll(portfolioTask, holdingsTask, perfTask);\n\nvar portfolio = await portfolioTask;  // already completed, just unwraps result\nvar holdings = await holdingsTask;\nvar perf = await perfTask;</code></pre><p><strong>Task.WhenAny</strong> — returns when the FIRST task completes. Useful for timeouts or racing multiple sources.</p><pre><code class=\"language-csharp\">// Timeout pattern\nvar dataTask = _service.GetExpensiveDataAsync();\nvar timeoutTask = Task.Delay(TimeSpan.FromSeconds(5));\n\nvar first = await Task.WhenAny(dataTask, timeoutTask);\nif (first == timeoutTask)\n    throw new TimeoutException(\"Service did not respond in time\");\n\nvar data = await dataTask;</code></pre><p>In FolioTrack's portfolio dashboard, I used <code>Task.WhenAll</code> to load market data, portfolio details, and performance metrics concurrently — reduced page load from 1.5s (sequential) to 600ms (parallel).</p>",
+      "followUps": ["How do you handle exceptions from Task.WhenAll?", "What is Parallel.ForEachAsync?"],
+      "tip": "<strong>Task.WhenAll exception handling:</strong> Even if one task throws, WhenAll waits for all to complete before rethrowing. Catch <code>AggregateException</code> and check <code>.InnerExceptions</code>, or await each task individually after WhenAll to get per-task exceptions.",
+      "tags": ["async", "task", "parallel", "concurrency"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "async-004",
+      "category": "async",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "What is CancellationToken and how do you use it?",
+      "answer": "<p>A <code>CancellationToken</code> is a cooperative cancellation mechanism — it signals that work should stop, but the work itself decides when and how to stop (check the token, clean up, throw <code>OperationCanceledException</code>).</p><p><strong>How it flows in ASP.NET Core:</strong> The framework provides a <code>CancellationToken</code> per request (via <code>HttpContext.RequestAborted</code>). If the client disconnects, this token is cancelled. Thread it through to avoid wasted DB/HTTP work for disconnected clients.</p><pre><code class=\"language-csharp\">// Controller — ASP.NET Core auto-binds CancellationToken\n[HttpGet(\"{id}\")]\npublic async Task&lt;IActionResult&gt; Get(int id, CancellationToken ct)\n{\n    var result = await _service.GetAsync(id, ct);\n    return Ok(result);\n}\n\n// Service — pass token to DB and HTTP calls\npublic async Task&lt;Portfolio?&gt; GetAsync(int id, CancellationToken ct)\n{\n    // EF Core respects CT\n    return await _db.Portfolios\n        .FirstOrDefaultAsync(p => p.Id == id, ct);\n}\n\n// Creating your own cancellation\nusing var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));\ntry {\n    var data = await _service.GetAsync(id, cts.Token);\n} catch (OperationCanceledException) {\n    // timed out\n}</code></pre>",
+      "projectExample": {
+        "source": "PaymentReminder",
+        "code": "protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n{\n    while (!stoppingToken.IsCancellationRequested)\n    {\n        await ProcessRemindersAsync(stoppingToken);\n        await Task.Delay(TimeSpan.FromHours(1), stoppingToken);\n    }\n}",
+        "explanation": "BackgroundService uses CancellationToken to stop the loop cleanly when the host is shutting down — Task.Delay with the token cancels immediately instead of waiting the full hour."
+      },
+      "followUps": ["What happens if you ignore a CancellationToken?", "How do you link two CancellationTokens?"],
+      "tip": "<strong>Always pass CancellationToken through your entire call chain.</strong> Not passing it to EF Core or HttpClient means the DB query/HTTP call continues even after the client disconnects — wasted compute and DB connections.",
+      "tags": ["async", "cancellation-token", "task", "aspnetcore"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "async-005",
+      "category": "async",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between a Thread, Task, and async/await?",
+      "answer": "<p>Three different levels of abstraction for concurrency:</p><p><strong>Thread</strong> — an OS-level unit of execution. Heavy: ~1MB stack, kernel objects, context switch overhead. Creating threads manually is rare in modern .NET. Use when you need true CPU parallelism or specific thread affinity.</p><p><strong>Task</strong> — a higher-level abstraction representing a unit of work. Tasks run on thread pool threads (not dedicated threads). Lightweight to create. The Task Parallel Library (TPL) manages scheduling, continuations, and cancellation. <code>Task.Run()</code> runs CPU-bound work on the thread pool.</p><p><strong>async/await</strong> — a language-level abstraction for writing asynchronous code. async/await doesn't create threads. For I/O-bound work (DB, HTTP, file), await suspends the method and returns the thread to the pool while waiting — no thread is consumed during the wait.</p><p><strong>When to use what:</strong></p><ul><li><strong>I/O-bound work</strong> (DB query, HTTP call): <code>async/await</code> — no thread needed while waiting.</li><li><strong>CPU-bound work</strong> (image processing, complex computation): <code>Task.Run(() => DoHeavyWork())</code> — offload to thread pool to not block the calling thread.</li><li><strong>Thread</strong>: Rarely. Background agents with specific requirements (STA thread for COM interop, specific CPU affinity).</li></ul>",
+      "followUps": ["What is the thread pool?", "When would you use Task.Run in ASP.NET Core?"],
+      "tip": "<strong>Don't use Task.Run for I/O-bound work in ASP.NET Core</strong> — it wastes a thread pool thread to do nothing but wait. Task.Run is for CPU-bound work you want to run concurrently without blocking the current thread.",
+      "tags": ["async", "thread", "task", "concurrency"],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "async-006",
+      "category": "async",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is async void and why is it dangerous?",
+      "answer": "<p><code>async void</code> methods are fire-and-forget — the caller can't await them, can't catch exceptions from them, and can't know when they complete.</p><p><strong>Problems with async void:</strong></p><ul><li><strong>Exceptions are unobserved</strong> — an exception thrown inside async void crashes the application (unhandled exception on the SynchronizationContext, or just lost on thread pool).</li><li><strong>No awaitable result</strong> — caller has no way to know the work completed or failed.</li><li><strong>Testing is impossible</strong> — you can't await the call in a test to know it finished.</li></ul><pre><code class=\"language-csharp\">// DANGEROUS\npublic async void SendEmailAsync() {\n    await _emailSender.SendAsync(\"...\");  // exception here crashes the app!\n}\n\n// CORRECT\npublic async Task SendEmailAsync() {\n    await _emailSender.SendAsync(\"...\");  // exception propagates to caller\n}\n\n// Exception-safe fire-and-forget (when truly needed)\npublic void FireAndForget() {\n    _ = DoWorkAsync().ContinueWith(\n        t => _logger.LogError(t.Exception, \"Background work failed\"),\n        TaskContinuationOptions.OnlyOnFaulted);\n}</code></pre><p><strong>Legitimate use:</strong> Event handlers — the delegate signature requires <code>void</code>. Even then, wrap the body in try/catch.</p>",
+      "followUps": ["How do you safely do fire-and-forget async work?", "What is IHostedService for background work?"],
+      "tip": "<strong>The only acceptable async void is event handlers</strong> — and even then, wrap in try/catch. For all other scenarios use <code>async Task</code>. If you need fire-and-forget, use <code>IHostedService</code> / <code>BackgroundService</code> or <code>IBackgroundTaskQueue</code> pattern.",
+      "tags": ["async", "async-void", "exception-handling", "antipattern"],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "async-007",
+      "category": "async",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is SemaphoreSlim and when do you use it for throttling?",
+      "answer": "<p><code>SemaphoreSlim</code> is a lightweight semaphore that limits how many threads/tasks can access a resource concurrently. Unlike the heavyweight <code>Semaphore</code>, it supports async waits (<code>WaitAsync()</code>) without blocking a thread.</p><p><strong>Use cases:</strong></p><ul><li>Throttle parallel HTTP calls to an external API (don't overwhelm it)</li><li>Limit database connections beyond what the connection pool handles</li><li>Rate-limit concurrent expensive operations (image resizing, PDF generation)</li></ul><pre><code class=\"language-csharp\">// Limit to 5 concurrent API calls\nprivate readonly SemaphoreSlim _throttle = new SemaphoreSlim(5, 5);\n\npublic async Task&lt;List&lt;InvoiceStatus&gt;&gt; CheckAllInvoicesAsync(\n    List&lt;int&gt; invoiceIds, CancellationToken ct)\n{\n    var tasks = invoiceIds.Select(async id =>\n    {\n        await _throttle.WaitAsync(ct);  // wait for a slot (non-blocking)\n        try\n        {\n            return await _apiClient.CheckStatusAsync(id, ct);\n        }\n        finally\n        {\n            _throttle.Release();  // always release in finally\n        }\n    });\n\n    return (await Task.WhenAll(tasks)).ToList();\n}</code></pre><p>In the CSInvoice project I used this to throttle external payment gateway calls — we had 500 invoices to check but the gateway limited us to 10 concurrent requests.</p>",
+      "followUps": ["What is the difference between SemaphoreSlim and Mutex?", "What is a ReaderWriterLockSlim?"],
+      "tip": "<strong>Always release in a finally block</strong> — if the protected code throws and you don't release, the semaphore slots are permanently consumed and the app eventually hangs with all tasks stuck in WaitAsync.",
+      "tags": ["async", "concurrency", "semaphore", "throttling"],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "async-008",
+      "category": "async",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is ValueTask and when should you use it instead of Task?",
+      "answer": "<p><code>Task&lt;T&gt;</code> always allocates a heap object. <code>ValueTask&lt;T&gt;</code> is a struct that avoids the allocation when the result is available synchronously (cached value, fast path).</p><p><strong>When ValueTask pays off:</strong></p><ul><li>High-frequency methods called millions of times per second</li><li>Methods that often complete synchronously (cache hits)</li><li>Hot paths in libraries (ASP.NET Core itself uses ValueTask heavily)</li></ul><pre><code class=\"language-csharp\">// Good use of ValueTask: cache-first pattern\nprivate Dictionary&lt;int, Portfolio&gt; _cache = new();\n\npublic ValueTask&lt;Portfolio?&gt; GetAsync(int id)\n{\n    // Synchronous cache hit: no Task allocation\n    if (_cache.TryGetValue(id, out var cached))\n        return ValueTask.FromResult&lt;Portfolio?&gt;(cached);\n\n    // Cache miss: must go async\n    return new ValueTask&lt;Portfolio?&gt;(LoadFromDbAsync(id));\n}\n\nprivate async Task&lt;Portfolio?&gt; LoadFromDbAsync(int id) { ... }</code></pre><p><strong>ValueTask restrictions:</strong> Can only be awaited once. Can't use with <code>Task.WhenAll</code>. Convert with <code>.AsTask()</code> if needed.</p><p>For most application code: use <code>Task&lt;T&gt;</code>. The allocation overhead is negligible. Use <code>ValueTask&lt;T&gt;</code> only when profiling confirms it's a hot path.</p>",
+      "followUps": ["What are the restrictions of ValueTask?", "When does ValueTask hurt performance?"],
+      "tip": "<strong>Don't prematurely optimise with ValueTask.</strong> It's harder to use correctly (single-await only, no WhenAll) and only helps under extreme allocation pressure. Measure first; optimise second.",
+      "tags": ["async", "task", "valuetask", "performance"],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "async-009",
+      "category": "async",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you run CPU-bound work without blocking the ASP.NET Core request thread?",
+      "answer": "<p>CPU-bound work (image processing, complex calculations, report generation) should be offloaded to the thread pool via <code>Task.Run()</code> so the request thread (which handles HTTP I/O) isn't tied up doing compute.</p><pre><code class=\"language-csharp\">// BAD: blocks the request thread doing CPU work\n[HttpPost(\"generate-report\")]\npublic async Task&lt;IActionResult&gt; GenerateReport(ReportRequest req)\n{\n    var pdf = BuildPdfReport(req);  // CPU-intensive, blocks thread!\n    return File(pdf, \"application/pdf\");\n}\n\n// GOOD: offload to thread pool\n[HttpPost(\"generate-report\")]\npublic async Task&lt;IActionResult&gt; GenerateReport(ReportRequest req)\n{\n    var pdf = await Task.Run(() => BuildPdfReport(req));\n    return File(pdf, \"application/pdf\");\n}\n\n// EVEN BETTER for long work: background processing\n[HttpPost(\"generate-report\")]\npublic async Task&lt;IActionResult&gt; GenerateReport(ReportRequest req)\n{\n    var jobId = await _queue.EnqueueAsync(req);\n    return Accepted(new { jobId });  // 202 Accepted — poll for result\n}</code></pre><p>For very long operations (30s+ reports), return 202 Accepted with a job ID. Client polls a status endpoint. This is the pattern I used in CSInvoice for PDF batch generation.</p>",
+      "followUps": ["What is Parallel.ForEachAsync?", "When is Task.Run appropriate in a web application?"],
+      "tip": "<strong>Task.Run in ASP.NET Core has a hidden cost:</strong> you're borrowing a thread pool thread that could otherwise handle a new incoming request. For very high-throughput APIs, even short CPU work in Task.Run adds up. Prefer dedicated background queues for heavy work.",
+      "tags": ["async", "task", "cpu-bound", "thread-pool"],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "async-010",
+      "category": "async",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is IAsyncEnumerable and when do you use it?",
+      "answer": "<p><code>IAsyncEnumerable&lt;T&gt;</code> is an async version of <code>IEnumerable&lt;T&gt;</code> that lets you stream data item-by-item instead of loading the entire collection into memory first.</p><pre><code class=\"language-csharp\">// Stream 100k invoices without loading all into memory\npublic async IAsyncEnumerable&lt;Invoice&gt; StreamInvoicesAsync(\n    [EnumeratorCancellation] CancellationToken ct)\n{\n    await foreach (var invoice in _db.Invoices\n        .AsAsyncEnumerable()\n        .WithCancellation(ct))\n    {\n        yield return invoice;\n    }\n}\n\n// Consumer\nawait foreach (var invoice in _service.StreamInvoicesAsync(ct))\n{\n    await ProcessInvoiceAsync(invoice);\n}</code></pre><p><strong>When it shines:</strong></p><ul><li>Processing large DB result sets without loading all rows into memory</li><li>Streaming API responses (Server-Sent Events)</li><li>Processing files line by line</li><li>Real-time data feeds</li></ul><p>ASP.NET Core 6+ supports <code>IAsyncEnumerable</code> directly as a controller return type — it streams JSON array items to the client as they become available (chunked transfer encoding).</p>",
+      "followUps": ["How does EF Core support IAsyncEnumerable?", "What is the difference between IEnumerable and IAsyncEnumerable for streaming?"],
+      "tip": "<strong>EF Core's AsAsyncEnumerable()</strong> streams rows from the DB one at a time — perfect for batch processing large tables. Without it, <code>ToListAsync()</code> loads everything into memory first. Critical difference for million-row tables.",
+      "tags": ["async", "iasyncenumerable", "streaming", "efcore"],
+      "sortOrder": 10,
+      "isActive": true
+    }
+  ]
+}

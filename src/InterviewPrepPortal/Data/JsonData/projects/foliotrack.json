@@ -1,0 +1,72 @@
+{
+  "projectId": "foliotrack",
+  "architectureSummary": {
+    "overview": "FolioTrack is a two-tier application: an Angular 19 SPA frontend communicating with an ASP.NET Core 10 REST API via HTTP. The API uses EF Core with MySQL for persistence, JWT for authentication, and is deployed on Azure App Service.",
+    "requestLifecycle": "1. Angular 19 component calls HttpClient service → 2. HTTP request with Bearer token → 3. ASP.NET Core JWT middleware validates token → 4. Controller action runs → 5. Service layer calls EF Core → 6. MySQL query → 7. Response mapped to DTO → 8. JSON returned to Angular → 9. Signal updated → 10. Component re-renders",
+    "authFlow": "User submits credentials → AccountController validates via ASP.NET Core Identity → Generates JWT (15min expiry) + Refresh token (7 days, stored in DB) → Angular stores access token in memory, refresh token in httpOnly cookie → On expiry, Angular interceptor auto-refreshes → Logout revokes refresh token in DB",
+    "diagramText": "Browser [Angular 19] ↔ HTTPS ↔ Azure App Service [ASP.NET Core 10 API] ↔ MySQL [Azure Database]"
+  },
+  "sections": [
+    {
+      "name": "Architecture & API Design",
+      "questions": [
+        {
+          "id": "ft-001",
+          "projectId": "foliotrack",
+          "sectionName": "Architecture & API Design",
+          "questionText": "Describe the overall architecture of FolioTrack. Why did you choose this stack?",
+          "answer": "<p>FolioTrack is a two-tier application: an <strong>Angular 19 SPA</strong> on the frontend and an <strong>ASP.NET Core 10 REST API</strong> on the backend, with <strong>MySQL</strong> as the database via EF Core.</p><p><strong>Why this stack:</strong></p><ul><li><strong>Angular 19</strong> — I wanted to build with standalone components and signals (Angular 17+ features), which simplify state management significantly compared to older NgModule-based architecture. Angular's strong typing with TypeScript pairs well with ASP.NET Core's C# types.</li><li><strong>ASP.NET Core 10</strong> — familiar, great performance, excellent tooling, native support for JWT, DI, and EF Core. The primary constructors feature in C# 12 reduced boilerplate significantly.</li><li><strong>MySQL</strong> — the client had existing MySQL infrastructure on Azure. EF Core's MySQL provider (Pomelo.EntityFrameworkCore.MySql) works seamlessly with the same code patterns as SQL Server.</li></ul><p>The API follows Clean Architecture light — controllers, services, repositories, and domain models in separate projects but without heavy CQRS overhead since this was a smaller application.</p>",
+          "followUpQuestions": ["How would you scale this architecture?", "What would you change if you were building it today?"],
+          "importantForInterview": "Be able to justify every technology choice — \"because I knew it\" is a weak answer. Frame choices as tradeoffs (familiar + productive vs learning overhead + project timeline)."
+        },
+        {
+          "id": "ft-002",
+          "projectId": "foliotrack",
+          "sectionName": "Architecture & API Design",
+          "questionText": "How did you handle JWT authentication in FolioTrack?",
+          "answer": "<p>FolioTrack uses short-lived access tokens (15 minutes) with refresh token rotation:</p><p><strong>Login flow:</strong></p><ol><li>Angular sends username + password to <code>POST /api/auth/login</code></li><li>API validates via <code>UserManager.CheckPasswordAsync()</code></li><li>Issues JWT access token (15min) + refresh token (7 days)</li><li>Refresh token stored in DB (hashed) and returned as httpOnly cookie</li><li>Access token returned in response body — Angular stores in memory (not localStorage to avoid XSS)</li></ol><p><strong>Token refresh:</strong> Angular's HTTP interceptor catches 401 responses, calls <code>POST /api/auth/refresh</code> with the httpOnly cookie, gets a new access token, retries the original request — transparent to components.</p><p><strong>Logout:</strong> Deletes refresh token from DB + clears httpOnly cookie. Even if someone has an old access token, it's useless after 15 minutes.</p><pre><code class=\"language-csharp\">// JWT generation in AccountController\nvar claims = new[]\n{\n    new Claim(JwtRegisteredClaimNames.Sub, user.Id),\n    new Claim(JwtRegisteredClaimNames.Email, user.Email!),\n    new Claim(\"displayName\", user.DisplayName)\n};\nvar token = new JwtSecurityToken(\n    issuer: _config[\"Jwt:Issuer\"],\n    audience: _config[\"Jwt:Audience\"],\n    claims: claims,\n    expires: DateTime.UtcNow.AddMinutes(15),\n    signingCredentials: new SigningCredentials(\n        new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config[\"Jwt:Key\"]!)),\n        SecurityAlgorithms.HmacSha256));</code></pre>",
+          "followUpQuestions": ["Why store the access token in memory instead of localStorage?", "How do you handle token expiry across multiple browser tabs?"],
+          "importantForInterview": "httpOnly cookies prevent JavaScript access (XSS protection). Memory storage prevents persistent XSS token theft but loses token on page refresh — solved by the refresh token flow on page load."
+        }
+      ]
+    },
+    {
+      "name": "Angular & Frontend",
+      "questions": [
+        {
+          "id": "ft-003",
+          "projectId": "foliotrack",
+          "sectionName": "Angular & Frontend",
+          "questionText": "How did you use Angular Signals in FolioTrack?",
+          "answer": "<p>FolioTrack was my first project using Angular 17+ Signals, and they significantly simplified state management compared to RxJS Subjects.</p><p><strong>Portfolio list component:</strong></p><pre><code class=\"language-typescript\">@Component({ standalone: true, ... })\nexport class PortfolioListComponent {\n  // Signals replace BehaviorSubject\n  portfolios = signal&lt;Portfolio[]&gt;([]);\n  isLoading = signal(false);\n  error = signal&lt;string | null&gt;(null);\n\n  // Computed signal — auto-recalculates when portfolios changes\n  totalValue = computed(() =>\n    this.portfolios().reduce((sum, p) => sum + p.currentValue, 0));\n\n  // Effect — runs side effect when signal changes\n  constructor(private svc: PortfolioService) {\n    effect(() => {\n      // Runs whenever portfolios() changes\n      document.title = `FolioTrack (${this.portfolios().length} portfolios)`;\n    });\n  }\n\n  ngOnInit() {\n    this.isLoading.set(true);\n    this.svc.getAll()\n      .pipe(takeUntilDestroyed())\n      .subscribe({\n        next: data => { this.portfolios.set(data); this.isLoading.set(false); },\n        error: err => { this.error.set('Failed to load'); this.isLoading.set(false); }\n      });\n  }\n}</code></pre><p>With signals, I used <code>ChangeDetectionStrategy.OnPush</code> everywhere — Angular only re-renders when a signal's value changes, not on every change detection cycle.</p>",
+          "followUpQuestions": ["What is the difference between signal() and computed()?", "How do signals compare to RxJS BehaviorSubject?"],
+          "importantForInterview": "Signals provide fine-grained reactivity — only components that read a specific signal re-render when it changes. No Zone.js needed, no manual unsubscribing for most cases."
+        },
+        {
+          "id": "ft-004",
+          "projectId": "foliotrack",
+          "sectionName": "Angular & Frontend",
+          "questionText": "How did you implement the stock search autocomplete in FolioTrack?",
+          "answer": "<p>The stock search uses RxJS operators to create a responsive autocomplete without hammering the API:</p><pre><code class=\"language-typescript\">@Component({ ... })\nexport class StockSearchComponent implements OnInit {\n  searchControl = new FormControl('');\n  results = signal&lt;StockResult[]&gt;([]);\n  isSearching = signal(false);\n\n  constructor(\n    private stockService: StockService,\n    private destroyRef: DestroyRef\n  ) {}\n\n  ngOnInit(): void {\n    this.searchControl.valueChanges.pipe(\n      takeUntilDestroyed(this.destroyRef),\n      debounceTime(300),           // wait 300ms after user stops typing\n      distinctUntilChanged(),      // don't fire if same value\n      filter(q => (q?.length ?? 0) >= 2),  // minimum 2 chars\n      tap(() => this.isSearching.set(true)),\n      switchMap(query =>            // cancel previous request\n        this.stockService.search(query!).pipe(\n          catchError(() => { this.isSearching.set(false); return of([]); })\n        )\n      )\n    ).subscribe(results => {\n      this.results.set(results);\n      this.isSearching.set(false);\n    });\n  }\n}</code></pre><p><strong>Why switchMap:</strong> If the user types fast (\"APP\" → \"APPL\" → \"APPLE\"), switchMap cancels the previous HTTP request when a new character arrives. Without it, you'd get stale results from an older request overwriting newer ones.</p>",
+          "followUpQuestions": ["What's the difference between switchMap and mergeMap here?", "How do you handle the loading state during search?"],
+          "importantForInterview": "The debounce + switchMap combination is the canonical RxJS autocomplete pattern. Be able to explain why each operator is necessary and what happens if you remove any one of them."
+        }
+      ]
+    },
+    {
+      "name": "Database & EF Core",
+      "questions": [
+        {
+          "id": "ft-005",
+          "projectId": "foliotrack",
+          "sectionName": "Database & EF Core",
+          "questionText": "How did you model the portfolio and holdings in FolioTrack's database?",
+          "answer": "<p>The core data model has three main tables with EF Core navigation properties:</p><pre><code class=\"language-csharp\">public class Portfolio\n{\n    public int Id { get; set; }\n    public string UserId { get; set; } = string.Empty;  // FK to AspNetUsers\n    public string Name { get; set; } = string.Empty;\n    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;\n    public ICollection&lt;Holding&gt; Holdings { get; set; } = [];\n}\n\npublic class Holding\n{\n    public int Id { get; set; }\n    public int PortfolioId { get; set; }\n    public Portfolio Portfolio { get; set; } = null!;\n    public string StockSymbol { get; set; } = string.Empty;\n    public string StockName { get; set; } = string.Empty;\n    public decimal Quantity { get; set; }\n    public decimal AverageBuyPrice { get; set; }\n    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;\n}\n\n// Fluent API configuration\nprotected override void OnModelCreating(ModelBuilder builder)\n{\n    builder.Entity&lt;Portfolio&gt;(e =>\n    {\n        e.HasMany(p => p.Holdings)\n         .WithOne(h => h.Portfolio)\n         .HasForeignKey(h => h.PortfolioId)\n         .OnDelete(DeleteBehavior.Cascade);\n\n        e.HasIndex(p => p.UserId);  // query by user frequently\n    });\n}</code></pre><p>I stored the stock's name in the Holding to avoid a Stock master table dependency — stocks are fetched from an external API and their names rarely change. This was a deliberate denormalization for simplicity.</p>",
+          "followUpQuestions": ["Would you normalize the StockName into a separate table?", "How do you handle stale stock prices?"],
+          "importantForInterview": "Justify denormalization decisions. The key is knowing WHY you made the choice, not that you followed a strict rule."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

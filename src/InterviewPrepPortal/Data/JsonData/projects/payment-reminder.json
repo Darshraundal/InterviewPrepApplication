@@ -1,0 +1,33 @@
+{
+  "projectId": "payment-reminder",
+  "architectureSummary": {
+    "overview": "PaymentReminder is a .NET 8 BackgroundService (IHostedService) that runs on a schedule, queries the SQL Server database for overdue invoices, and sends email reminders via SMTP. It's a single-process console application hosted as a Windows Service / systemd service.",
+    "requestLifecycle": "1. Timer fires every hour → 2. BackgroundService.ExecuteAsync resumes → 3. Queries EF Core for unpaid invoices past due date → 4. Filters those not yet reminded in last 24h → 5. Builds email from template → 6. Sends via SmtpClient → 7. Updates reminder timestamp in DB → 8. Sleeps until next hour"
+  },
+  "sections": [
+    {
+      "name": "Background Service & Architecture",
+      "questions": [
+        {
+          "id": "pr-001",
+          "projectId": "payment-reminder",
+          "sectionName": "Background Service & Architecture",
+          "questionText": "How did you implement the scheduled processing in the PaymentReminder service?",
+          "answer": "<p>The PaymentReminder service extends <code>BackgroundService</code> and runs in an infinite loop with <code>Task.Delay</code> between iterations:</p><pre><code class=\"language-csharp\">public class PaymentReminderWorker : BackgroundService\n{\n    private readonly ILogger&lt;PaymentReminderWorker&gt; _logger;\n    private readonly IServiceScopeFactory _scopeFactory;\n    private readonly IConfiguration _config;\n\n    public PaymentReminderWorker(\n        ILogger&lt;PaymentReminderWorker&gt; logger,\n        IServiceScopeFactory scopeFactory,\n        IConfiguration config)\n    {\n        _logger = logger;\n        _scopeFactory = scopeFactory;\n        _config = config;\n    }\n\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        _logger.LogInformation(\"PaymentReminder started\");\n\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            try\n            {\n                await ProcessRemindersAsync(stoppingToken);\n            }\n            catch (Exception ex) when (ex is not OperationCanceledException)\n            {\n                _logger.LogError(ex, \"Error processing reminders — will retry next interval\");\n            }\n\n            // Wait until next run (configurable, default 1 hour)\n            var interval = TimeSpan.FromMinutes(\n                _config.GetValue&lt;int&gt;(\"Reminder:IntervalMinutes\", 60));\n\n            await Task.Delay(interval, stoppingToken);  // CT cancels delay on shutdown\n        }\n    }\n}</code></pre><p><strong>Why IServiceScopeFactory:</strong> BackgroundService is a Singleton, but EF Core's DbContext is Scoped. I create a new scope per processing run to get a fresh DbContext — prevents the \"using a disposed DbContext\" error.</p>",
+          "followUpQuestions": ["Why is DbContext Scoped, not Singleton?", "How do you handle the service crashing mid-send?"],
+          "importantForInterview": "IServiceScopeFactory pattern is a critical .NET interview topic. Singleton services cannot directly inject Scoped services — you must create a scope and resolve from it. EF Core's DbContext is explicitly designed as Scoped."
+        },
+        {
+          "id": "pr-002",
+          "projectId": "payment-reminder",
+          "sectionName": "Background Service & Architecture",
+          "questionText": "How did you prevent duplicate reminders from being sent?",
+          "answer": "<p>Preventing duplicate sends was critical — double-reminding a client is a bad experience. I solved it with two complementary mechanisms:</p><p><strong>1. DB-level idempotency:</strong></p><pre><code class=\"language-csharp\">public class ReminderLog\n{\n    public int Id { get; set; }\n    public int InvoiceId { get; set; }\n    public DateTime SentAt { get; set; }\n    public string RecipientEmail { get; set; } = string.Empty;\n}\n\n// Unique constraint: can only log one reminder per invoice per day\npublic void Configure(EntityTypeBuilder&lt;ReminderLog&gt; builder)\n{\n    builder.HasIndex(r => new { r.InvoiceId, r.SentDate })\n           .IsUnique();\n}</code></pre><p><strong>2. Transactional send-and-log:</strong></p><pre><code class=\"language-csharp\">private async Task SendAndLogAsync(Invoice invoice, CancellationToken ct)\n{\n    await using var transaction = await _db.Database.BeginTransactionAsync(ct);\n    try\n    {\n        // Check not already sent today\n        var alreadySent = await _db.ReminderLogs\n            .AnyAsync(r => r.InvoiceId == invoice.Id &&\n                          r.SentAt.Date == DateTime.UtcNow.Date, ct);\n        if (alreadySent) return;\n\n        // Send email (outside transaction — cannot rollback SMTP)\n        await _emailSender.SendAsync(invoice.ClientEmail, BuildEmailBody(invoice), ct);\n\n        // Log the send within the transaction\n        _db.ReminderLogs.Add(new ReminderLog\n        {\n            InvoiceId = invoice.Id,\n            SentAt = DateTime.UtcNow,\n            RecipientEmail = invoice.ClientEmail\n        });\n        await _db.SaveChangesAsync(ct);\n        await transaction.CommitAsync(ct);\n    }\n    catch\n    {\n        await transaction.RollbackAsync(ct);\n        throw;\n    }\n}</code></pre><p><strong>Limitation I acknowledged:</strong> SMTP send and DB log aren't truly atomic. If the send succeeds but DB write fails, the next run will resend. The unique constraint on InvoiceId+Date reduces (not eliminates) this window.</p>",
+          "followUpQuestions": ["How would you make this truly idempotent?", "What is the outbox pattern and would it help here?"],
+          "importantForInterview": "Acknowledging the limitation shows senior-level thinking. The interviewer expects you to know that SMTP and DB aren't atomically linked — the correct solution is the Outbox pattern (write reminder intent to DB in same transaction, separate publisher sends and marks complete)."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

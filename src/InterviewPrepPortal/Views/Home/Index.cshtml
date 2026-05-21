@@ -1,0 +1,151 @@
+﻿@model InterviewPrepPortal.ViewModels.Home.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var p = Model.OverallProgress;
+    var total = Model.TotalCategoryQuestions;
+    var mastPct = total > 0 ? (double)p.Mastered / total * 100 : 0;
+}
+
+<div class="page-header">
+    <h2>👋 Hey @Model.UserDisplayName!</h2>
+    <p class="subtitle">Here's your interview prep progress at a glance.</p>
+</div>
+
+<!-- ── STAT CARDS ── -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-value">@total</div>
+        <div class="stat-label">Total Questions</div>
+    </div>
+    <div class="stat-card mastered">
+        <div class="stat-value">@p.Mastered</div>
+        <div class="stat-label">Mastered</div>
+    </div>
+    <div class="stat-card learning">
+        <div class="stat-value">@p.Learning</div>
+        <div class="stat-label">Learning</div>
+    </div>
+    <div class="stat-card revision">
+        <div class="stat-value">@p.RevisionNeeded</div>
+        <div class="stat-label">Revision Queue</div>
+    </div>
+    <div class="stat-card favorites">
+        <div class="stat-value">@p.Favorites</div>
+        <div class="stat-label">Favorites</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value" style="color:var(--ip-accent);">@mastPct.ToString("F0")%</div>
+        <div class="stat-label">Mastered %</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+    <!-- ── CATEGORIES PROGRESS ── -->
+    <div class="ip-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:.95rem;font-weight:600;margin:0;">Category Progress</h3>
+            <a asp-controller="Category" asp-action="Index" style="font-size:.78rem;color:var(--ip-accent-2);">View all →</a>
+        </div>
+
+        @foreach (var cat in Model.Categories.OrderBy(c => c.Category.SortOrder).Take(10))
+        {
+            var catTotal = cat.TotalQuestions;
+            var catMastered = cat.Progress?.Mastered ?? 0;
+            var catPct = catTotal > 0 ? (double)catMastered / catTotal * 100 : 0;
+            <div class="progress-row">
+                <div class="label">@cat.Category.Emoji @cat.Category.Name</div>
+                <div class="bar">
+                    <div class="bar-fill" style="width:@catPct.ToString("F0")%"></div>
+                </div>
+                <div class="count">@catMastered/@catTotal</div>
+            </div>
+        }
+    </div>
+
+    <!-- ── REVISION QUEUE + FAVORITES ── -->
+    <div>
+        <div class="ip-card" style="margin-bottom:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 style="font-size:.95rem;font-weight:600;margin:0;">🔄 Revision Queue</h3>
+                <a asp-controller="Progress" asp-action="RevisionQueue" style="font-size:.78rem;color:var(--ip-accent-2);">See all →</a>
+            </div>
+
+            @if (Model.RevisionQueue.Any())
+            {
+                @foreach (var item in Model.RevisionQueue)
+                {
+                    <div style="padding:7px 0;border-bottom:1px solid rgba(51,65,85,.4);font-size:.82rem;color:var(--ip-text-2);">
+                        <a href="/Question/Detail/@item.QuestionId" style="color:var(--ip-text-2);text-decoration:none;">
+                            @item.QuestionText.Substring(0, Math.Min(70, item.QuestionText.Length))@(item.QuestionText.Length > 70 ? "..." : "")
+                        </a>
+                    </div>
+                }
+            }
+            else
+            {
+                <p style="font-size:.82rem;color:var(--ip-text-3);text-align:center;padding:12px 0;">No revision items yet 🎉</p>
+            }
+        </div>
+
+        <div class="ip-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <h3 style="font-size:.95rem;font-weight:600;margin:0;">⭐ Favorites</h3>
+                <a asp-controller="Progress" asp-action="Favorites" style="font-size:.78rem;color:var(--ip-accent-2);">See all →</a>
+            </div>
+
+            @if (Model.RecentFavorites.Any())
+            {
+                @foreach (var item in Model.RecentFavorites)
+                {
+                    <div style="padding:7px 0;border-bottom:1px solid rgba(51,65,85,.4);font-size:.82rem;color:var(--ip-text-2);">
+                        <a href="/Question/Detail/@item.QuestionId" style="color:var(--ip-text-2);text-decoration:none;">
+                            @item.QuestionText.Substring(0, Math.Min(70, item.QuestionText.Length))@(item.QuestionText.Length > 70 ? "..." : "")
+                        </a>
+                    </div>
+                }
+            }
+            else
+            {
+                <p style="font-size:.82rem;color:var(--ip-text-3);text-align:center;padding:12px 0;">Star questions you want to revisit</p>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ── MY PROJECTS QUICK ACCESS ── -->
+@if (Model.Projects.Any())
+{
+    <div class="ip-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="font-size:.95rem;font-weight:600;margin:0;">🗂️ My Projects</h3>
+            <a asp-controller="Project" asp-action="Index" style="font-size:.78rem;color:var(--ip-accent-2);">View all →</a>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            @foreach (var proj in Model.Projects)
+            {
+                <a asp-controller="Project" asp-action="Detail" asp-route-slug="@proj.Slug"
+                   style="background:var(--ip-bg-3);border:1px solid var(--ip-border);border-radius:8px;padding:8px 14px;text-decoration:none;color:var(--ip-text-2);font-size:.82rem;transition:all .15s;"
+                   onmouseover="this.style.borderColor='var(--ip-accent)'" onmouseout="this.style.borderColor='var(--ip-border)'">
+                    @proj.Name <span style="font-size:.7rem;color:var(--ip-text-3);">@proj.QuestionCount Q</span>
+                </a>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Animate stat values on load
+        document.querySelectorAll('.stat-value').forEach(el => {
+            const target = parseInt(el.textContent) || 0;
+            if (target === 0 || el.textContent.includes('%')) return;
+            let current = 0;
+            const step = Math.ceil(target / 30);
+            const timer = setInterval(() => {
+                current = Math.min(current + step, target);
+                el.textContent = current;
+                if (current >= target) clearInterval(timer);
+            }, 30);
+        });
+    </script>
+}

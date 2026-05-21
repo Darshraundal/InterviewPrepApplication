@@ -1,0 +1,33 @@
+{
+  "projectId": "offline-invoice",
+  "architectureSummary": {
+    "overview": "The Offline Invoice system uses a local SQLite database as the primary store when offline, and syncs to a central SQL Server when connectivity is available. A .NET 6 API serves online clients, while a Worker Service handles the sync queue.",
+    "requestLifecycle": "ONLINE: Client → API → SQL Server. OFFLINE: Client → Local SQLite → queued for sync. SYNC: Worker polls sync queue → applies to SQL Server → marks items synced → propagates server changes back to local DB"
+  },
+  "sections": [
+    {
+      "name": "Offline Architecture",
+      "questions": [
+        {
+          "id": "oi-001",
+          "projectId": "offline-invoice",
+          "sectionName": "Offline Architecture",
+          "questionText": "How did you implement the offline-first data sync in the invoice system?",
+          "answer": "<p>The sync system uses an event queue approach — every create/update/delete in offline mode writes a <code>SyncEvent</code> record to the local SQLite DB. When connectivity is restored, a background worker processes the queue:</p><pre><code class=\"language-csharp\">public class SyncEvent\n{\n    public int Id { get; set; }\n    public string EntityType { get; set; } = string.Empty;  // \"Invoice\", \"Client\"\n    public int EntityId { get; set; }\n    public string Operation { get; set; } = string.Empty;  // \"Create\", \"Update\", \"Delete\"\n    public string Payload { get; set; } = string.Empty;  // JSON of the entity state\n    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;\n    public bool IsSynced { get; set; } = false;\n    public DateTime? SyncedAt { get; set; }\n    public string? SyncError { get; set; }\n}\n\n// Sync worker\npublic class SyncWorker : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken ct)\n    {\n        while (!ct.IsCancellationRequested)\n        {\n            if (await IsConnectedAsync())\n                await ProcessPendingEventsAsync(ct);\n\n            await Task.Delay(TimeSpan.FromSeconds(30), ct);\n        }\n    }\n\n    private async Task ProcessPendingEventsAsync(CancellationToken ct)\n    {\n        var pending = await _localDb.SyncEvents\n            .Where(e => !e.IsSynced)\n            .OrderBy(e => e.CreatedAt)  // process in order\n            .ToListAsync(ct);\n\n        foreach (var evt in pending)\n        {\n            try\n            {\n                await ApplyToServerAsync(evt, ct);\n                evt.IsSynced = true;\n                evt.SyncedAt = DateTime.UtcNow;\n            }\n            catch (Exception ex)\n            {\n                evt.SyncError = ex.Message;\n                _logger.LogError(ex, \"Sync failed for event {Id}\", evt.Id);\n            }\n        }\n        await _localDb.SaveChangesAsync(ct);\n    }\n}</code></pre>",
+          "followUpQuestions": ["How do you handle conflict when the same record is edited offline and online simultaneously?", "How do you handle ordering of sync events?"],
+          "importantForInterview": "Conflict resolution strategy is the hard part of offline sync. Last-write-wins is simplest. Operational transform (like Google Docs) is complex. For invoice systems, business rules often dictate resolution (e.g., a payment received server-side always wins over a status change made offline)."
+        },
+        {
+          "id": "oi-002",
+          "projectId": "offline-invoice",
+          "sectionName": "Offline Architecture",
+          "questionText": "Why did you choose Dapper over EF Core for the Offline Invoice project?",
+          "answer": "<p>The Offline Invoice project had several complex multi-table reporting queries that EF Core generated poorly. Dapper gave me full control over SQL while still mapping results to C# objects.</p><p><strong>Complex query that Dapper handled well:</strong></p><pre><code class=\"language-csharp\">// Dapper: full SQL control for complex report\npublic async Task&lt;IReadOnlyList&lt;InvoiceSummaryDto&gt;&gt; GetSummaryAsync(\n    DateRange range, CancellationToken ct)\n{\n    const string sql = @\"\n        SELECT\n            c.Name AS ClientName,\n            COUNT(i.Id) AS InvoiceCount,\n            SUM(i.Amount) AS TotalAmount,\n            SUM(CASE WHEN i.Status = 'Paid' THEN i.Amount ELSE 0 END) AS PaidAmount,\n            MAX(i.DueDate) AS LatestDue\n        FROM Clients c\n        LEFT JOIN Invoices i ON i.ClientId = c.Id\n            AND i.InvoiceDate BETWEEN @Start AND @End\n        WHERE c.IsActive = 1\n        GROUP BY c.Id, c.Name\n        HAVING COUNT(i.Id) > 0\n        ORDER BY TotalAmount DESC\";\n\n    var connection = _db.Database.GetDbConnection();\n    var results = await connection.QueryAsync&lt;InvoiceSummaryDto&gt;(\n        new CommandDefinition(sql,\n            new { Start = range.Start, End = range.End },\n            cancellationToken: ct));\n    return results.ToList().AsReadOnly();\n}\n</code></pre><p>I used <strong>both EF Core and Dapper</strong> in the same project: EF Core for standard CRUD (adding invoices, updating clients), Dapper for the reporting queries. Same <code>DbContext.Database.GetDbConnection()</code> to reuse the EF Core connection string and connection pooling.</p>",
+          "followUpQuestions": ["What is the N+1 problem and did you encounter it?", "How does Dapper handle NULL mapping?"],
+          "importantForInterview": "Using both EF Core and Dapper in the same project is perfectly valid and common in production. EF Core for change-tracking CRUD, Dapper for read-optimized complex queries."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

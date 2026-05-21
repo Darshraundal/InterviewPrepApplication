@@ -1,0 +1,38 @@
+{
+  "projectId": "wallet-verification",
+  "architectureSummary": {
+    "overview": "WalletVerification is a two-tier application: Angular 16 frontend with OIDC-based login, and an ASP.NET Core 8 API that handles identity verification flows, wallet management (top-up, transfer, withdrawal), and transaction history. SQL Server stores all data with optimistic concurrency on wallet balances.",
+    "authFlow": "User clicks 'Login' → Angular redirects to OIDC provider → User authenticates → ID token + access token returned → Angular stores access token in memory → API validates JWT, extracts sub claim → sub claim used as wallet owner identifier"
+  },
+  "sections": [
+    {
+      "name": "Authentication & Security",
+      "questions": [
+        {
+          "id": "wv-001",
+          "projectId": "wallet-verification",
+          "sectionName": "Authentication & Security",
+          "questionText": "How did you implement OIDC authentication in WalletVerification?",
+          "answer": "<p>WalletVerification uses an external OIDC identity provider (we used a test provider during development, Azure AD in production). Angular handles the OIDC client side using <code>angular-auth-oidc-client</code> library.</p><p><strong>Angular OIDC setup:</strong></p><pre><code class=\"language-typescript\">// app.config.ts\nprovideAuth({\n  config: {\n    authority: environment.oidcAuthority,\n    redirectUrl: window.location.origin,\n    clientId: environment.oidcClientId,\n    scope: 'openid profile email wallet:read wallet:write',\n    responseType: 'code',  // Authorization Code Flow with PKCE\n    silentRenew: true,\n    useRefreshToken: true,\n  }\n})</code></pre><p><strong>API JWT validation:</strong></p><pre><code class=\"language-csharp\">// Program.cs — validate OIDC-issued JWTs\nbuilder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n    .AddJwtBearer(options =>\n    {\n        // Authority = OIDC provider URL — auto-discovers endpoints\n        options.Authority = config[\"Oidc:Authority\"];\n        options.Audience = config[\"Oidc:Audience\"];\n        // The OIDC provider's public key validates the signature\n        // — no shared secret needed between API and provider\n    });</code></pre><p><strong>Resource-based authorization:</strong> Each wallet API call checks that the authenticated user's <code>sub</code> claim matches the wallet's owner. This prevents user A from accessing user B's wallet even with a valid token.</p><pre><code class=\"language-csharp\">var userId = User.FindFirstValue(\"sub\")!;\nvar wallet = await _walletService.GetAsync(walletId, ct);\nif (wallet.OwnerId != userId) return Forbid();  // 403</code></pre>",
+          "followUpQuestions": ["What is PKCE and why is it required for SPAs?", "What is the difference between ID token and access token?"],
+          "importantForInterview": "PKCE (Proof Key for Code Exchange) prevents authorization code interception attacks in SPAs. The SPA generates a random code_verifier, sends its hash (code_challenge) with the auth request, then proves it knows the original when exchanging the code for tokens."
+        }
+      ]
+    },
+    {
+      "name": "Wallet Operations & Concurrency",
+      "questions": [
+        {
+          "id": "wv-002",
+          "projectId": "wallet-verification",
+          "sectionName": "Wallet Operations & Concurrency",
+          "questionText": "How did you prevent double top-up from concurrent requests in WalletVerification?",
+          "answer": "<p>The wallet balance update is a classic concurrency problem — if two requests simultaneously read balance = 500 and add 100, both write 600 instead of 700. I solved this with EF Core's optimistic concurrency:</p><pre><code class=\"language-csharp\">public class Wallet\n{\n    public int Id { get; set; }\n    public string OwnerId { get; set; } = string.Empty;\n    public decimal Balance { get; set; }\n\n    [Timestamp]  // SQL Server rowversion — auto-increments on every update\n    public byte[] RowVersion { get; set; } = [];\n}\n\n// Top-up operation\npublic async Task&lt;decimal&gt; TopUpAsync(int walletId, decimal amount, CancellationToken ct)\n{\n    const int maxRetries = 3;\n    for (int attempt = 0; attempt &lt; maxRetries; attempt++)\n    {\n        var wallet = await _db.Wallets.FindAsync([walletId], ct);\n        if (wallet == null) throw new KeyNotFoundException();\n\n        wallet.Balance += amount;\n\n        try\n        {\n            await _db.SaveChangesAsync(ct);\n            return wallet.Balance;\n        }\n        catch (DbUpdateConcurrencyException)\n        {\n            if (attempt == maxRetries - 1) throw;\n\n            // Reload with current DB values and retry\n            await _db.Entry(wallet).ReloadAsync(ct);\n            _logger.LogWarning(\"Concurrency conflict on wallet {Id}, retrying ({Attempt})\",\n                walletId, attempt + 1);\n        }\n    }\n    throw new InvalidOperationException(\"Max retries exceeded\");\n}</code></pre><p>EF Core appends <code>WHERE RowVersion = @original</code> to the UPDATE. If the row was modified since we read it, 0 rows are affected and <code>DbUpdateConcurrencyException</code> is thrown. We reload and retry up to 3 times.</p>",
+          "followUpQuestions": ["When would you use pessimistic locking instead?", "What is the difference between optimistic and pessimistic concurrency?"],
+          "importantForInterview": "Optimistic concurrency is preferred for low-contention scenarios (most financial UIs). Pessimistic (SELECT ... WITH UPDLOCK) is better when contention is high or you absolutely cannot have a retry loop (e.g., ticket booking)."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

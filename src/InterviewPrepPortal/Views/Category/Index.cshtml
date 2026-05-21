@@ -1,0 +1,33 @@
+@model InterviewPrepPortal.ViewModels.Category.CategoryListViewModel
+@{
+    ViewData["Title"] = "All Categories";
+}
+
+<div class="page-header">
+    <h2>📚 Interview Categories</h2>
+    <p class="subtitle">Browse all 15 topic areas. Click any category to start practicing.</p>
+</div>
+
+<div class="category-grid">
+    @foreach (var item in Model.Categories)
+    {
+        var cat = item.Category;
+        var catTotal = item.TotalQuestions;
+        var mastered = item.Progress?.Mastered ?? 0;
+        var pct = catTotal > 0 ? (double)mastered / catTotal * 100 : 0;
+
+        <a class="category-card" asp-controller="Category" asp-action="Detail" asp-route-slug="@cat.Slug">
+            <span class="cat-emoji">@cat.Emoji</span>
+            <div class="cat-name">@cat.Name</div>
+            <div class="cat-desc">@cat.Description</div>
+
+            <div class="cat-progress-bar">
+                <div class="cat-progress-fill" style="width:@pct.ToString("F0")%"></div>
+            </div>
+            <div class="cat-progress-meta">
+                <span>@mastered / @catTotal mastered</span>
+                <span>@pct.ToString("F0")%</span>
+            </div>
+        </a>
+    }
+</div>

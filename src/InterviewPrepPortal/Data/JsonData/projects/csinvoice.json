@@ -1,0 +1,32 @@
+{
+  "projectId": "csinvoice",
+  "architectureSummary": {
+    "overview": "CSInvoice is a .NET 6 desktop-style application for generating professional invoices. It uses Unity as the IoC container, PdfSharp/MigraDoc for PDF generation, and SQL Server for storage. The application supports multiple invoice templates and export formats (PDF, Word, Excel)."
+  },
+  "sections": [
+    {
+      "name": "IoC & Architecture",
+      "questions": [
+        {
+          "id": "csi-001",
+          "projectId": "csinvoice",
+          "sectionName": "IoC & Architecture",
+          "questionText": "CSInvoice uses Unity as an IoC container. How does it compare to ASP.NET Core's built-in DI?",
+          "answer": "<p>Unity is a mature IoC container from Microsoft (older than ASP.NET Core's built-in DI). I used it because CSInvoice was a WPF/console application, not an ASP.NET Core app — the built-in DI container only works out-of-the-box with the generic host.</p><p><strong>Unity vs Microsoft.Extensions.DI comparison:</strong></p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th>Feature</th><th>Unity</th><th>MS.Extensions.DI</th></tr><tr><td>Type registration</td><td>container.RegisterType&lt;I, C&gt;()</td><td>services.AddScoped&lt;I, C&gt;()</td></tr><tr><td>Lifetime</td><td>TransientLifetimeManager, ContainerControlledLifetimeManager (singleton), HierarchicalLifetimeManager</td><td>Transient, Scoped, Singleton</td></tr><tr><td>Property injection</td><td>✓ supported (via [Dependency])</td><td>Not natively (use constructor)</td></tr><tr><td>Child containers</td><td>✓ supported</td><td>IServiceScope</td></tr></table><pre><code class=\"language-csharp\">// Unity registration (CSInvoice)\nvar container = new UnityContainer();\ncontainer.RegisterType&lt;IInvoiceRepository, SqlInvoiceRepository&gt;(\n    new HierarchicalLifetimeManager());  // scoped equivalent\ncontainer.RegisterType&lt;IPdfGenerator, MigraDocPdfGenerator&gt;(\n    new TransientLifetimeManager());\n\n// Resolution\nvar generator = container.Resolve&lt;IInvoiceGenerator&gt;();</code></pre><p>The key concepts are identical — constructor injection, interface-to-implementation binding, lifetime management. The API names differ.</p>",
+          "followUpQuestions": ["Can you use ASP.NET Core DI outside of web applications?", "How do you migrate from Unity to Microsoft.Extensions.DI?"],
+          "importantForInterview": "The interviewer wants to know you understand the underlying DI concepts, not just one framework's API. Generic host (Microsoft.Extensions.Hosting) brings MS DI to console/worker apps — so Unity is rarely needed in new .NET projects."
+        },
+        {
+          "id": "csi-002",
+          "projectId": "csinvoice",
+          "sectionName": "IoC & Architecture",
+          "questionText": "How did you implement PDF generation in CSInvoice?",
+          "answer": "<p>CSInvoice uses <strong>MigraDoc</strong> (part of the PdfSharp family) for programmatic PDF generation. MigraDoc works at the document object model level — you build a Document object with sections, paragraphs, tables, and MigraDoc renders it to PDF.</p><pre><code class=\"language-csharp\">public class MigraDocPdfGenerator : IPdfGenerator\n{\n    public byte[] Generate(InvoiceDto invoice)\n    {\n        var document = new Document();\n        var section = document.AddSection();\n\n        // Header\n        var header = section.AddParagraph();\n        header.AddText($\"INVOICE #{invoice.InvoiceNumber}\");\n        header.Format.Font.Size = 24;\n        header.Format.Font.Bold = true;\n\n        // Invoice details table\n        var table = section.AddTable();\n        table.AddColumn(\"6cm\");  // Item\n        table.AddColumn(\"3cm\");  // Qty\n        table.AddColumn(\"4cm\");  // Unit Price\n        table.AddColumn(\"4cm\");  // Total\n\n        foreach (var item in invoice.LineItems)\n        {\n            var row = table.AddRow();\n            row.Cells[0].AddParagraph(item.Description);\n            row.Cells[1].AddParagraph(item.Quantity.ToString());\n            row.Cells[2].AddParagraph(item.UnitPrice.ToString(\"C\"));\n            row.Cells[3].AddParagraph(item.Total.ToString(\"C\"));\n        }\n\n        // Render to PDF\n        var renderer = new PdfDocumentRenderer(unicode: true);\n        renderer.Document = document;\n        renderer.RenderDocument();\n\n        using var stream = new MemoryStream();\n        renderer.PdfDocument.Save(stream);\n        return stream.ToArray();\n    }\n}</code></pre><p>I abstracted the PDF generation behind <code>IPdfGenerator</code> so it could be swapped (we evaluated QuestPDF as an alternative later).</p>",
+          "followUpQuestions": ["How does this compare to QuestPDF or iTextSharp?", "How do you test PDF generation?"],
+          "importantForInterview": "QuestPDF is the modern alternative — fluent API, better performance, free for non-commercial. iTextSharp requires a commercial license for most use cases. Mention you'd evaluate QuestPDF for a new project."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

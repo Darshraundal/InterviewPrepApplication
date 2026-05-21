@@ -1,0 +1,70 @@
+{
+  "categoryId": "microservices",
+  "questions": [
+    {
+      "id": "ms-001",
+      "category": "microservices",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are microservices and how do they differ from a monolith?",
+      "answer": "<p><strong>Microservices</strong> is an architectural style where an application is structured as a collection of small, independently deployable services — each running in its own process, communicating via well-defined APIs (HTTP/REST, gRPC, messaging).</p><p><strong>Monolith vs Microservices:</strong></p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th>Aspect</th><th>Monolith</th><th>Microservices</th></tr><tr><td>Deployment</td><td>One unit deployed together</td><td>Each service deployed independently</td></tr><tr><td>Scaling</td><td>Scale the whole app</td><td>Scale only hot services</td></tr><tr><td>Technology</td><td>One language/framework</td><td>Polyglot (each service chooses)</td></tr><tr><td>Team structure</td><td>Shared codebase</td><td>One team owns one service</td></tr><tr><td>Failure</td><td>One bug can bring down everything</td><td>Failure is isolated to a service</td></tr><tr><td>Complexity</td><td>Simple to develop/debug</td><td>Distributed systems complexity</td></tr></table><p>In CS_PM_Service, I worked on a .NET 6 microservices setup with 8 workers and separate services. Each service had its own DB, deployed independently. Complexity was high — network calls, service discovery, distributed tracing — but each team could deploy independently without coordinating releases.</p>",
+      "followUps": ["When should you NOT use microservices?", "What is the strangler fig pattern for migrating from monolith?"],
+      "tip": "<strong>Start with a monolith.</strong> Microservices have enormous operational overhead (service discovery, distributed tracing, network partitions, eventual consistency). Only split when you have clear team/scaling boundaries that justify the complexity. Most startups shouldn't use microservices.",
+      "tags": ["microservices", "architecture", "monolith"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "ms-002",
+      "category": "microservices",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is an API Gateway and what does it do?",
+      "answer": "<p>An <strong>API Gateway</strong> is a single entry point for all client requests to a microservices system. Instead of clients calling individual services directly, they call the gateway which routes to the appropriate service.</p><p><strong>What the gateway handles:</strong></p><ul><li><strong>Routing</strong> — /api/orders → Order Service, /api/inventory → Inventory Service</li><li><strong>Authentication</strong> — validate JWT once at the gateway instead of in every service</li><li><strong>Rate limiting</strong> — throttle clients before requests reach services</li><li><strong>SSL termination</strong> — HTTPS at the gateway, internal HTTP between services</li><li><strong>Load balancing</strong> — distribute requests across service instances</li><li><strong>Request aggregation</strong> — combine responses from multiple services into one (BFF pattern)</li><li><strong>Circuit breaking</strong> — stop calling a failing service</li></ul><p><strong>Options in .NET ecosystem:</strong></p><ul><li><strong>YARP</strong> (Yet Another Reverse Proxy) — Microsoft's .NET-native reverse proxy, highly configurable</li><li><strong>Ocelot</strong> — popular open-source API gateway for .NET</li><li><strong>Azure API Management</strong> — managed cloud gateway</li></ul><p>In CS_PM_Service we used YARP as the API gateway — it handled routing and JWT validation centrally, so individual microservices only needed authorization (not authentication).</p>",
+      "followUps": ["What is YARP?", "What is the BFF (Backend for Frontend) pattern?"],
+      "tip": "<strong>API Gateway is a single point of failure</strong> — deploy it with multiple instances behind a load balancer. YARP handles hot-reload of route configuration without restart, which is crucial for zero-downtime routing changes.",
+      "tags": ["microservices", "api-gateway", "architecture", "yarp"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "ms-003",
+      "category": "microservices",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is event-driven architecture and how does it apply to microservices?",
+      "answer": "<p>In <strong>event-driven architecture</strong>, services communicate by producing and consuming events (messages) via a message broker (RabbitMQ, Azure Service Bus, Kafka). Services are decoupled — the producer doesn't know who consumes its events.</p><p><strong>Key concepts:</strong></p><ul><li><strong>Event producer</strong> — publishes events when something happens (\"OrderPlaced\", \"PaymentProcessed\")</li><li><strong>Message broker</strong> — stores and routes events (Azure Service Bus, RabbitMQ)</li><li><strong>Event consumer</strong> — subscribes to events and processes them asynchronously</li></ul><pre><code class=\"language-csharp\">// Publisher (Order Service) — Azure Service Bus\npublic async Task PublishOrderPlacedAsync(Order order)\n{\n    var message = new ServiceBusMessage(\n        JsonSerializer.SerializeToUtf8Bytes(\n            new OrderPlacedEvent(order.Id, order.CustomerId, order.Total)));\n    await _sender.SendMessageAsync(message);\n}\n\n// Consumer (Notification Service) — processes event async\npublic class OrderPlacedConsumer : BackgroundService\n{\n    protected override async Task ExecuteAsync(CancellationToken ct)\n    {\n        var processor = _serviceBusClient.CreateProcessor(\"order-placed-topic\");\n        processor.ProcessMessageAsync += async args =>\n        {\n            var evt = args.Message.Body.ToObjectFromJson&lt;OrderPlacedEvent&gt;();\n            await _emailService.SendOrderConfirmationAsync(evt.CustomerId, evt.OrderId);\n            await args.CompleteMessageAsync(args.Message);\n        };\n        await processor.StartProcessingAsync(ct);\n    }\n}</code></pre>",
+      "followUps": ["What is eventual consistency?", "What is the Outbox pattern?"],
+      "tip": "<strong>Outbox pattern</strong> — solves the dual-write problem: saving to DB and publishing an event are not atomic. If you save and crash before publishing, the event is lost. Solution: write events to an Outbox DB table in the same transaction, then a background job publishes them reliably.",
+      "tags": ["microservices", "event-driven", "messaging", "azure-service-bus"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "ms-004",
+      "category": "microservices",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is the Circuit Breaker pattern and why is it important in microservices?",
+      "answer": "<p>The <strong>Circuit Breaker pattern</strong> prevents cascading failures in distributed systems. When a downstream service starts failing, the circuit breaker opens (stops sending requests) and returns a fallback response immediately — without waiting for timeouts that would cascade through the system.</p><p><strong>Three states:</strong></p><ul><li><strong>Closed</strong> — normal operation, requests flow through</li><li><strong>Open</strong> — service is failing, requests short-circuit immediately (no calls made)</li><li><strong>Half-Open</strong> — trial state: allow a few requests through to test if service recovered</li></ul><p><strong>Implementation with Polly:</strong></p><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddHttpClient&lt;IInventoryService, InventoryService&gt;()\n    .AddStandardResilienceHandler(options =>\n    {\n        // Retry: 3 attempts with exponential backoff\n        options.Retry.MaxRetryAttempts = 3;\n        options.Retry.Delay = TimeSpan.FromMilliseconds(200);\n        options.Retry.BackoffType = DelayBackoffType.Exponential;\n\n        // Circuit Breaker\n        options.CircuitBreaker.FailureRatio = 0.5;    // open if 50% fail\n        options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(10);\n        options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(30);\n    });</code></pre><p>In CS_PM_Service, when the payment gateway was down, the circuit breaker opened immediately — preventing the entire order service from hanging with 30-second timeouts on every request.</p>",
+      "followUps": ["What is Polly?", "What is bulkhead isolation?"],
+      "tip": "<strong>Polly is the standard resilience library for .NET.</strong> In .NET 8, use <code>AddStandardResilienceHandler()</code> (from Microsoft.Extensions.Http.Resilience) which configures retry + circuit breaker + timeout with sensible defaults. Don't roll your own retry logic.",
+      "tags": ["microservices", "circuit-breaker", "polly", "resilience"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "ms-005",
+      "category": "microservices",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is Clean Architecture and how does it relate to microservices?",
+      "answer": "<p><strong>Clean Architecture</strong> (Robert C. Martin) organizes code into concentric layers where inner layers don't know about outer layers:</p><ul><li><strong>Domain</strong> (innermost) — entities, value objects, domain events. Pure C# — no external dependencies.</li><li><strong>Application</strong> — use cases (commands/queries), interfaces (IRepository), DTOs. Depends only on Domain.</li><li><strong>Infrastructure</strong> — EF Core, HTTP clients, email senders. Implements Application interfaces.</li><li><strong>Presentation</strong> (outermost) — controllers, Razor views. Depends on Application.</li></ul><pre><code class=\"language-bash\">MyApp.Domain/          # Entities, Value Objects, Domain Events\n  └── Entities/\n  └── ValueObjects/\nMyApp.Application/     # Use Cases, Interfaces, DTOs\n  └── Portfolios/\n      └── Commands/\n      └── Queries/\n  └── Interfaces/\nMyApp.Infrastructure/  # EF Core, SMTP, HTTP, etc.\n  └── Persistence/\n  └── Email/\nMyApp.Api/             # Controllers, Middleware, DI wiring</code></pre><p><strong>Dependency Rule:</strong> Source code dependencies always point inward. Domain knows nothing about EF Core or HTTP. This makes the domain testable in isolation and infrastructure replaceable.</p><p>Clean Architecture works at any scale — each microservice can be a Clean Architecture app internally.</p>",
+      "followUps": ["What is the Dependency Inversion Principle in Clean Architecture?", "Clean Architecture vs Vertical Slice Architecture?"],
+      "tip": "<strong>Vertical Slice Architecture</strong> is an alternative — organize by feature (Portfolio creation, Portfolio listing) rather than technical layers. Each feature has its own command, handler, validator, and query in one folder. Scales better with teams than the horizontal Clean Architecture layers.",
+      "tags": ["microservices", "architecture", "clean-architecture", "design"],
+      "sortOrder": 5,
+      "isActive": true
+    }
+  ]
+}

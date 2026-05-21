@@ -1,0 +1,70 @@
+{
+  "categoryId": "middleware",
+  "questions": [
+    {
+      "id": "middleware-001",
+      "category": "middleware",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is middleware in ASP.NET Core and how does the request pipeline work?",
+      "answer": "<p><strong>Middleware</strong> is software that's assembled into an application pipeline to handle requests and responses. Each middleware component can: process the request, pass it to the next component, process the response on the way back.</p><p>The pipeline is a chain of middleware — each has a reference to the next. Think of it as a series of delegates where each can short-circuit (return early) or continue by calling <code>next()</code>.</p><pre><code class=\"language-csharp\">// Middleware execution order (declared order matters)\napp.UseExceptionHandler();   // 1st: wraps everything, catches exceptions\napp.UseHsts();               // 2nd\napp.UseHttpsRedirection();   // 3rd\napp.UseStaticFiles();        // 4th: serves files, short-circuits if found\napp.UseRouting();            // 5th: matches URL to endpoint\napp.UseCors();               // 6th: CORS must be BEFORE auth\napp.UseAuthentication();     // 7th: sets HttpContext.User\napp.UseAuthorization();      // 8th: checks policies/roles\napp.UseRateLimiter();        // 9th\napp.MapControllers();        // endpoint: the actual controller actions</code></pre><p><strong>Request flow:</strong> Request enters at top (ExceptionHandler), passes through each middleware, reaches the controller action, then the response travels back UP through the same middleware chain in reverse.</p>",
+      "followUps": ["What is the difference between Use(), Run(), and Map()?", "What happens if middleware doesn't call next()?"],
+      "tip": "<strong>Order matters critically.</strong> CORS before Auth (CORS preflight must not require authentication). ExceptionHandler first (wraps everything). Routing before Auth (auth needs to know which endpoint was matched for endpoint-level authorization policies).",
+      "tags": ["middleware", "pipeline", "aspnetcore"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "middleware-002",
+      "category": "middleware",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you create custom middleware in ASP.NET Core?",
+      "answer": "<p>Two ways: convention-based class or <code>IMiddleware</code> interface (supports DI):</p><p><strong>Convention-based (most common):</strong></p><pre><code class=\"language-csharp\">public class RequestLoggingMiddleware\n{\n    private readonly RequestDelegate _next;\n    private readonly ILogger&lt;RequestLoggingMiddleware&gt; _logger;\n\n    public RequestLoggingMiddleware(\n        RequestDelegate next,\n        ILogger&lt;RequestLoggingMiddleware&gt; logger)\n    {\n        _next = next;\n        _logger = logger;\n    }\n\n    public async Task InvokeAsync(HttpContext context)\n    {\n        _logger.LogInformation(\"{Method} {Path} started\",\n            context.Request.Method, context.Request.Path);\n\n        await _next(context);  // call next middleware\n\n        _logger.LogInformation(\"{Method} {Path} → {Status}\",\n            context.Request.Method, context.Request.Path,\n            context.Response.StatusCode);\n    }\n}\n\n// Extension method for clean registration\npublic static class RequestLoggingMiddlewareExtensions\n{\n    public static IApplicationBuilder UseRequestLogging(\n        this IApplicationBuilder app)\n        => app.UseMiddleware&lt;RequestLoggingMiddleware&gt;();\n}\n\n// Program.cs\napp.UseRequestLogging();</code></pre><p><strong>IMiddleware interface</strong> — activated per-request from DI container. Better when the middleware needs scoped services (DbContext, etc.) because it's re-instantiated per request.</p>",
+      "followUps": ["When would you use IMiddleware over convention-based middleware?", "How do you short-circuit the pipeline?"],
+      "tip": "<strong>Short-circuit = don't call _next.</strong> If you return early without calling <code>await _next(context)</code>, no downstream middleware executes. This is how <code>UseStaticFiles</code> works — if a file is found, it responds directly and never reaches your controllers.",
+      "tags": ["middleware", "aspnetcore", "pipeline"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "middleware-003",
+      "category": "middleware",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between Use(), Run(), and Map() in ASP.NET Core middleware?",
+      "answer": "<p>Three methods for adding middleware components:</p><p><strong><code>Use()</code></strong> — adds middleware that can call the next component. Most common.</p><pre><code class=\"language-csharp\">app.Use(async (context, next) =>\n{\n    // before\n    await next();   // calls next middleware\n    // after (response flowing back)\n});</code></pre><p><strong><code>Run()</code></strong> — terminal middleware. Does NOT call next — short-circuits the pipeline. Used at the end.</p><pre><code class=\"language-csharp\">app.Run(async context =>\n{\n    await context.Response.WriteAsync(\"Hello from terminal middleware!\");\n    // No next() — pipeline ends here\n});</code></pre><p><strong><code>Map()</code></strong> — branches the pipeline based on URL path. Each branch has its own middleware chain.</p><pre><code class=\"language-csharp\">// All requests to /api/** go through ApiMiddleware only\napp.Map(\"/api\", apiApp =>\n{\n    apiApp.UseAuthentication();\n    apiApp.UseAuthorization();\n    apiApp.MapControllers();\n});\n\n// Requests NOT matching /api go here\napp.Run(async context => await context.Response.WriteAsync(\"Not found\"));</code></pre>",
+      "followUps": ["What is MapWhen()?", "What is UseWhen()?"],
+      "tip": "<strong>MapWhen vs UseWhen:</strong> <code>MapWhen</code> branches permanently (matched requests never return to the main pipeline). <code>UseWhen</code> conditionally adds middleware but rejoins the main pipeline after. Use MapWhen for separate sub-pipelines, UseWhen for conditional middleware injection.",
+      "tags": ["middleware", "pipeline", "aspnetcore"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "middleware-004",
+      "category": "middleware",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What are action filters in ASP.NET Core and when do you use them?",
+      "answer": "<p>Filters run at specific points in the MVC filter pipeline — after routing has selected the action but before/after the action executes. They're MVC-aware (have access to controller context, action descriptor, model state).</p><p><strong>Filter types and execution order:</strong></p><ol><li><strong>Authorization filters</strong> — first; short-circuit if unauthorized. [Authorize]</li><li><strong>Resource filters</strong> — before model binding; good for caching.</li><li><strong>Action filters</strong> — before/after action executes. Most commonly customized.</li><li><strong>Exception filters</strong> — handle unhandled exceptions from actions.</li><li><strong>Result filters</strong> — before/after action result (IActionResult) executes.</li></ol><pre><code class=\"language-csharp\">public class ValidateModelFilter : IActionFilter\n{\n    public void OnActionExecuting(ActionExecutingContext context)\n    {\n        if (!context.ModelState.IsValid)\n        {\n            context.Result = new BadRequestObjectResult(\n                new ValidationProblemDetails(context.ModelState));\n        }\n    }\n\n    public void OnActionExecuted(ActionExecutedContext context) { }\n}</code></pre><p><strong>Apply globally:</strong> <code>builder.Services.AddControllers(o => o.Filters.Add&lt;ValidateModelFilter&gt;());</code><br><strong>Per-controller or action:</strong> <code>[ServiceFilter(typeof(ValidateModelFilter))]</code></p>",
+      "followUps": ["What is the difference between middleware and action filters?", "What is a global filter?"],
+      "tip": "<strong>Use filters over middleware when you need MVC context</strong> (ModelState, controller/action names, route data). Use middleware for cross-cutting concerns that operate on raw HTTP (request logging, CORS, rate limiting).",
+      "tags": ["middleware", "filters", "aspnetcore", "mvc"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "middleware-005",
+      "category": "middleware",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you implement global exception handling with middleware?",
+      "answer": "<p>Never let unhandled exceptions return raw 500 HTML to API clients. The best approach in .NET 8 is the <code>IExceptionHandler</code> interface:</p><pre><code class=\"language-csharp\">// .NET 8: IExceptionHandler\npublic class GlobalExceptionHandler : IExceptionHandler\n{\n    private readonly ILogger&lt;GlobalExceptionHandler&gt; _logger;\n    public GlobalExceptionHandler(ILogger&lt;GlobalExceptionHandler&gt; logger)\n        => _logger = logger;\n\n    public async ValueTask&lt;bool&gt; TryHandleAsync(\n        HttpContext context,\n        Exception exception,\n        CancellationToken ct)\n    {\n        _logger.LogError(exception, \"Unhandled exception\");\n\n        var (statusCode, title) = exception switch\n        {\n            KeyNotFoundException     => (404, \"Not Found\"),\n            UnauthorizedAccessException => (403, \"Forbidden\"),\n            ValidationException      => (400, \"Validation Error\"),\n            _                        => (500, \"Internal Server Error\")\n        };\n\n        context.Response.StatusCode = statusCode;\n        await context.Response.WriteAsJsonAsync(new ProblemDetails\n        {\n            Status = statusCode,\n            Title = title,\n            // Don't expose exception.Message for 5xx in production\n            Detail = statusCode < 500 ? exception.Message : null\n        }, ct);\n\n        return true;  // exception handled\n    }\n}\n\n// Program.cs\nbuilder.Services.AddExceptionHandler&lt;GlobalExceptionHandler&gt;();\nbuilder.Services.AddProblemDetails();\napp.UseExceptionHandler();</code></pre>",
+      "followUps": ["What is ProblemDetails (RFC 7807)?", "How do you chain multiple exception handlers?"],
+      "tip": "<strong>Don't return stack traces in production.</strong> Log the full exception server-side (Serilog → Azure Application Insights), return only a generic ProblemDetails to the client. Returning stack traces is a security vulnerability — attackers use them to learn your server internals.",
+      "tags": ["middleware", "exception-handling", "aspnetcore"],
+      "sortOrder": 5,
+      "isActive": true
+    }
+  ]
+}

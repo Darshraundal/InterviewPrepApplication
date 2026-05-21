@@ -1,0 +1,89 @@
+@model InterviewPrepPortal.ViewModels.Progress.ProgressDashboardViewModel
+@{
+    ViewData["Title"] = "My Progress";
+    var p = Model.Overall;
+}
+
+<div class="page-header">
+    <h2>📊 My Progress</h2>
+    <p class="subtitle">Track your mastery across all categories.</p>
+</div>
+
+<!-- ── OVERALL STATS ── -->
+<div class="stat-grid" style="margin-bottom:24px;">
+    <div class="stat-card mastered">
+        <div class="stat-value">@p.Mastered</div>
+        <div class="stat-label">Mastered</div>
+    </div>
+    <div class="stat-card learning">
+        <div class="stat-value">@p.Learning</div>
+        <div class="stat-label">Learning</div>
+    </div>
+    <div class="stat-card revision">
+        <div class="stat-value">@p.RevisionNeeded</div>
+        <div class="stat-label">Revision Queue</div>
+    </div>
+    <div class="stat-card favorites">
+        <div class="stat-value">@p.Favorites</div>
+        <div class="stat-label">Favorites</div>
+    </div>
+</div>
+
+<!-- ── CATEGORY BREAKDOWN ── -->
+<div class="ip-card" style="margin-bottom:24px;">
+    <h3 style="font-size:.95rem;font-weight:600;margin:0 0 16px;">Category Breakdown</h3>
+    @foreach (var item in Model.PerCategory)
+    {
+        var catTotal = item.TotalQuestions;
+        var mastered = item.Summary.Mastered;
+        var pct = catTotal > 0 ? (double)mastered / catTotal * 100 : 0;
+
+        <div class="progress-row">
+            <div class="label">@item.Emoji @item.CategoryName</div>
+            <div class="bar">
+                <div class="bar-fill" style="width:@pct.ToString("F0")%"></div>
+            </div>
+            <div class="count">@mastered/@catTotal</div>
+        </div>
+    }
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <!-- Revision Queue -->
+    <div class="ip-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h3 style="font-size:.95rem;font-weight:600;margin:0;">🔄 Revision Queue (@Model.RevisionQueue.Count)</h3>
+            <a asp-action="RevisionQueue" style="font-size:.78rem;color:var(--ip-accent-2);">See all →</a>
+        </div>
+        @foreach (var item in Model.RevisionQueue.Take(8))
+        {
+            var q = item.Question;
+            if (q == null) continue;
+            <div style="padding:7px 0;border-bottom:1px solid rgba(51,65,85,.3);font-size:.82rem;">
+                <a asp-controller="Question" asp-action="Detail" asp-route-id="@q.Id" style="color:var(--ip-text-2);">
+                    @q.QuestionText.Substring(0, Math.Min(65, q.QuestionText.Length))@(q.QuestionText.Length > 65 ? "..." : "")
+                </a>
+            </div>
+        }
+        @if (!Model.RevisionQueue.Any()) { <p style="font-size:.82rem;color:var(--ip-text-3);text-align:center;padding:12px 0;">Queue is empty 🎉</p> }
+    </div>
+
+    <!-- Favorites -->
+    <div class="ip-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h3 style="font-size:.95rem;font-weight:600;margin:0;">⭐ Favorites (@Model.Favorites.Count)</h3>
+            <a asp-action="Favorites" style="font-size:.78rem;color:var(--ip-accent-2);">See all →</a>
+        </div>
+        @foreach (var item in Model.Favorites.Take(8))
+        {
+            var q = item.Question;
+            if (q == null) continue;
+            <div style="padding:7px 0;border-bottom:1px solid rgba(51,65,85,.3);font-size:.82rem;">
+                <a asp-controller="Question" asp-action="Detail" asp-route-id="@q.Id" style="color:var(--ip-text-2);">
+                    @q.QuestionText.Substring(0, Math.Min(65, q.QuestionText.Length))@(q.QuestionText.Length > 65 ? "..." : "")
+                </a>
+            </div>
+        }
+        @if (!Model.Favorites.Any()) { <p style="font-size:.82rem;color:var(--ip-text-3);text-align:center;padding:12px 0;">Star questions to track them</p> }
+    </div>
+</div>

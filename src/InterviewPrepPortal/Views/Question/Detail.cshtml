@@ -1,0 +1,174 @@
+@model InterviewPrepPortal.ViewModels.Question.QuestionDetailViewModel
+@using InterviewPrepPortal.Models
+@{
+    var q = Model.Question;
+    var cat = Model.Category;
+    ViewData["Title"] = q.QuestionText.Substring(0, Math.Min(60, q.QuestionText.Length));
+    var status = Model.Progress?.Status ?? ProgressStatus.NotStarted;
+    var confidence = (int)(Model.Progress?.Confidence ?? ConfidenceLevel.None);
+    var isFav = Model.Progress?.IsFavorite ?? false;
+    var isRevision = Model.Progress?.IsRevisionNeeded ?? false;
+}
+
+<!-- Breadcrumb -->
+<div style="font-size:.78rem;color:var(--ip-text-3);margin-bottom:16px;">
+    <a asp-controller="Category" asp-action="Index" style="color:var(--ip-text-3);">Categories</a>
+    <span style="margin:0 6px;">›</span>
+    <a asp-controller="Category" asp-action="Detail" asp-route-slug="@cat.Slug" style="color:var(--ip-text-3);">@cat.Emoji @cat.Name</a>
+    <span style="margin:0 6px;">›</span>
+    <span style="color:var(--ip-text-2);">@q.Id</span>
+</div>
+
+<div data-question-id="@q.Id" data-source="category">
+
+    <!-- ── QUESTION HEADER ── -->
+    <div class="ip-card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+            <div style="flex:1;">
+                <h2 style="font-size:1.1rem;font-weight:600;color:var(--ip-text);margin:0 0 10px;">@q.QuestionText</h2>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <span class="badge-freq @q.Frequency.Replace("-","")">@q.Frequency.Replace("-"," ")</span>
+                    <span class="badge-diff @q.Difficulty">@q.Difficulty</span>
+                    @foreach (var tag in q.Tags) { <span class="stack-badge">@tag</span> }
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="toggle-btn fav-toggle @(isFav ? "fav-active" : "")" title="Favorite">⭐</button>
+            </div>
+        </div>
+
+        <!-- Status Controls -->
+        <div class="status-controls">
+            <button class="status-btn @(status == ProgressStatus.Learning ? "active-learning" : "")" data-status="1">⚡ Learning</button>
+            <button class="status-btn @(status == ProgressStatus.Mastered ? "active-mastered" : "")" data-status="2">✓ Mastered</button>
+            <select class="confidence-select" title="Confidence">
+                <option value="0" selected="@(confidence==0)">Confidence: None</option>
+                <option value="1" selected="@(confidence==1)">Low</option>
+                <option value="2" selected="@(confidence==2)">Medium</option>
+                <option value="3" selected="@(confidence==3)">High</option>
+            </select>
+            <button class="toggle-btn revision-toggle @(isRevision ? "active-revision" : "")">🔄 Revision Needed</button>
+        </div>
+    </div>
+
+    <!-- ── TWO-COLUMN LAYOUT ── -->
+    <div style="display:grid;grid-template-columns:1fr 380px;gap:16px;" class="detail-grid">
+
+        <div>
+            <!-- Official Answer -->
+            <div class="ip-card" style="margin-bottom:16px;">
+                <div class="section-label" style="margin-top:0;">📖 Official Answer</div>
+                <div class="answer-box">@Html.Raw(q.Answer)</div>
+            </div>
+
+            <!-- Project Example -->
+            @if (q.ProjectExample != null)
+            {
+                <div class="ip-card" style="margin-bottom:16px;">
+                    <div class="section-label" style="margin-top:0;">🏗️ Project Example — <strong>@q.ProjectExample.Source</strong></div>
+
+                    @if (!string.IsNullOrEmpty(q.ProjectExample.Code))
+                    {
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>@(q.ProjectExample.File ?? "Code")</span>
+                                @if (!string.IsNullOrEmpty(q.ProjectExample.Method)) { <span>@q.ProjectExample.Method</span> }
+                            </div>
+                            <pre><code class="language-csharp">@q.ProjectExample.Code</code></pre>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(q.ProjectExample.Explanation))
+                    {
+                        <div class="answer-box" style="margin-top:12px;font-size:.875rem;">
+                            @q.ProjectExample.Explanation
+                        </div>
+                    }
+                </div>
+            }
+
+            <!-- Follow-ups -->
+            @if (q.FollowUps.Any())
+            {
+                <div class="ip-card" style="margin-bottom:16px;">
+                    <div class="section-label" style="margin-top:0;">🔗 Follow-up Questions</div>
+                    <ul class="followups-list">
+                        @foreach (var fu in q.FollowUps) { <li>@fu</li> }
+                    </ul>
+                </div>
+            }
+
+            <!-- Interview Tip -->
+            @if (!string.IsNullOrEmpty(q.Tip))
+            {
+                <div class="tip-box" style="margin-bottom:16px;">@Html.Raw(q.Tip)</div>
+            }
+
+            <!-- Cross References -->
+            @if (Model.CrossReferences.Any())
+            {
+                <div class="ip-card" style="margin-bottom:16px;">
+                    <div class="section-label" style="margin-top:0;">🔀 Related Questions</div>
+                    @foreach (var xref in Model.CrossReferences)
+                    {
+                        <div style="padding:6px 0;border-bottom:1px solid rgba(51,65,85,.4);">
+                            <a asp-controller="Question" asp-action="Detail" asp-route-id="@xref.Id"
+                               style="font-size:.85rem;color:var(--ip-text-2);">@xref.QuestionText</a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- ── RIGHT PANEL ── -->
+        <div>
+            <!-- Custom Answer -->
+            <div class="ip-card" style="margin-bottom:16px;">
+                <div class="section-label" style="margin-top:0;">✍️ My Answer</div>
+                <p style="font-size:.78rem;color:var(--ip-text-3);margin-bottom:8px;">
+                    Write your answer in your own words — as you'd say it in a real interview.
+                </p>
+                <textarea class="answer-textarea" placeholder="e.g., DI is where you receive dependencies from outside instead of using new()...&#10;&#10;In FolioTrack I registered everything in Program.cs via builder.Services.Add...">@(Model.CustomAnswer?.AnswerText ?? "")</textarea>
+                <button class="save-btn save-answer-btn">Save Answer</button>
+                <span class="save-feedback">✓ Saved</span>
+            </div>
+
+            <!-- Notes -->
+            <div class="ip-card" style="margin-bottom:16px;">
+                <div class="section-label" style="margin-top:0;">📝 My Notes</div>
+                <textarea class="note-textarea" placeholder="Any notes, reminders, or things to remember...">@(Model.Note?.NoteText ?? "")</textarea>
+                <button class="save-btn save-note-btn">Save Note</button>
+                <span class="save-feedback">✓ Saved</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PREV / NEXT ── -->
+    <div style="display:flex;justify-content:space-between;margin-top:20px;gap:12px;">
+        @if (Model.PreviousQuestion != null)
+        {
+            <a asp-controller="Question" asp-action="Detail" asp-route-id="@Model.PreviousQuestion.Id"
+               style="background:var(--ip-bg-2);border:1px solid var(--ip-border);border-radius:8px;padding:10px 16px;text-decoration:none;color:var(--ip-text-2);font-size:.82rem;flex:1;max-width:45%;">
+                ← @Model.PreviousQuestion.QuestionText.Substring(0, Math.Min(60, Model.PreviousQuestion.QuestionText.Length))…
+            </a>
+        }
+        else { <div></div> }
+
+        @if (Model.NextQuestion != null)
+        {
+            <a asp-controller="Question" asp-action="Detail" asp-route-id="@Model.NextQuestion.Id"
+               style="background:var(--ip-bg-2);border:1px solid var(--ip-border);border-radius:8px;padding:10px 16px;text-decoration:none;color:var(--ip-text-2);font-size:.82rem;flex:1;max-width:45%;text-align:right;">
+                @Model.NextQuestion.QuestionText.Substring(0, Math.Min(60, Model.NextQuestion.QuestionText.Length))… →
+            </a>
+        }
+    </div>
+
+</div>
+
+@section Scripts {
+    <style>
+        @@media (max-width: 900px) {
+            .detail-grid { grid-template-columns: 1fr !important; }
+        }
+    </style>
+}

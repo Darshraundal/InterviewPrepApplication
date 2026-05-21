@@ -1,0 +1,177 @@
+@model InterviewPrepPortal.ViewModels.Category.CategoryDetailViewModel
+@using InterviewPrepPortal.Models
+@{
+    ViewData["Title"] = Model.Category.Name;
+    var cat = Model.Category;
+    var p = Model.Progress;
+    var total = Model.TotalCount;
+    var pct = total > 0 ? (double)p.Mastered / total * 100 : 0;
+}
+
+<div class="page-header">
+    <h2>@cat.Emoji @cat.Name</h2>
+    <p class="subtitle">@cat.Description</p>
+</div>
+
+<!-- ── CATEGORY PROGRESS BAR ── -->
+<div class="ip-card" style="margin-bottom:20px;">
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+            <div class="cat-progress-bar" style="height:8px;margin-bottom:8px;">
+                <div class="cat-progress-fill" style="width:@pct.ToString("F0")%"></div>
+            </div>
+            <div style="display:flex;gap:16px;font-size:.78rem;color:var(--ip-text-3);">
+                <span style="color:var(--ip-success);">✓ @p.Mastered mastered</span>
+                <span style="color:var(--ip-warning);">⚡ @p.Learning learning</span>
+                <span>◯ @(total - p.Mastered - p.Learning) not started</span>
+            </div>
+        </div>
+        <div style="font-size:1.6rem;font-weight:700;color:var(--ip-text);">@pct.ToString("F0")%</div>
+    </div>
+</div>
+
+<!-- ── FILTER BAR ── -->
+<form method="get" class="filter-bar">
+    <input type="hidden" name="slug" value="@cat.Slug" />
+    <input type="text" name="q" placeholder="Search questions..." value="@Model.SearchQuery" />
+    <select name="difficulty">
+        <option value="">All Difficulty</option>
+        <option value="easy" selected="@(Model.DifficultyFilter == "easy")">Easy</option>
+        <option value="medium" selected="@(Model.DifficultyFilter == "medium")">Medium</option>
+        <option value="hard" selected="@(Model.DifficultyFilter == "hard")">Hard</option>
+    </select>
+    <select name="frequency">
+        <option value="">All Frequency</option>
+        <option value="very-high" selected="@(Model.FrequencyFilter == "very-high")">Very High</option>
+        <option value="high" selected="@(Model.FrequencyFilter == "high")">High</option>
+        <option value="medium" selected="@(Model.FrequencyFilter == "medium")">Medium</option>
+        <option value="low" selected="@(Model.FrequencyFilter == "low")">Low</option>
+    </select>
+    <select name="status">
+        <option value="">All Status</option>
+        <option value="mastered" selected="@(Model.StatusFilter == "mastered")">Mastered</option>
+        <option value="learning" selected="@(Model.StatusFilter == "learning")">Learning</option>
+        <option value="not-started" selected="@(Model.StatusFilter == "not-started")">Not Started</option>
+    </select>
+    <button type="submit" class="btn-filter">Filter</button>
+    @if (!string.IsNullOrEmpty(Model.SearchQuery) || !string.IsNullOrEmpty(Model.DifficultyFilter) ||
+         !string.IsNullOrEmpty(Model.FrequencyFilter) || !string.IsNullOrEmpty(Model.StatusFilter))
+    {
+        <a asp-controller="Category" asp-action="Detail" asp-route-slug="@cat.Slug" class="btn-clear">Clear</a>
+    }
+    <span class="filter-meta">Showing @Model.FilteredCount of @total questions</span>
+</form>
+
+<!-- ── QUESTION LIST ── -->
+@if (Model.Questions.Any())
+{
+    <div class="question-list">
+        @for (int i = 0; i < Model.Questions.Count; i++)
+        {
+            var item = Model.Questions[i];
+            var q = item.Question;
+            var status = item.Progress?.Status ?? ProgressStatus.NotStarted;
+            var statusClass = status == ProgressStatus.Mastered ? "status-mastered"
+                           : status == ProgressStatus.Learning  ? "status-learning"
+                           : "status-not-started";
+            var isFav = item.Progress?.IsFavorite ?? false;
+            var confidence = (int)(item.Progress?.Confidence ?? ConfidenceLevel.None);
+
+            <div class="q-card @statusClass" data-question-id="@q.Id" data-source="category">
+                <div class="q-header">
+                    <span class="q-num">@(i+1).</span>
+                    <span class="q-title">@q.QuestionText</span>
+                    <div class="q-badges">
+                        <span class="badge-freq @q.Frequency.Replace("-", "")">@q.Frequency.Replace("-", " ")</span>
+                        <span class="badge-diff @q.Difficulty">@q.Difficulty</span>
+                        @if (status == ProgressStatus.Mastered) { <span class="badge-diff easy">✓</span> }
+                        else if (status == ProgressStatus.Learning) { <span class="badge-freq high">⚡</span> }
+                    </div>
+                    <div class="q-icons">
+                        <button class="icon-btn fav-toggle @(isFav ? "fav-active" : "")" title="@(isFav ? "Remove favorite" : "Add favorite")">⭐</button>
+                        @if (item.HasNote) { <span title="Has note" style="font-size:.8rem;color:var(--ip-accent-2);">📝</span> }
+                        @if (item.HasCustomAnswer) { <span title="Has custom answer" style="font-size:.8rem;color:var(--ip-success);">✍️</span> }
+                    </div>
+                    <span class="q-chevron">▼</span>
+                </div>
+
+                <div class="q-body">
+                    @* Link to full detail page *@
+                    <div style="margin-bottom:12px;">
+                        <a asp-controller="Question" asp-action="Detail" asp-route-id="@q.Id"
+                           style="font-size:.78rem;color:var(--ip-accent-2);">🔗 Open full view</a>
+                    </div>
+
+                    <div class="section-label">Official Answer</div>
+                    <div class="answer-box">@Html.Raw(q.Answer)</div>
+
+                    @if (q.ProjectExample != null)
+                    {
+                        <div class="section-label">Project Example — @q.ProjectExample.Source</div>
+                        <div class="code-block">
+                            @if (!string.IsNullOrEmpty(q.ProjectExample.File))
+                            {
+                                <div class="code-header">
+                                    <span>📄 @q.ProjectExample.File</span>
+                                    @if (!string.IsNullOrEmpty(q.ProjectExample.ClassName)) { <span>@q.ProjectExample.ClassName</span> }
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(q.ProjectExample.Code))
+                            {
+                                <pre><code class="language-csharp">@q.ProjectExample.Code</code></pre>
+                            }
+                        </div>
+                        @if (!string.IsNullOrEmpty(q.ProjectExample.Explanation))
+                        {
+                            <div class="answer-box" style="margin-top:8px;font-size:.82rem;">
+                                @q.ProjectExample.Explanation
+                            </div>
+                        }
+                    }
+
+                    @if (q.FollowUps.Any())
+                    {
+                        <div class="section-label">Follow-up Questions</div>
+                        <ul class="followups-list">
+                            @foreach (var fu in q.FollowUps) { <li>@fu</li> }
+                        </ul>
+                    }
+
+                    @if (!string.IsNullOrEmpty(q.Tip))
+                    {
+                        <div class="section-label">Interview Tip</div>
+                        <div class="tip-box">@Html.Raw(q.Tip)</div>
+                    }
+
+                    @* Status Controls *@
+                    <div class="section-label">Your Progress</div>
+                    <div class="status-controls">
+                        <button class="status-btn @(status == ProgressStatus.Learning ? "active-learning" : "")"
+                                data-status="1">⚡ Learning</button>
+                        <button class="status-btn @(status == ProgressStatus.Mastered ? "active-mastered" : "")"
+                                data-status="2">✓ Mastered</button>
+
+                        <select class="confidence-select" title="Confidence Level">
+                            <option value="0" selected="@(confidence == 0)">Confidence: None</option>
+                            <option value="1" selected="@(confidence == 1)">Confidence: Low</option>
+                            <option value="2" selected="@(confidence == 2)">Confidence: Medium</option>
+                            <option value="3" selected="@(confidence == 3)">Confidence: High</option>
+                        </select>
+
+                        <button class="toggle-btn revision-toggle @(item.Progress?.IsRevisionNeeded == true ? "active-revision" : "")">
+                            🔄 Revision Needed
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No questions found</h3>
+        <p>Try adjusting your filters or <a asp-action="Detail" asp-route-slug="@cat.Slug">clear all filters</a></p>
+    </div>
+}

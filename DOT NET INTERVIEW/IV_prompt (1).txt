@@ -1,0 +1,192 @@
+You are a senior .NET + Angular technical interviewer and software architect.
+
+I will provide you my complete project source code.
+
+Your task is to deeply analyze the architecture, folder structure, services, APIs, components, middleware, database access, authentication flow, Angular modules, RxJS usage, interceptors, dependency injection, and all implementation patterns used in the project.
+
+IMPORTANT RULES:
+
+1. Do NOT assume a concept exists if it is not implemented in the project.
+2. If a concept is partially implemented, explain only the implemented part.
+3. Give practical interview answers using MY project as the example.
+4. Explain answers in simple interview-friendly language.
+5. Include:
+
+   * What the concept is
+   * Why it is used
+   * Where it is used in my project
+   * How it is implemented in my project
+   * Benefits in my project
+6. Mention actual file names, class names, methods, services, modules, middleware, or components from the project whenever possible.
+7. If best practices are missing in the project, mention:
+   "This project currently does not implement this concept fully, but ideally it should be implemented using..."
+8. Do not generate generic textbook answers unless no implementation exists.
+9. Focus on real-world practical explanations suitable for 3–5 years experienced developer interviews.
+10. Keep answers concise but technically strong.
+
+ANALYZE THESE AREAS CAREFULLY:
+
+========================
+.NET / .NET CORE
+================
+
+* MVC architecture
+* Middleware pipeline
+* Dependency Injection
+* Service lifetimes
+* Authentication & Authorization
+* OAuth / JWT
+* API versioning
+* Routing
+* Entity Framework
+* Code First / Database First
+* IQueryable vs IEnumerable
+* async/await
+* SOLID principles
+* OOP concepts
+* Interface vs Abstract class
+* Exception handling
+* Custom middleware
+* Session/Cookies
+* CORS
+* LINQ
+* Repository pattern
+* Generic classes
+* Logging
+* Configuration management
+* Startup / Program.cs
+* Web API structure
+* DTOs
+* AutoMapper
+* Task vs Thread
+* Garbage Collection
+* StringBuilder usage
+* Static/Readonly/Const
+* Delegates/events
+* Performance optimization
+* API security
+
+========================
+ANGULAR
+=======
+
+* Angular architecture
+* Components
+* Modules
+* Routing
+* Lazy loading
+* Reactive forms
+* Template-driven forms
+* RxJS
+* Observables
+* Services
+* Dependency Injection
+* HTTP interceptors
+* Guards
+* Parent-child communication
+* Sibling communication
+* Lifecycle hooks
+* Pipes
+* Directives
+* Decorators
+* State management
+* API integration
+* Authentication flow
+* Form validation
+* Shared modules
+* Environment configuration
+* Change detection
+* JIT vs AOT
+
+========================
+DATABASE / SQL
+==============
+
+* Stored procedures
+* Functions
+* Joins
+* Views
+* CTE
+* Temp tables
+* Constraints
+* Keys
+* Query optimization
+* Indexing
+* Transactions
+* Duplicate removal
+* Pagination
+* SQL performance tuning
+
+OUTPUT FORMAT:
+
+For every detected concept, use this structure:
+
+---
+
+QUESTION:
+[Interview Question]
+
+ANSWER:
+[Simple interview-ready answer]
+
+PROJECT EXAMPLE:
+
+* File:
+* Class/Component:
+* Method/API:
+* Explanation of implementation
+
+FOLLOW-UP QUESTIONS:
+1.
+2.
+3.
+
+IMPORTANT FOR INTERVIEW:
+[Practical tips / edge cases / performance/security discussion]
+
+---
+
+Also create these additional sections:
+
+1. PROJECT ARCHITECTURE SUMMARY
+
+* Explain complete architecture flow
+* Frontend to backend request lifecycle
+* Authentication flow
+* API communication flow
+* Database interaction flow
+
+2. MOST IMPORTANT INTERVIEW QUESTIONS
+
+* Generate top 30 questions most relevant to THIS project only
+
+3. MISSING BEST PRACTICES
+
+* Mention what enterprise improvements could be added
+
+4. REAL-TIME SCENARIOS
+
+* Generate scenario-based interview questions from this project
+
+5. HR + MANAGER ROUND QUESTIONS
+
+* Generate project-specific explanation questions
+
+6. QUICK REVISION NOTES
+
+* Short revision notes before interview
+
+If multiple projects are provided:
+
+* Compare architectures
+* Mention differences
+* Mention which project demonstrates which concepts better
+
+At the end generate:
+"Top 10 strongest concepts demonstrated in this project"
+and
+"Top 10 concepts missing or weak in this project"
+
+Now start by first understanding the entire project architecture before answering.
+
+write down all the analysis and data in file same folder

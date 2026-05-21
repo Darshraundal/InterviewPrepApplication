@@ -1,0 +1,96 @@
+{
+  "categoryId": "patterns",
+  "questions": [
+    {
+      "id": "patterns-001",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the Repository pattern and why is it used?",
+      "answer": "<p>The <strong>Repository pattern</strong> abstracts data access behind an interface — it decouples your business logic from the persistence mechanism (EF Core, Dapper, API, etc.).</p><pre><code class=\"language-csharp\">public interface IPortfolioRepository\n{\n    Task&lt;Portfolio?&gt; GetByIdAsync(int id, CancellationToken ct = default);\n    Task&lt;IReadOnlyList&lt;Portfolio&gt;&gt; GetByUserAsync(string userId, CancellationToken ct = default);\n    Task AddAsync(Portfolio portfolio, CancellationToken ct = default);\n    Task DeleteAsync(int id, CancellationToken ct = default);\n}\n\npublic class EfPortfolioRepository : IPortfolioRepository\n{\n    private readonly AppDbContext _db;\n    public EfPortfolioRepository(AppDbContext db) => _db = db;\n\n    public async Task&lt;Portfolio?&gt; GetByIdAsync(int id, CancellationToken ct = default)\n        => await _db.Portfolios.AsNoTracking()\n               .FirstOrDefaultAsync(p => p.Id == id, ct);\n\n    public async Task AddAsync(Portfolio portfolio, CancellationToken ct = default)\n    {\n        _db.Portfolios.Add(portfolio);\n        await _db.SaveChangesAsync(ct);\n    }\n    // ...\n}</code></pre><p><strong>Benefits:</strong> Testable (mock the interface), swappable data source, single place for all data access logic for an entity.</p><p><strong>The controversy:</strong> EF Core's DbContext IS already a repository + Unit of Work. For small-medium apps, adding another layer is over-engineering. I use it when I need testability without hitting the real DB, or when mixing EF Core + Dapper for the same entity.</p>",
+      "followUps": ["What is Unit of Work pattern?", "Is Repository pattern needed with EF Core?"],
+      "tip": "<strong>Generic repository anti-pattern:</strong> <code>IRepository&lt;T&gt;</code> with just CRUD methods encourages leaking data access logic into the service layer (callers end up building queries themselves). Prefer entity-specific repositories (<code>IPortfolioRepository</code>) with meaningful methods.",
+      "tags": ["patterns", "repository", "efcore", "design"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "patterns-002",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the Strategy pattern and how do you implement it in C#?",
+      "answer": "<p>The <strong>Strategy pattern</strong> defines a family of algorithms, encapsulates each one, and makes them interchangeable. The behavior can be changed at runtime without changing the class that uses it.</p><pre><code class=\"language-csharp\">// Strategy interface\npublic interface IPaymentStrategy\n{\n    string Name { get; }\n    Task&lt;PaymentResult&gt; ProcessAsync(decimal amount, CancellationToken ct);\n}\n\n// Concrete strategies\npublic class StripePaymentStrategy : IPaymentStrategy\n{\n    public string Name => \"stripe\";\n    public async Task&lt;PaymentResult&gt; ProcessAsync(decimal amount, CancellationToken ct)\n    { /* Stripe API call */ }\n}\n\npublic class RazorpayPaymentStrategy : IPaymentStrategy\n{\n    public string Name => \"razorpay\";\n    public async Task&lt;PaymentResult&gt; ProcessAsync(decimal amount, CancellationToken ct)\n    { /* Razorpay API call */ }\n}\n\n// Context that uses the strategy\npublic class PaymentService\n{\n    private readonly IEnumerable&lt;IPaymentStrategy&gt; _strategies;\n    public PaymentService(IEnumerable&lt;IPaymentStrategy&gt; strategies)\n        => _strategies = strategies;\n\n    public async Task&lt;PaymentResult&gt; PayAsync(string provider, decimal amount, CancellationToken ct)\n    {\n        var strategy = _strategies.SingleOrDefault(s => s.Name == provider)\n            ?? throw new ArgumentException($\"Unknown provider: {provider}\");\n        return await strategy.ProcessAsync(amount, ct);\n    }\n}\n\n// DI registration — all strategies injected\nbuilder.Services.AddScoped&lt;IPaymentStrategy, StripePaymentStrategy&gt;();\nbuilder.Services.AddScoped&lt;IPaymentStrategy, RazorpayPaymentStrategy&gt;();</code></pre>",
+      "followUps": ["How does Strategy differ from Factory pattern?", "How is Strategy related to OCP?"],
+      "tip": "<strong>Strategy + DI = powerful combo.</strong> Register all strategies as <code>IEnumerable&lt;IStrategy&gt;</code> and inject — the container provides all implementations. Select by a discriminator property (Name, Type, etc.). Adding a new strategy is just a new class + DI registration.",
+      "tags": ["patterns", "strategy", "design", "solid"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "patterns-003",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the Factory pattern and its variants?",
+      "answer": "<p>Factory patterns encapsulate object creation logic.</p><p><strong>Simple Factory</strong> — a static method or class that creates objects based on some input. Not a GoF pattern but very common.</p><pre><code class=\"language-csharp\">public static class NotificationFactory\n{\n    public static INotification Create(string type) => type switch\n    {\n        \"email\" => new EmailNotification(),\n        \"sms\"   => new SmsNotification(),\n        _        => throw new ArgumentException($\"Unknown type: {type}\")\n    };\n}</code></pre><p><strong>Factory Method</strong> — defines an interface for creating objects, lets subclasses decide which class to instantiate.</p><pre><code class=\"language-csharp\">public abstract class ReportGenerator\n{\n    public abstract IReport CreateReport();  // factory method\n\n    public void Generate()\n    {\n        var report = CreateReport();  // subclass decides which report\n        report.Build();\n        report.Export();\n    }\n}\n\npublic class PdfReportGenerator : ReportGenerator\n{\n    public override IReport CreateReport() => new PdfReport();\n}</code></pre><p><strong>Abstract Factory</strong> — creates families of related objects. Useful for multi-platform or multi-theme scenarios.</p><p>In CSInvoice, I used a factory to create different invoice document types (PDF, Word, Excel) based on client preference — same interface, different concrete implementations selected by factory.</p>",
+      "followUps": ["Abstract Factory vs Factory Method?", "When would you use Factory vs Strategy?"],
+      "tip": "<strong>Factory vs Strategy:</strong> Factory is about creation (what to instantiate). Strategy is about behavior (how to do something). If you're choosing an algorithm to run, use Strategy. If you're choosing an object to create, use Factory.",
+      "tags": ["patterns", "factory", "design"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "patterns-004",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the Decorator pattern and how do you use it in .NET?",
+      "answer": "<p>The <strong>Decorator pattern</strong> wraps an object with additional behavior without modifying the original class. It's an alternative to inheritance for adding responsibilities.</p><pre><code class=\"language-csharp\">// Base interface\npublic interface IEmailSender\n{\n    Task SendAsync(string to, string subject, string body);\n}\n\n// Real implementation\npublic class SmtpEmailSender : IEmailSender\n{\n    public async Task SendAsync(string to, string subject, string body)\n    { /* SMTP logic */ }\n}\n\n// Logging decorator — wraps any IEmailSender\npublic class LoggingEmailSender : IEmailSender\n{\n    private readonly IEmailSender _inner;\n    private readonly ILogger _logger;\n\n    public LoggingEmailSender(IEmailSender inner, ILogger&lt;LoggingEmailSender&gt; logger)\n    {\n        _inner = inner;\n        _logger = logger;\n    }\n\n    public async Task SendAsync(string to, string subject, string body)\n    {\n        _logger.LogInformation(\"Sending email to {To}: {Subject}\", to, subject);\n        await _inner.SendAsync(to, subject, body);\n        _logger.LogInformation(\"Email sent successfully to {To}\", to);\n    }\n}\n\n// With Scrutor library for clean DI decoration\nbuilder.Services.AddScoped&lt;IEmailSender, SmtpEmailSender&gt;();\nbuilder.Services.Decorate&lt;IEmailSender, LoggingEmailSender&gt;();</code></pre><p>The Decorator pattern is how I add retry logic, caching, and logging to services without modifying them — perfect for the Open/Closed Principle.</p>",
+      "followUps": ["How does Scrutor simplify Decorator registration?", "What is the difference between Decorator and Proxy pattern?"],
+      "tip": "<strong>Scrutor's Decorate&lt;T&gt;()</strong> is the cleanest way to register decorators in .NET DI. Without it, you have to manually resolve the inner service and wrap it — messy. Install <code>Scrutor</code> NuGet and use <code>services.Decorate&lt;IService, DecoratorService&gt;()</code>.",
+      "tags": ["patterns", "decorator", "design", "solid"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "patterns-005",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the Observer pattern and how is it implemented in C#?",
+      "answer": "<p>The <strong>Observer pattern</strong> defines a one-to-many dependency — when one object (subject) changes state, all dependents (observers) are notified automatically.</p><p><strong>Built-in .NET mechanisms for Observer:</strong></p><ul><li>Events + delegates (classic approach)</li><li><code>IObservable&lt;T&gt;</code> / <code>IObserver&lt;T&gt;</code> (Rx.NET)</li><li>MediatR notifications (modern approach in .NET apps)</li></ul><pre><code class=\"language-csharp\">// MediatR notification (recommended in .NET apps)\npublic record InvoiceCreatedNotification(int InvoiceId, string ClientEmail)\n    : INotification;\n\n// Multiple handlers — all called when notification is published\npublic class SendReceiptEmailHandler : INotificationHandler&lt;InvoiceCreatedNotification&gt;\n{\n    public async Task Handle(InvoiceCreatedNotification notification, CancellationToken ct)\n        => await _emailSender.SendReceiptAsync(notification.ClientEmail);\n}\n\npublic class UpdateAnalyticsDashboardHandler : INotificationHandler&lt;InvoiceCreatedNotification&gt;\n{\n    public async Task Handle(InvoiceCreatedNotification notification, CancellationToken ct)\n        => await _analytics.IncrementInvoiceCountAsync();\n}\n\n// Publisher\nawait _mediator.Publish(new InvoiceCreatedNotification(invoice.Id, invoice.ClientEmail));</code></pre><p>MediatR decouples the publisher (InvoiceService) from subscribers (email handler, analytics handler) — neither knows the other exists.</p>",
+      "followUps": ["What is MediatR and how does it implement CQRS?", "IObservable vs events — when to use which?"],
+      "tip": "<strong>MediatR Publish is synchronous by default</strong> — all handlers run in sequence. For truly async fan-out (fire-and-forget to multiple handlers), use a message bus (Azure Service Bus, RabbitMQ) instead. MediatR is for in-process notifications.",
+      "tags": ["patterns", "observer", "mediatr", "events"],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "patterns-006",
+      "category": "patterns",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is CQRS (Command Query Responsibility Segregation)?",
+      "answer": "<p><strong>CQRS</strong> separates read operations (queries) from write operations (commands) into distinct paths. Queries return data and don't change state. Commands change state and may or may not return data.</p><p><strong>Why separate them?</strong> Read and write requirements are often different: reads need to be fast and denormalized (reporting views, dashboards), writes need validation and business rules. Separating allows independent scaling and optimization.</p><pre><code class=\"language-csharp\">// Command (write) — via MediatR\npublic record CreatePortfolioCommand(string UserId, string Name) : IRequest&lt;int&gt;;\n\npublic class CreatePortfolioHandler : IRequestHandler&lt;CreatePortfolioCommand, int&gt;\n{\n    public async Task&lt;int&gt; Handle(CreatePortfolioCommand cmd, CancellationToken ct)\n    {\n        // Validation, business rules, then persist\n        var portfolio = new Portfolio { UserId = cmd.UserId, Name = cmd.Name };\n        _db.Portfolios.Add(portfolio);\n        await _db.SaveChangesAsync(ct);\n        return portfolio.Id;\n    }\n}\n\n// Query (read) — via MediatR\npublic record GetPortfoliosQuery(string UserId) : IRequest&lt;List&lt;PortfolioDto&gt;&gt;;\n\npublic class GetPortfoliosHandler : IRequestHandler&lt;GetPortfoliosQuery, List&lt;PortfolioDto&gt;&gt;\n{\n    public async Task&lt;List&lt;PortfolioDto&gt;&gt; Handle(GetPortfoliosQuery query, CancellationToken ct)\n    {\n        // No EF tracking, straight to DTO\n        return await _db.Portfolios\n            .AsNoTracking()\n            .Where(p => p.UserId == query.UserId)\n            .Select(p => new PortfolioDto(p.Id, p.Name, p.TotalValue))\n            .ToListAsync(ct);\n    }\n}</code></pre>",
+      "followUps": ["Does CQRS require Event Sourcing?", "What is the read model in CQRS?"],
+      "tip": "<strong>CQRS doesn't require separate databases or microservices.</strong> Even in a monolith, separating command handlers (EF Core with full tracking) from query handlers (Dapper or AsNoTracking) is valuable. Start simple — you can add separate read stores later if needed.",
+      "tags": ["patterns", "cqrs", "mediatr", "architecture"],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "patterns-007",
+      "category": "patterns",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the Singleton pattern and how is it different from Singleton lifetime in DI?",
+      "answer": "<p>The <strong>Singleton design pattern</strong> ensures a class has only one instance and provides a global access point. Classic implementation:</p><pre><code class=\"language-csharp\">// Thread-safe Singleton (classic pattern)\npublic sealed class Configuration\n{\n    private static readonly Lazy&lt;Configuration&gt; _instance =\n        new Lazy&lt;Configuration&gt;(() => new Configuration());\n\n    private Configuration() { /* private constructor */ }\n\n    public static Configuration Instance => _instance.Value;\n\n    public string ApiKey { get; private set; } = string.Empty;\n}</code></pre><p><strong>Problems with classic Singleton:</strong></p><ul><li>Global state — makes testing hard (can't swap for test double)</li><li>Hides dependencies — <code>Configuration.Instance</code> can be called from anywhere</li><li>Thread safety requires careful implementation</li></ul><p><strong>DI Singleton lifetime</strong> — register a service as Singleton in the DI container. One instance created and reused for the app lifetime. But unlike the classic pattern:</p><ul><li>The class itself has no special code — just a regular class</li><li>Instance is managed and disposed by the container</li><li>Swappable in tests (inject different implementation)</li><li>Constructor injection makes dependencies explicit</li></ul><p>Prefer DI Singleton over classic Singleton pattern. I only use classic Singleton for code that truly needs to be accessible without DI (rare).</p>",
+      "followUps": ["What is the difference between Singleton and static class?", "Thread safety of Singleton services in ASP.NET Core?"],
+      "tip": "<strong>Singleton services must be thread-safe</strong> in ASP.NET Core — multiple requests run concurrently and share the same instance. Avoid mutable state in singletons. If you need per-request state, use Scoped services.",
+      "tags": ["patterns", "singleton", "design", "di"],
+      "sortOrder": 7,
+      "isActive": true
+    }
+  ]
+}

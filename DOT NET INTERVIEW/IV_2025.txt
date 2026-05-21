@@ -1,0 +1,121 @@
+.NET and .NET Core:
+1) What is patial view?
+2) What is MVC?
+3) MVC vs MVVM
+4) .NET vs .NET Core
+5) What is Startup.cs?
+6) Why do we use middleware?
+7) What executes first in middleware pipeline? 
+6) What is short circuit in middleware?
+7) RESTFul and SOAP
+8) Http verbs
+9) Partial view?
+9) Keep and Temp
+10) Lambda functions
+11) Acccess Modifier
+12) iqueryable vs ienumerable
+13) Generic class
+14) Oops Concept (4 pillars)
+15) seal, virtual 
+16) overloading vs overriding
+17) Can we make nested class?
+18) What is Crystal.Decision.dll
+19) Routing
+20) DI and it's type
+21) Ways to achieve DI(Service Lifetimes)?
+22) What is importance of CORS?
+23) OAuth 
+24) Autherization and Authentication
+25) Web API structure?
+26) String functions
+27) List Add vs Insert?
+28) what is Static class?
+29) What is var?
+30) var vs dynamic?
+31) readonly vs const?
+32) Try-catch?
+33) what is using? why should we use it?
+34) garbage collection and it's function?
+35) CLR
+36) JIT
+37) Where we store our db configuration?
+38) What is api versioning?
+39) String vs StringBuilder?
+40) Session vs Cookie?
+41) Default session life span?
+42) Code First vs Database First Approach?
+43) double vs decimal
+44) what is delegates?
+45) MVC folder structure?
+46) What is Kestrel?
+47) ConfigureServices and ConfigureMethod?
+48) What is custom Middleware and way to achieve?
+49) What is GAK?
+50) Task vs Threads?
+51) Interface and Abstract(Must asked imp**)
+52) SOLID Principles
+53) async and await
+
+Angular:
+1) Lifecycle hooks
+2) How to retrieve dropdown value in Angular?
+3) Data binding
+4) Decorators
+5) Directives
+6) JIT vs AOT which one we should prefer?
+7) @Injectable
+8) Parent to child or vis a versa communication
+9) sibbling communication
+10) ngModule
+11) Pipes 
+12) RxJS
+13) Routing
+14) HTTP Interceptors
+15) Template vs Reactive driven forms
+16) Eager vs Lazy Loading?
+17) constructor vs ngOninIt
+18) Attributes
+19) DI
+
+SQL:
+1) Stored procedure vs Function
+2) Primary vs Unique key
+3) How to make query faster
+4) CTE
+5) View
+6) Temp Table
+7) Delete vs Truncate
+8) Joins
+9) Subquries
+10)foreign Key
+11) Varchar vs nvarchar
+12) constraints
+13) Find nth highest salary from table?
+14) Delete duplicate entries from table?
+
+
+
+
+
+***************************************
+
+public class A {
+
+  public virtual coding()
+  {
+  //definition
+  }
+}
+
+public class B:A
+{
+ public override coding()
+  {
+  //definition
+  }
+}
+B b = new A()
+B b = new B()
+A a = new B()
+
+Must know this polymorphism concept(Most Asked)

@@ -1,0 +1,83 @@
+{
+  "categoryId": "auth",
+  "questions": [
+    {
+      "id": "auth-001",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is JWT (JSON Web Token) and how does it work?",
+      "answer": "<p>JWT is a compact, self-contained token format used to securely transmit information between parties as a JSON object. It's the standard for stateless authentication in REST APIs.</p><p><strong>Structure:</strong> Three Base64URL-encoded parts separated by dots: <code>header.payload.signature</code></p><ul><li><strong>Header</strong> — algorithm + token type: <code>{\"alg\":\"HS256\",\"typ\":\"JWT\"}</code></li><li><strong>Payload</strong> — claims (user data): <code>{\"sub\":\"user123\",\"name\":\"Darsh\",\"role\":\"Admin\",\"exp\":1234567890}</code></li><li><strong>Signature</strong> — HMACSHA256(base64(header) + \".\" + base64(payload), secretKey) — verifies token wasn't tampered with</li></ul><p><strong>Authentication flow:</strong></p><ol><li>User sends credentials → API validates → issues JWT</li><li>Client stores JWT (localStorage or httpOnly cookie)</li><li>Client sends JWT in <code>Authorization: Bearer &lt;token&gt;</code> header on every request</li><li>API validates signature (no DB call needed!) + checks expiry → extracts claims</li></ol><p>In FolioTrack, JWTs contained: <code>sub</code> (userId), <code>email</code>, <code>role</code>, <code>exp</code> (15 min). Refresh tokens (stored in httpOnly cookies, DB-tracked) issued new access tokens without re-login.</p>",
+      "followUps": ["What are the standard JWT claims?", "What is the difference between signing and encryption?", "How do you invalidate a JWT before expiry?"],
+      "tip": "<strong>JWTs cannot be invalidated server-side</strong> (they're stateless). Keep access token expiry short (15min). Use refresh tokens in DB to support logout/revocation — revoke the refresh token, and the access token expires naturally.",
+      "tags": ["jwt", "auth", "security", "token"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "auth-002",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you implement JWT authentication in ASP.NET Core?",
+      "answer": "<p>Setting up JWT authentication in ASP.NET Core 8:</p><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n    .AddJwtBearer(options =>\n    {\n        options.TokenValidationParameters = new TokenValidationParameters\n        {\n            ValidateIssuer = true,\n            ValidIssuer = builder.Configuration[\"Jwt:Issuer\"],\n            ValidateAudience = true,\n            ValidAudience = builder.Configuration[\"Jwt:Audience\"],\n            ValidateLifetime = true,\n            ValidateIssuerSigningKey = true,\n            IssuerSigningKey = new SymmetricSecurityKey(\n                Encoding.UTF8.GetBytes(builder.Configuration[\"Jwt:SecretKey\"]!)),\n            ClockSkew = TimeSpan.Zero  // no tolerance for expired tokens\n        };\n    });\n\n// Token generation\npublic string GenerateToken(ApplicationUser user)\n{\n    var claims = new[]\n    {\n        new Claim(JwtRegisteredClaimNames.Sub, user.Id),\n        new Claim(JwtRegisteredClaimNames.Email, user.Email!),\n        new Claim(ClaimTypes.Role, \"User\")\n    };\n    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));\n    var token = new JwtSecurityToken(\n        issuer: _issuer,\n        audience: _audience,\n        claims: claims,\n        expires: DateTime.UtcNow.AddMinutes(15),\n        signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));\n    return new JwtSecurityTokenHandler().WriteToken(token);\n}</code></pre>",
+      "followUps": ["How do you read claims in a controller?", "What is ClaimsPrincipal?"],
+      "tip": "<strong>Read claims in controllers:</strong> <code>User.FindFirstValue(ClaimTypes.NameIdentifier)</code> gets the user ID. <code>User.IsInRole(\"Admin\")</code> checks roles. <code>User.Claims</code> for all claims. The <code>User</code> property is a <code>ClaimsPrincipal</code> populated by the JWT middleware.",
+      "tags": ["jwt", "auth", "aspnetcore", "security"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "auth-003",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between Authentication and Authorization?",
+      "answer": "<p>These are different steps in the security pipeline that are often confused:</p><p><strong>Authentication</strong> — verifying WHO the user is. \"Are you who you claim to be?\" Methods: username+password, JWT, OAuth, biometrics. Result: a verified identity (ClaimsPrincipal in ASP.NET Core).</p><p><strong>Authorization</strong> — verifying WHAT the authenticated user can do. \"Are you allowed to do this?\" Methods: roles, claims, policies, resource-based authorization.</p><pre><code class=\"language-csharp\">// Authentication: verify identity\napp.UseAuthentication();  // sets HttpContext.User from JWT\n\n// Authorization: enforce what they can do\napp.UseAuthorization();\n\n// Role-based authorization\n[Authorize(Roles = \"Admin\")]\npublic IActionResult AdminOnly() { ... }\n\n// Policy-based authorization\n[Authorize(Policy = \"CanEditPortfolio\")]\npublic IActionResult Edit(int id) { ... }\n\n// Register policy\nbuilder.Services.AddAuthorization(options =>\n{\n    options.AddPolicy(\"CanEditPortfolio\", policy =>\n        policy.RequireClaim(\"PortfolioOwner\"));\n});</code></pre><p>In WalletVerification: <strong>Authentication</strong> = validating the OIDC token from the identity provider. <strong>Authorization</strong> = checking that the authenticated user's <code>sub</code> claim matches the wallet they're trying to access (resource-based authorization).</p>",
+      "followUps": ["What is resource-based authorization?", "What is an IAuthorizationHandler?"],
+      "tip": "<strong>HTTP 401 vs 403:</strong> Authentication failure → 401 Unauthorized (\"who are you?\"). Authorization failure → 403 Forbidden (\"I know who you are, but you can't do this\"). Using the wrong code leaks information — returning 403 for unauthenticated requests tells attackers the endpoint exists.",
+      "tags": ["auth", "authentication", "authorization", "aspnetcore"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "auth-004",
+      "category": "auth",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "What is OAuth 2.0 and how does it differ from OIDC?",
+      "answer": "<p><strong>OAuth 2.0</strong> is an authorization framework — it allows a third-party app to get limited access to a user's resources on another service without exposing credentials. It's about <em>delegated authorization</em>, not authentication.</p><p><strong>OAuth 2.0 Authorization Code Flow:</strong></p><ol><li>User clicks \"Login with Google\" in your app</li><li>App redirects to Google's authorization endpoint</li><li>User logs in to Google and consents to permissions</li><li>Google redirects back with an authorization code</li><li>App exchanges code for access token (server-to-server, no user involved)</li><li>App uses access token to call Google APIs on behalf of the user</li></ol><p><strong>OpenID Connect (OIDC)</strong> — an identity layer on top of OAuth 2.0. Adds authentication: after the flow, you receive an <strong>ID Token</strong> (JWT) containing who the user is (sub, email, name). OAuth gives you access tokens to call APIs. OIDC adds identity tokens to know who logged in.</p><p>In WalletVerification I configured ASP.NET Core's OIDC handler to authenticate users via an external identity provider. The ID token told us who the user was; the access token let us call the provider's API.</p>",
+      "followUps": ["What is PKCE and why is it required for SPAs?", "What is the difference between access token and ID token?"],
+      "tip": "<strong>Never use the access token to get user identity.</strong> Access tokens are for calling APIs — their content is undefined by OAuth. Use the ID token (OIDC) or a /userinfo endpoint for identity. This is a common OAuth misuse.",
+      "tags": ["oauth", "oidc", "auth", "security"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "auth-005",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is ASP.NET Core Identity and when would you use it?",
+      "answer": "<p><strong>ASP.NET Core Identity</strong> is the built-in membership system for managing users, passwords, roles, and claims. It provides: user registration/login, password hashing (bcrypt), email confirmation, 2FA, roles, claims, external login (Google, Facebook via OAuth).</p><pre><code class=\"language-csharp\">// Setup\nbuilder.Services.AddDefaultIdentity&lt;ApplicationUser&gt;(options =>\n{\n    options.Password.RequiredLength = 8;\n    options.Password.RequireNonAlphanumeric = false;\n    options.SignIn.RequireConfirmedAccount = false;\n    options.Lockout.MaxFailedAccessAttempts = 5;\n})\n.AddRoles&lt;IdentityRole&gt;()\n.AddEntityFrameworkStores&lt;ApplicationDbContext&gt;();\n\n// Usage in controller\npublic async Task&lt;IActionResult&gt; Register(RegisterViewModel model)\n{\n    var user = new ApplicationUser { UserName = model.Email, Email = model.Email };\n    var result = await _userManager.CreateAsync(user, model.Password);\n    if (result.Succeeded)\n    {\n        await _signInManager.SignInAsync(user, isPersistent: false);\n        return RedirectToAction(\"Index\", \"Home\");\n    }\n    foreach (var error in result.Errors)\n        ModelState.AddModelError(string.Empty, error.Description);\n    return View(model);\n}</code></pre><p><strong>When to use:</strong> Self-hosted authentication where you own the user database. If you need external identity providers (Azure AD, Auth0), use OIDC instead and skip Identity's password management.</p>",
+      "followUps": ["What is the difference between UserManager and SignInManager?", "How does Identity store passwords?"],
+      "tip": "<strong>Identity uses bcrypt for password hashing</strong> (via ASP.NET Core Data Protection). Never store plain passwords or use MD5/SHA1 — Identity's default is already secure. The hash is adaptive (work factor increases over time).",
+      "tags": ["auth", "identity", "aspnetcore", "security"],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "auth-006",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are claims and how are they used in ASP.NET Core authorization?",
+      "answer": "<p>A <strong>claim</strong> is a key-value statement about a user made by a trusted authority. Claims are carried in tokens (JWT, cookies) and represent facts about the user.</p><p><strong>Common claims:</strong> <code>sub</code> (subject/user ID), <code>email</code>, <code>role</code>, <code>given_name</code>, custom claims like <code>tenant_id</code>, <code>subscription_level</code>.</p><p><strong>Claims-based authorization:</strong></p><pre><code class=\"language-csharp\">// Policy requiring a specific claim\nbuilder.Services.AddAuthorization(options =>\n{\n    options.AddPolicy(\"PremiumUser\", policy =>\n        policy.RequireClaim(\"subscription\", \"premium\", \"enterprise\"));\n\n    options.AddPolicy(\"MinAge18\", policy =>\n        policy.RequireAssertion(ctx =>\n        {\n            var dob = ctx.User.FindFirstValue(\"birthdate\");\n            return dob != null && DateTime.Parse(dob) <= DateTime.Now.AddYears(-18);\n        }));\n});\n\n// Apply to controller/action\n[Authorize(Policy = \"PremiumUser\")]\npublic IActionResult PremiumFeature() { ... }\n\n// Read claims in controller\nvar userId = User.FindFirstValue(ClaimTypes.NameIdentifier);\nvar email = User.FindFirstValue(ClaimTypes.Email);\nvar tenantId = User.FindFirstValue(\"tenant_id\");</code></pre><p>In WalletVerification, the JWT contained a <code>wallet_id</code> claim. Authorization policies verified that the requested wallet ID matched the claim — preventing users from accessing other wallets.</p>",
+      "followUps": ["What is the difference between role-based and claim-based authorization?", "What is an IAuthorizationRequirement?"],
+      "tip": "<strong>Claims are extensible but keep them small.</strong> Every claim is in every request (in the JWT). Don't put large data in claims — put a user ID and look up details per-request from cache. A JWT with 50 claims is a red flag.",
+      "tags": ["auth", "claims", "authorization", "aspnetcore"],
+      "sortOrder": 6,
+      "isActive": true
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<InterviewPrepPortal.Models.ApplicationUser> SignInManager
+@inject UserManager<InterviewPrepPortal.Models.ApplicationUser> UserManager
+@inject InterviewPrepPortal.Interfaces.IQuestionService QuestionService
+@inject InterviewPrepPortal.Interfaces.IProgressService ProgressService
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] — .NET Interview Prep</title>
+
+    <!-- highlight.js for code blocks -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" />
+
+    <!-- Our dark theme CSS -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+
+@if (SignInManager.IsSignedIn(User))
+{
+    @* ─── AUTHENTICATED SHELL ─── *@
+    var currentUser = await UserManager.GetUserAsync(User);
+    var allCats = await QuestionService.GetCategoriesAsync();
+    var allQuestions = await QuestionService.GetAllQuestionsAsync();
+    var progress = currentUser != null ? await ProgressService.GetProgressSummaryAsync(currentUser.Id) : null;
+    var initials = (currentUser?.DisplayName ?? "U").Substring(0, 1).ToUpper();
+
+    <div class="app-shell">
+
+        <!-- ── SIDEBAR ── -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <h1>🎯 .NET Interview Prep</h1>
+                <div class="brand-sub">Darshan's Interview Portal</div>
+            </div>
+
+            @if (currentUser != null)
+            {
+                <div class="sidebar-user">
+                    <div class="user-avatar">@initials</div>
+                    <div class="user-info">
+                        <div class="name">@currentUser.DisplayName</div>
+                        <div class="role">.NET Developer • 5 Years</div>
+                    </div>
+                </div>
+            }
+
+            @if (progress != null)
+            {
+                var total = allQuestions.Count;
+                var pct = total > 0 ? (double)progress.Mastered / total * 100 : 0;
+                <div class="sidebar-overall">
+                    <div class="label">Overall Progress</div>
+                    <div class="overall-bar">
+                        <div class="overall-bar-fill" style="width:@pct.ToString("F0")%"></div>
+                    </div>
+                    <div class="stats-row">
+                        <span>@progress.Mastered mastered</span>
+                        <span>@pct.ToString("F0")%</span>
+                    </div>
+                </div>
+            }
+
+            <nav class="sidebar-nav">
+                <div class="sidebar-nav-label">Main</div>
+                <a asp-controller="Home" asp-action="Index" class="@(Context.Request.Path == "/" ? "active" : "")">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </a>
+                <a asp-controller="Progress" asp-action="Index" class="@(Context.Request.Path.StartsWithSegments("/Progress") ? "active" : "")">
+                    <span class="nav-icon">📊</span> My Progress
+                </a>
+                <a asp-controller="Progress" asp-action="RevisionQueue">
+                    <span class="nav-icon">🔄</span> Revision Queue
+                    @if (progress?.RevisionNeeded > 0) { <span style="margin-left:auto;font-size:.7rem;background:rgba(239,68,68,.2);color:#f87171;padding:1px 6px;border-radius:10px;">@progress.RevisionNeeded</span> }
+                </a>
+                <a asp-controller="Progress" asp-action="Favorites">
+                    <span class="nav-icon">⭐</span> Favorites
+                </a>
+                <a asp-controller="Note" asp-action="Index">
+                    <span class="nav-icon">📝</span> Notes
+                </a>
+                <a asp-controller="Project" asp-action="Index" class="@(Context.Request.Path.StartsWithSegments("/Project") ? "active" : "")">
+                    <span class="nav-icon">🗂️</span> My Projects
+                </a>
+
+                <div class="sidebar-nav-label" style="margin-top:12px;">Categories</div>
+                @foreach (var cat in allCats.Where(c => c.IsActive).OrderBy(c => c.SortOrder))
+                {
+                    var catTotal = allQuestions.Count(q => q.Category == cat.Id);
+                    <a class="cat-nav-item" asp-controller="Category" asp-action="Detail" asp-route-slug="@cat.Slug">
+                        <span><span class="cat-emoji">@cat.Emoji</span>@cat.Name</span>
+                        <span class="cat-count">@catTotal</span>
+                    </a>
+                }
+
+                <div class="sidebar-nav-label" style="margin-top:12px;">Tools</div>
+                <a asp-controller="Search" asp-action="Results">
+                    <span class="nav-icon">🔍</span> Search
+                </a>
+            </nav>
+
+            <div style="padding:12px 16px;border-top:1px solid var(--ip-border);">
+                <form method="post" asp-controller="Account" asp-action="Logout">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" style="background:none;border:none;color:var(--ip-text-3);font-size:.8rem;cursor:pointer;padding:0;">
+                        🚪 Sign out
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <!-- ── MAIN CONTENT ── -->
+        <div class="main-content">
+            <!-- Top bar (mobile) -->
+            <div class="topbar">
+                <button class="hamburger" id="hamburger" title="Menu">☰</button>
+
+                <form class="topbar-search" asp-controller="Search" asp-action="Results" method="get">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" name="q" placeholder="Search questions..." value="@Context.Request.Query["q"]" />
+                </form>
+
+                <div class="topbar-actions">
+                    <span style="font-size:.78rem;color:var(--ip-text-3);">Hi, @(currentUser?.DisplayName?.Split(' ')[0] ?? "there")</span>
+                </div>
+            </div>
+
+            <!-- Page content -->
+            <div class="page-content">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @* ─── UNAUTHENTICATED (Auth pages only) ─── *@
+    @RenderBody()
+}
+
+<!-- Anti-forgery token for AJAX calls -->
+@if (SignInManager.IsSignedIn(User))
+{
+    <form id="__AjaxAntiForgery" style="display:none">
+        @Html.AntiForgeryToken()
+    </form>
+}
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- highlight.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+    });
+</script>
+
+<!-- Site JS -->
+<script src="~/js/site.js" asp-append-version="true"></script>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

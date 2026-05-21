@@ -1,0 +1,91 @@
+@model InterviewPrepPortal.ViewModels.Search.SearchResultViewModel
+@{
+    ViewData["Title"] = "Search: " + Model.Result.Query;
+    var r = Model.Result;
+}
+
+<div class="page-header">
+    <h2>🔍 Search Results</h2>
+    <p class="subtitle">
+        @if (!string.IsNullOrEmpty(r.Query))
+        {
+            <span>Found <strong>@r.TotalCount</strong> results for "<strong>@r.Query</strong>"</span>
+        }
+        else
+        {
+            <span>Enter a search term above</span>
+        }
+    </p>
+</div>
+
+@if (!string.IsNullOrEmpty(r.Query))
+{
+    <!-- Scope tabs -->
+    <div class="section-tabs" style="margin-bottom:20px;">
+        <a class="section-tab @(string.IsNullOrEmpty(Model.ScopeFilter) ? "active" : "")"
+           asp-controller="Search" asp-action="Results" asp-route-q="@r.Query">All (@r.TotalCount)</a>
+        <a class="section-tab @(Model.ScopeFilter == "category" ? "active" : "")"
+           asp-controller="Search" asp-action="Results" asp-route-q="@r.Query" asp-route-scope="category">
+            Category Q (@r.CategoryMatches.Count)
+        </a>
+        <a class="section-tab @(Model.ScopeFilter == "project" ? "active" : "")"
+           asp-controller="Search" asp-action="Results" asp-route-q="@r.Query" asp-route-scope="project">
+            Project Q (@r.ProjectMatches.Count)
+        </a>
+    </div>
+
+    @if (r.CategoryMatches.Any() && Model.ScopeFilter != "project")
+    {
+        <h3 style="font-size:.9rem;color:var(--ip-accent-2);margin-bottom:12px;">Category Questions</h3>
+        <div class="question-list" style="margin-bottom:24px;">
+            @foreach (var q in r.CategoryMatches)
+            {
+                <div class="q-card" data-question-id="@q.Id" data-source="category">
+                    <div class="q-header">
+                        <span class="q-num" style="color:var(--ip-text-3);font-size:.72rem;">@q.Category.ToUpper()</span>
+                        <span class="q-title">@q.QuestionText</span>
+                        <div class="q-badges">
+                            <span class="badge-freq @q.Frequency.Replace("-","")">@q.Frequency.Replace("-"," ")</span>
+                            <span class="badge-diff @q.Difficulty">@q.Difficulty</span>
+                        </div>
+                        <a asp-controller="Question" asp-action="Detail" asp-route-id="@q.Id"
+                           style="font-size:.78rem;color:var(--ip-accent-2);white-space:nowrap;">Open →</a>
+                        <span class="q-chevron">▼</span>
+                    </div>
+                    <div class="q-body">
+                        <div class="answer-box">@Html.Raw(q.Answer)</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (r.ProjectMatches.Any() && Model.ScopeFilter != "category")
+    {
+        <h3 style="font-size:.9rem;color:var(--ip-accent-2);margin-bottom:12px;">Project Questions</h3>
+        <div class="question-list">
+            @foreach (var pq in r.ProjectMatches)
+            {
+                <div class="q-card" data-question-id="@pq.Id" data-source="project">
+                    <div class="q-header">
+                        <span class="q-num" style="color:var(--ip-text-3);font-size:.72rem;">@pq.ProjectId.ToUpper()</span>
+                        <span class="q-title">@pq.QuestionText</span>
+                        <span class="q-chevron">▼</span>
+                    </div>
+                    <div class="q-body">
+                        <div class="answer-box">@Html.Raw(pq.Answer)</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (r.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <h3>No results found</h3>
+            <p>Try different keywords or browse categories directly.</p>
+        </div>
+    }
+}

@@ -1,0 +1,70 @@
+{
+  "categoryId": "mvc",
+  "questions": [
+    {
+      "id": "mvc-001",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the MVC pattern and how does ASP.NET Core implement it?",
+      "answer": "<p><strong>MVC (Model-View-Controller)</strong> separates an application into three components:</p><ul><li><strong>Model</strong> — data and business logic. In ASP.NET Core: your domain entities, ViewModels, DbContext. Knows nothing about how data is displayed.</li><li><strong>View</strong> — UI presentation. In ASP.NET Core: Razor .cshtml files that render HTML. Only displays data from the ViewModel.</li><li><strong>Controller</strong> — orchestrator. Receives HTTP requests, calls services/repositories, creates a ViewModel, passes it to the View. No business logic in controllers.</li></ul><p><strong>Request lifecycle in ASP.NET Core MVC:</strong></p><ol><li>Request arrives → Routing matches URL to controller+action</li><li>Action filters run (auth, model validation)</li><li>Controller action executes: calls services, builds ViewModel</li><li>Returns <code>View(viewModel)</code> → Razor renders HTML</li><li>Response sent to browser</li></ol><pre><code class=\"language-csharp\">public class CategoryController : Controller\n{\n    private readonly IQuestionService _svc;\n\n    [HttpGet]\n    public async Task&lt;IActionResult&gt; Detail(string id)\n    {\n        var questions = await _svc.GetQuestionsByCategoryAsync(id);\n        var vm = new CategoryDetailViewModel { Questions = questions, CategoryId = id };\n        return View(vm);  // renders Category/Detail.cshtml\n    }\n}</code></pre>",
+      "followUps": ["What is a ViewModel and why use it over passing domain models to views?", "How does MVC differ from Razor Pages?"],
+      "tip": "<strong>Fat Controller anti-pattern:</strong> Controllers should be thin orchestrators — receive request, call service, return result. Business logic in controllers is untestable and violates SRP. Move all business logic to services.",
+      "tags": ["mvc", "aspnetcore", "pattern"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "mvc-002",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is a ViewModel and why should you use it instead of domain models in views?",
+      "answer": "<p>A <strong>ViewModel</strong> is a class designed specifically for what a view needs to display — it's a projection of your domain model tailored to the view's requirements.</p><p><strong>Why not pass domain models directly to views?</strong></p><ul><li>Views often need data from multiple sources — ViewModel can combine Portfolio + Holdings + UserProgress into one flat object</li><li>Security — domain models may have sensitive fields (password hash, internal flags) you don't want rendered in HTML</li><li>Over-posting vulnerability — if the user can POST back a domain model, they could set fields you didn't intend (e.g., <code>IsAdmin = true</code>)</li><li>Views may need display-specific properties — formatted date strings, computed display values</li></ul><pre><code class=\"language-csharp\">// Domain model (EF Core entity)\npublic class Portfolio\n{\n    public int Id { get; set; }\n    public string UserId { get; set; } = string.Empty; // don't expose\n    public decimal InternalCalculatedValue { get; set; } // sensitive\n    // ...\n}\n\n// ViewModel — only what the view needs\npublic class PortfolioSummaryViewModel\n{\n    public int Id { get; set; }\n    public string Name { get; set; } = string.Empty;\n    public string FormattedValue { get; set; } = string.Empty;  // \"₹1,23,456\"\n    public string ChangePercent { get; set; } = string.Empty;   // \"+2.3%\"\n    public bool IsPositive { get; set; }  // for CSS class selection\n}</code></pre>",
+      "followUps": ["What is AutoMapper and when should you use it?", "What is the Input Model vs ViewModel distinction?"],
+      "tip": "<strong>Over-posting attack:</strong> If you bind a POST directly to a domain model, a malicious user can set any public property by including it in the form. Use <code>[Bind(\"Name,Description\")]</code> or separate input models (DTOs) for POST/PUT actions.",
+      "tags": ["mvc", "viewmodel", "security"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "mvc-003",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is TempData and when do you use it?",
+      "answer": "<p><code>TempData</code> stores data that survives exactly one redirect. After the data is read, it's automatically deleted. Used for the <strong>Post-Redirect-Get (PRG) pattern</strong> — pass a success/error message from a POST action to the GET action it redirects to.</p><pre><code class=\"language-csharp\">// POST action — after saving, redirect\n[HttpPost]\n[ValidateAntiForgeryToken]\npublic async Task&lt;IActionResult&gt; Create(CreatePortfolioViewModel model)\n{\n    if (!ModelState.IsValid) return View(model);\n\n    await _service.CreateAsync(model);\n    TempData[\"SuccessMessage\"] = \"Portfolio created successfully!\";\n    return RedirectToAction(nameof(Index));  // PRG: redirect to GET\n}\n\n// GET action — reads and displays the message\npublic async Task&lt;IActionResult&gt; Index()\n{\n    ViewBag.Success = TempData[\"SuccessMessage\"];  // TempData auto-cleared after read\n    var portfolios = await _service.GetAllAsync();\n    return View(portfolios);\n}\n\n// In Razor view\n@if (ViewBag.Success != null)\n{\n    &lt;div class=\"alert alert-success\"&gt;@ViewBag.Success&lt;/div&gt;\n}</code></pre><p><strong>TempData storage:</strong> By default stored in the session. Can use cookies with <code>CookieTempDataProvider</code>.</p>",
+      "followUps": ["What is TempData.Keep() and Peek()?", "TempData vs ViewBag vs ViewData?"],
+      "tip": "<strong>PRG pattern is important for browser UX</strong> — after a POST, redirecting to GET prevents \"Form resubmission\" warnings when the user refreshes. Always redirect after a successful POST; use TempData to carry the success message across.",
+      "tags": ["mvc", "tempdata", "prg", "razor"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "mvc-004",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What are Tag Helpers in ASP.NET Core Razor views?",
+      "answer": "<p><strong>Tag Helpers</strong> are server-side components that participate in rendering HTML elements. They replace the older Html Helper syntax with a more HTML-friendly syntax.</p><pre><code class=\"language-html\">&lt;!-- Old Html Helper syntax --&gt;\n@Html.ActionLink(\"Details\", \"Detail\", \"Question\", new { id = q.Id }, null)\n@Html.BeginForm(\"Create\", \"Portfolio\", FormMethod.Post)\n\n&lt;!-- Tag Helper syntax (cleaner, reads like HTML) --&gt;\n&lt;a asp-controller=\"Question\" asp-action=\"Detail\" asp-route-id=\"@q.Id\"&gt;Details&lt;/a&gt;\n&lt;form asp-controller=\"Portfolio\" asp-action=\"Create\" method=\"post\"&gt;\n\n&lt;!-- Form elements with model binding --&gt;\n&lt;input asp-for=\"Name\" class=\"form-control\" /&gt;\n&lt;span asp-validation-for=\"Name\" class=\"text-danger\"&gt;&lt;/span&gt;\n&lt;label asp-for=\"Name\"&gt;&lt;/label&gt;\n\n&lt;!-- Environment-specific content --&gt;\n&lt;environment include=\"Development\"&gt;\n    &lt;script src=\"~/js/site.js\"&gt;&lt;/script&gt;\n&lt;/environment&gt;\n&lt;environment exclude=\"Development\"&gt;\n    &lt;script src=\"~/js/site.min.js\" asp-append-version=\"true\"&gt;&lt;/script&gt;\n&lt;/environment&gt;</code></pre><p><code>asp-append-version=\"true\"</code> adds a cache-busting hash to the URL — crucial for forcing browsers to reload updated CSS/JS files after deployment.</p>",
+      "followUps": ["How do you create a custom Tag Helper?", "What is asp-append-version?"],
+      "tip": "<strong>asp-append-version</strong> appends a content hash to the URL: <code>site.css?v=abc123</code>. This busts the CDN/browser cache whenever the file changes, without requiring you to manually update version numbers. Use it on all static asset references.",
+      "tags": ["mvc", "razor", "tag-helpers", "views"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "mvc-005",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What are partial views and view components? When do you use each?",
+      "answer": "<p>Both are reusable view units, but they serve different purposes:</p><p><strong>Partial Views</strong> — share the rendering context with the parent view. Same ViewData, same model type. Used for breaking large views into smaller files. Synchronous by default (no async support in _PartialName.cshtml).</p><pre><code class=\"language-html\">&lt;!-- Render partial --&gt;\n&lt;partial name=\"_QuestionCard\" model=\"question\" /&gt;\n&lt;!-- Or in controller: return PartialView(\"_QuestionCard\", question) --&gt;</code></pre><p><strong>View Components</strong> — independent mini-controllers with their own logic and view. Can query the database, inject services, run async code. Used for reusable UI widgets with their own data requirements (sidebar, cart summary, notification bell).</p><pre><code class=\"language-csharp\">// View Component class\npublic class CategoryProgressViewComponent : ViewComponent\n{\n    private readonly IProgressService _svc;\n    public CategoryProgressViewComponent(IProgressService svc) => _svc = svc;\n\n    public async Task&lt;IViewComponentResult&gt; InvokeAsync(string categoryId)\n    {\n        var userId = HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)!;\n        var progress = await _svc.GetCategoryProgressAsync(userId, categoryId);\n        return View(progress);\n    }\n}\n\n// In Razor view\n@await Component.InvokeAsync(\"CategoryProgress\", new { categoryId = \"di\" })</code></pre>",
+      "followUps": ["What is the difference between partial view and layout?", "When would you use a View Component vs AJAX?"],
+      "tip": "<strong>Use View Components for server-rendered widgets that need their own data.</strong> Use partial views for splitting large views into manageable pieces that share the parent's model. If the widget needs independent async data loading, it must be a View Component — partial views can't run async code independently.",
+      "tags": ["mvc", "partial-views", "view-components", "razor"],
+      "sortOrder": 5,
+      "isActive": true
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+@model InterviewPrepPortal.ViewModels.Project.ProjectDetailViewModel
+@using InterviewPrepPortal.Models
+@{
+    var proj = Model.Project;
+    var detail = Model.Detail;
+    ViewData["Title"] = proj.Name + " — Interview Prep";
+}
+
+<div class="page-header">
+    <h2>@proj.Name</h2>
+    <p class="subtitle">@proj.Subtitle</p>
+</div>
+
+<!-- ── STACK BADGES + STATS ── -->
+<div class="ip-card" style="margin-bottom:20px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+        <div style="flex:1;">
+            <div class="stack-badges" style="margin-bottom:10px;">
+                @foreach (var tech in proj.Stack) { <span class="stack-badge">@tech</span> }
+            </div>
+            <p style="font-size:.85rem;color:var(--ip-text-2);margin:0;">@proj.Description</p>
+        </div>
+        <div style="display:flex;gap:16px;text-align:center;">
+            <div>
+                <div style="font-size:1.5rem;font-weight:700;color:var(--ip-text);">@Model.TotalQuestions</div>
+                <div style="font-size:.7rem;color:var(--ip-text-3);">Total Q</div>
+            </div>
+            <div>
+                <div style="font-size:1.5rem;font-weight:700;color:var(--ip-success);">@Model.MasteredCount</div>
+                <div style="font-size:.7rem;color:var(--ip-text-3);">Mastered</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── ARCHITECTURE SUMMARY ── -->
+@if (detail.ArchitectureSummary != null)
+{
+    <details class="ip-card" style="margin-bottom:20px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:.9rem;color:var(--ip-text);">
+            🏗️ Architecture Summary
+        </summary>
+        <div style="margin-top:14px;">
+            <p style="font-size:.875rem;color:var(--ip-text-2);margin-bottom:10px;">@detail.ArchitectureSummary.Overview</p>
+            @if (!string.IsNullOrEmpty(detail.ArchitectureSummary.RequestLifecycle))
+            {
+                <div class="section-label">Request Lifecycle</div>
+                <div class="code-block"><pre>@detail.ArchitectureSummary.RequestLifecycle</pre></div>
+            }
+            @if (!string.IsNullOrEmpty(detail.ArchitectureSummary.AuthFlow))
+            {
+                <div class="section-label">Auth Flow</div>
+                <div class="answer-box" style="font-size:.82rem;margin-top:8px;">@detail.ArchitectureSummary.AuthFlow</div>
+            }
+        </div>
+    </details>
+}
+
+<!-- ── SECTION TABS ── -->
+<div class="section-tabs">
+    <a class="section-tab @(string.IsNullOrEmpty(Model.ActiveSection) ? "active" : "")"
+       asp-controller="Project" asp-action="Detail" asp-route-slug="@proj.Slug">All</a>
+    @foreach (var sec in detail.Sections.OrderBy(s => s.SortOrder))
+    {
+        <a class="section-tab @(Model.ActiveSection == sec.Id ? "active" : "")"
+           asp-controller="Project" asp-action="Detail" asp-route-slug="@proj.Slug" asp-route-section="@sec.Id">
+            @sec.Name
+        </a>
+    }
+</div>
+
+<!-- ── SEARCH ── -->
+<form method="get" class="filter-bar" style="margin-bottom:16px;">
+    <input type="hidden" name="slug" value="@proj.Slug" />
+    @if (!string.IsNullOrEmpty(Model.ActiveSection)) { <input type="hidden" name="section" value="@Model.ActiveSection" /> }
+    <input type="text" name="q" placeholder="Search project questions..." value="@Model.SearchQuery" />
+    <button type="submit" class="btn-filter">Search</button>
+    @if (!string.IsNullOrEmpty(Model.SearchQuery))
+    {
+        <a asp-controller="Project" asp-action="Detail" asp-route-slug="@proj.Slug" class="btn-clear">Clear</a>
+    }
+</form>
+
+<!-- ── QUESTIONS BY SECTION ── -->
+@foreach (var grp in Model.Sections)
+{
+    if (!grp.Questions.Any()) continue;
+
+    <div style="margin-bottom:24px;">
+        <h3 style="font-size:.9rem;font-weight:600;color:var(--ip-accent-2);margin-bottom:12px;">
+            @grp.Section.Name
+            <span style="font-size:.75rem;color:var(--ip-text-3);font-weight:400;margin-left:6px;">(@grp.Questions.Count questions)</span>
+        </h3>
+
+        <div class="question-list">
+            @for (int i = 0; i < grp.Questions.Count; i++)
+            {
+                var item = grp.Questions[i];
+                var pq = item.Question;
+                var status = item.Progress?.Status ?? ProgressStatus.NotStarted;
+                var statusClass = status == ProgressStatus.Mastered ? "status-mastered"
+                               : status == ProgressStatus.Learning  ? "status-learning"
+                               : "status-not-started";
+                var isFav = item.Progress?.IsFavorite ?? false;
+
+                <div class="q-card @statusClass" data-question-id="@pq.Id" data-source="project">
+                    <div class="q-header">
+                        <span class="q-num">@(i+1).</span>
+                        <span class="q-title">@pq.QuestionText</span>
+                        <div class="q-badges">
+                            @if (!string.IsNullOrEmpty(pq.Frequency)) { <span class="badge-freq @pq.Frequency.Replace("-","")">@pq.Frequency.Replace("-"," ")</span> }
+                            @if (!string.IsNullOrEmpty(pq.Difficulty)) { <span class="badge-diff @pq.Difficulty">@pq.Difficulty</span> }
+                        </div>
+                        <div class="q-icons">
+                            <button class="icon-btn fav-toggle @(isFav ? "fav-active" : "")">⭐</button>
+                        </div>
+                        <span class="q-chevron">▼</span>
+                    </div>
+
+                    <div class="q-body">
+                        <div class="section-label">Answer</div>
+                        <div class="answer-box">@Html.Raw(pq.Answer)</div>
+
+                        @if (pq.ProjectExample != null && !string.IsNullOrEmpty(pq.ProjectExample.Code))
+                        {
+                            <div class="section-label">Code Example</div>
+                            <div class="code-block">
+                                @if (!string.IsNullOrEmpty(pq.ProjectExample.File))
+                                {
+                                    <div class="code-header"><span>@pq.ProjectExample.File</span></div>
+                                }
+                                <pre><code class="language-csharp">@pq.ProjectExample.Code</code></pre>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(pq.ImportantForInterview))
+                        {
+                            <div class="tip-box" style="margin-top:10px;">@Html.Raw(pq.ImportantForInterview)</div>
+                        }
+
+                        @if (pq.FollowUps.Any())
+                        {
+                            <div class="section-label">Follow-ups</div>
+                            <ul class="followups-list">
+                                @foreach (var fu in pq.FollowUps) { <li>@fu</li> }
+                            </ul>
+                        }
+
+                        <div class="section-label">Your Progress</div>
+                        <div class="status-controls">
+                            <button class="status-btn @(status == ProgressStatus.Learning ? "active-learning" : "")" data-status="1">⚡ Learning</button>
+                            <button class="status-btn @(status == ProgressStatus.Mastered ? "active-mastered" : "")" data-status="2">✓ Mastered</button>
+                            <button class="toggle-btn revision-toggle @(item.Progress?.IsRevisionNeeded == true ? "active-revision" : "")">🔄 Revision</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@if (!Model.Sections.Any(s => s.Questions.Any()))
+{
+    <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <h3>No questions found</h3>
+        <p>Try a different search or section filter</p>
+    </div>
+}

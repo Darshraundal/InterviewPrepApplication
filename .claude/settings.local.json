@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir D:\\\\Project\\\\InterviewPrep *)",
+      "Bash(dir D:\\\\Project\\\\InterviewPrep\\\\DOT NET INTERVIEW *)",
+      "Bash(powershell *)",
+      "Bash(sed 's/.*id: \"//')",
+      "Bash(dotnet new *)",
+      "Bash(dotnet sln *)",
+      "Bash(dotnet add *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet ef *)",
+      "Bash(New-Item -ItemType Directory -Force -Path \"D:\\\\Project\\\\InterviewPrep\\\\src\\\\InterviewPrepPortal\\\\Data\\\\JsonData\\\\projects\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Done\")",
+      "PowerShell(New-Item *)",
+      "PowerShell(dotnet run *)",
+      "PowerShell(Stop-Process *)"
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "categoryId": "angular",
+  "questions": [
+    {
+      "id": "angular-001",
+      "category": "angular",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What are Angular components and how do you create one?",
+      "answer": "<p>An Angular <strong>component</strong> is the building block of an Angular application — it controls a piece of the UI (a view) and its associated logic. Every component has: a TypeScript class (logic), an HTML template (view), and optional CSS styles.</p><pre><code class=\"language-typescript\">// Generate with CLI\n// ng generate component portfolio/portfolio-list\n\n@Component({\n  selector: 'app-portfolio-list',  // HTML tag used in parent templates\n  templateUrl: './portfolio-list.component.html',  // or template: `...`\n  styleUrls: ['./portfolio-list.component.scss'],\n  standalone: true,  // Angular 17+: no NgModule needed\n  imports: [CommonModule, RouterModule]\n})\nexport class PortfolioListComponent implements OnInit\n{\n  portfolios = signal&lt;Portfolio[]&gt;([]);  // Angular 17 signal\n  isLoading = signal(false);\n\n  constructor(private portfolioService: PortfolioService) {}\n\n  ngOnInit(): void {\n    this.loadPortfolios();\n  }\n\n  private loadPortfolios(): void {\n    this.isLoading.set(true);\n    this.portfolioService.getAll().subscribe({\n      next: data => this.portfolios.set(data),\n      error: err => console.error(err),\n      complete: () => this.isLoading.set(false)\n    });\n  }\n}</code></pre><p>In FolioTrack (Angular 19), I used standalone components exclusively — no NgModules needed, which significantly simplifies the architecture.</p>",
+      "followUps": ["What is the difference between standalone components and NgModule-based components?", "What is a component selector?"],
+      "tip": "<strong>Angular 17+ default is standalone components.</strong> NgModules are legacy. New projects should use standalone components. The template: <code>ng new myapp --standalone</code> generates a module-free app.",
+      "tags": ["angular", "components", "standalone"],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "angular-002",
+      "category": "angular",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What are Angular lifecycle hooks and when do you use each?",
+      "answer": "<p>Lifecycle hooks let you tap into specific moments in a component's life:</p><ul><li><strong>ngOnChanges</strong> — called when @Input() properties change. Receives a SimpleChanges object. First hook called; runs before ngOnInit.</li><li><strong>ngOnInit</strong> — called once after the first ngOnChanges. Initialize data, make HTTP calls, set up subscriptions. Most commonly used hook.</li><li><strong>ngDoCheck</strong> — called on every change detection cycle. Expensive — use sparingly for custom change detection.</li><li><strong>ngAfterContentInit</strong> — called once after ng-content is projected. Access @ContentChild references here.</li><li><strong>ngAfterViewInit</strong> — called once after the component's view (and child views) are fully initialized. Access @ViewChild elements that need DOM rendering here.</li><li><strong>ngOnDestroy</strong> — called just before the component is destroyed. Unsubscribe from Observables, clear timers, release resources. Critical for preventing memory leaks.</li></ul><pre><code class=\"language-typescript\">export class PortfolioChartComponent\n    implements OnInit, AfterViewInit, OnDestroy\n{\n  @ViewChild('chartCanvas') canvas!: ElementRef;\n  private subscription = new Subscription();\n  private chart?: Chart;\n\n  ngOnInit(): void {\n    this.subscription.add(\n      this.dataService.getChartData().subscribe(d => this.updateChart(d)));\n  }\n\n  ngAfterViewInit(): void {\n    // Canvas is in the DOM now\n    this.chart = new Chart(this.canvas.nativeElement, { ... });\n  }\n\n  ngOnDestroy(): void {\n    this.subscription.unsubscribe();  // prevent memory leak\n    this.chart?.destroy();\n  }\n}</code></pre>",
+      "followUps": ["What happens if you forget to unsubscribe?", "What is the takeUntilDestroyed() operator in Angular 16+?"],
+      "tip": "<strong>takeUntilDestroyed()</strong> (Angular 16+) is the cleanest way to auto-unsubscribe: <code>this.dataService.getChartData().pipe(takeUntilDestroyed()).subscribe(...)</code>. No manual Subscription management needed.",
+      "tags": ["angular", "lifecycle", "components", "rxjs"],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "angular-003",
+      "category": "angular",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is RxJS and how do you use it in Angular?",
+      "answer": "<p><strong>RxJS</strong> (Reactive Extensions for JavaScript) is a library for composing asynchronous operations using Observable streams. Angular uses RxJS heavily — HttpClient returns Observables, the Router exposes Observables, forms have valueChanges Observables.</p><p><strong>Key concepts:</strong></p><ul><li><strong>Observable</strong> — a stream that emits values over time. Lazy — nothing happens until you subscribe.</li><li><strong>Observer</strong> — consumes the stream: <code>{ next, error, complete }</code></li><li><strong>Operators</strong> — transform streams: <code>map</code>, <code>filter</code>, <code>switchMap</code>, <code>debounceTime</code>, <code>catchError</code></li><li><strong>Subject</strong> — both Observable and Observer. Used for inter-component communication.</li></ul><pre><code class=\"language-typescript\">// Search with debounce — FolioTrack stock search\nthis.searchControl.valueChanges.pipe(\n  debounceTime(300),           // wait 300ms after user stops typing\n  distinctUntilChanged(),      // don't fire if value didn't change\n  filter(q => q.length >= 2),  // minimum 2 chars\n  switchMap(query =>           // cancel previous HTTP call if new one arrives\n    this.stockService.search(query).pipe(\n      catchError(() => of([]))  // return empty on error, don't break stream\n    ))\n).subscribe(results => this.searchResults.set(results));</code></pre><p>This pattern — debounce + switchMap — is the canonical RxJS autocomplete implementation. I used it in FolioTrack for the stock search feature.</p>",
+      "followUps": ["What is the difference between switchMap, mergeMap, and concatMap?", "What is a BehaviorSubject?"],
+      "tip": "<strong>switchMap vs mergeMap vs concatMap:</strong> switchMap = cancel previous (HTTP search). mergeMap = run all concurrently (parallel uploads). concatMap = queue them, run one at a time (sequential operations). Wrong choice causes duplicate requests or missed responses.",
+      "tags": ["angular", "rxjs", "observables", "operators"],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "angular-004",
+      "category": "angular",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is Angular's change detection and how does OnPush work?",
+      "answer": "<p><strong>Change detection</strong> is Angular's mechanism for keeping the view in sync with the component's data. Angular checks all component templates for changes whenever:</p><ul><li>An event occurs (click, input, timer)</li><li>An HTTP response arrives</li><li>A Promise resolves</li></ul><p><strong>Default strategy:</strong> Angular checks every component in the tree on every change detection cycle. Efficient for small apps; slow for large ones with many components.</p><p><strong>OnPush strategy:</strong> Angular only re-renders the component when:</p><ul><li>An @Input() reference changes (not its internal properties — the reference must change)</li><li>An event originates from the component or its children</li><li>An async pipe emits a new value</li><li>You manually call <code>markForCheck()</code></li></ul><pre><code class=\"language-typescript\">@Component({\n  selector: 'app-portfolio-card',\n  changeDetection: ChangeDetectionStrategy.OnPush,  // opt-in\n  template: `&lt;h3&gt;{{ portfolio.name }}&lt;/h3&gt;`\n})\nexport class PortfolioCardComponent {\n  @Input() portfolio!: Portfolio;  // must pass a NEW object to trigger update\n}\n\n// Parent must create new object reference:\nthis.portfolio = { ...this.portfolio, name: 'New Name' };  // spread = new reference</code></pre>",
+      "followUps": ["What is Zone.js?", "What are Angular Signals (Angular 17+)?"],
+      "tip": "<strong>Angular Signals (v17+)</strong> provide fine-grained reactivity without Zone.js. A <code>signal()</code> knows exactly which components read it and only re-renders those. Much more efficient than the dirty-checking approach. FolioTrack (Angular 19) uses signals throughout.",
+      "tags": ["angular", "change-detection", "onpush", "signals"],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "angular-005",
+      "category": "angular",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between Reactive Forms and Template-driven Forms in Angular?",
+      "answer": "<p>Angular provides two approaches to handling forms:</p><p><strong>Template-driven Forms:</strong></p><ul><li>Logic defined in the template using directives (<code>ngModel</code>, <code>ngForm</code>)</li><li>Simple to set up for basic forms</li><li>Asynchronous (form model built after view initializes)</li><li>Hard to test (requires DOM)</li></ul><pre><code class=\"language-html\">&lt;form #form=\"ngForm\" (ngSubmit)=\"onSubmit(form)\"&gt;\n  &lt;input [(ngModel)]=\"portfolio.name\" name=\"name\" required /&gt;\n&lt;/form&gt;</code></pre><p><strong>Reactive Forms (my preference for complex forms):</strong></p><ul><li>Logic defined in TypeScript, not template</li><li>Synchronous — form model available immediately in ngOnInit</li><li>Easier to test (pure TypeScript)</li><li>Powerful with validators, dynamic form arrays, valueChanges Observable</li></ul><pre><code class=\"language-typescript\">this.form = this.fb.group({\n  name: ['', [Validators.required, Validators.minLength(3)]],\n  description: [''],\n  holdings: this.fb.array([])  // dynamic array\n});\n\nthis.form.get('name')!.valueChanges.pipe(\n  debounceTime(300)\n).subscribe(val => this.checkNameAvailability(val));</code></pre><p>In FolioTrack's portfolio creation form (multi-step, dynamic holding rows), reactive forms were the only viable choice.</p>",
+      "followUps": ["What is FormArray?", "How do you add custom validators to reactive forms?"],
+      "tip": "<strong>Reactive forms for anything non-trivial.</strong> Template-driven forms become unmanageable when you need conditional validation, dynamic rows, or async validators (check email uniqueness). Reactive forms keep all that logic in testable TypeScript.",
+      "tags": ["angular", "forms", "reactive-forms", "template-forms"],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "angular-006",
+      "category": "angular",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How does Angular routing work and what is lazy loading?",
+      "answer": "<p>Angular's Router maps URL paths to components. Routes are defined in route configuration and loaded by the <code>RouterModule</code> (or <code>provideRouter()</code> in standalone apps).</p><pre><code class=\"language-typescript\">// app.routes.ts\nconst routes: Routes = [\n  { path: '', component: DashboardComponent },\n  {\n    path: 'portfolios',\n    // Lazy load — PortfolioModule only downloaded when user navigates here\n    loadChildren: () =>\n      import('./portfolios/portfolios.routes').then(m => m.PORTFOLIO_ROUTES)\n  },\n  { path: 'login', component: LoginComponent },\n  {\n    path: 'admin',\n    canActivate: [authGuard],  // route guard\n    loadChildren: () => import('./admin/admin.routes').then(m => m.ADMIN_ROUTES)\n  },\n  { path: '**', component: NotFoundComponent }  // wildcard\n];\n\n// Bootstrap\nprovideRouter(routes, withPreloading(PreloadAllModules))</code></pre><p><strong>Lazy loading</strong> — feature routes are split into separate JS bundles that are only downloaded when the user navigates to that route. Reduces initial bundle size dramatically. Critical for large apps like FolioTrack (Angular 19) where I had 12 feature areas — the main bundle was only 120KB with lazy loading.</p>",
+      "followUps": ["What are route guards (CanActivate, CanDeactivate)?", "What is the Router state?"],
+      "tip": "<strong>Route Guards:</strong> <code>canActivate</code> = prevent navigation to a route (auth check). <code>canDeactivate</code> = prevent leaving a route (\"You have unsaved changes\"). In Angular 15+ use functional guards (plain functions) instead of class-based guards.",
+      "tags": ["angular", "routing", "lazy-loading"],
+      "sortOrder": 6,
+      "isActive": true
+    }
+  ]
+}

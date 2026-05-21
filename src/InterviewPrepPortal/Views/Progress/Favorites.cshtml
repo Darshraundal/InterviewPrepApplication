@@ -1,0 +1,54 @@
+@model IReadOnlyList<InterviewPrepPortal.ViewModels.Category.QuestionWithUserData>
+@using InterviewPrepPortal.Models
+@{
+    ViewData["Title"] = "Favorites";
+}
+
+<div class="page-header">
+    <h2>⭐ Favorites</h2>
+    <p class="subtitle">Questions you've starred. Great for last-minute review before an interview.</p>
+</div>
+
+@if (Model.Any())
+{
+    <div class="question-list">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var item = Model[i];
+            var q = item.Question;
+            var status = item.Progress?.Status ?? ProgressStatus.NotStarted;
+            var statusClass = status == ProgressStatus.Mastered ? "status-mastered" : status == ProgressStatus.Learning ? "status-learning" : "";
+
+            <div class="q-card @statusClass" data-question-id="@q.Id" data-source="category">
+                <div class="q-header">
+                    <span class="q-num">@(i+1).</span>
+                    <span class="q-title">@q.QuestionText</span>
+                    <div class="q-badges">
+                        <span class="badge-freq @q.Frequency.Replace("-","")">@q.Frequency.Replace("-"," ")</span>
+                        <span class="badge-diff @q.Difficulty">@q.Difficulty</span>
+                    </div>
+                    <div class="q-icons">
+                        <button class="icon-btn fav-toggle fav-active" title="Remove favorite">⭐</button>
+                    </div>
+                    <span class="q-chevron">▼</span>
+                </div>
+                <div class="q-body">
+                    <div class="answer-box">@Html.Raw(q.Answer)</div>
+                    @if (!string.IsNullOrEmpty(q.Tip)) { <div class="tip-box" style="margin-top:10px;">@Html.Raw(q.Tip)</div> }
+                    <div class="status-controls">
+                        <button class="status-btn @(status == ProgressStatus.Mastered ? "active-mastered" : "")" data-status="2">✓ Mastered</button>
+                        <a asp-controller="Question" asp-action="Detail" asp-route-id="@q.Id" class="btn-clear">Full View</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-icon">⭐</div>
+        <h3>No favorites yet</h3>
+        <p>Click the ⭐ on any question to add it here.</p>
+    </div>
+}

@@ -1,0 +1,35 @@
+@model IReadOnlyList<InterviewPrepPortal.Models.UserNote>
+@{
+    ViewData["Title"] = "My Notes";
+}
+
+<div class="page-header">
+    <h2>📝 My Notes</h2>
+    <p class="subtitle">All notes you've added across questions.</p>
+</div>
+
+@if (Model.Any())
+{
+    foreach (var note in Model)
+    {
+        <div class="note-item">
+            <div class="note-meta">
+                <span>🔖 @note.QuestionId</span>
+                <span>@note.UpdatedAt.ToString("dd MMM yyyy")</span>
+                <form method="post" asp-controller="Note" asp-action="Delete" asp-route-noteId="@note.Id" style="display:inline;margin-left:auto;">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="delete-note" onclick="return confirm('Delete this note?')">🗑️ Delete</button>
+                </form>
+            </div>
+            <div class="note-text">@note.NoteText</div>
+        </div>
+    }
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>No notes yet</h3>
+        <p>Open any question and add a note in the right panel.</p>
+    </div>
+}

@@ -1,0 +1,40 @@
+@model InterviewPrepPortal.ViewModels.Project.ProjectListViewModel
+@{
+    ViewData["Title"] = "My Projects";
+}
+
+<div class="page-header">
+    <h2>🗂️ My Projects</h2>
+    <p class="subtitle">Project-specific interview prep — real code, real architecture, real interview questions from your actual work experience.</p>
+</div>
+
+@if (Model.Projects.Any())
+{
+    <div class="project-grid">
+        @foreach (var proj in Model.Projects)
+        {
+            <a class="project-card" asp-controller="Project" asp-action="Detail" asp-route-slug="@proj.Slug">
+                <div class="proj-name">@proj.Name</div>
+                <div class="proj-sub">@proj.Subtitle</div>
+                <div class="stack-badges">
+                    @foreach (var tech in proj.Stack.Take(4))
+                    {
+                        <span class="stack-badge">@tech</span>
+                    }
+                    @if (proj.Stack.Count > 4) { <span class="stack-badge">+@(proj.Stack.Count - 4)</span> }
+                </div>
+                <div style="margin-top:12px;font-size:.75rem;color:var(--ip-text-3);">
+                    @proj.QuestionCount questions &bull; @proj.Difficulty
+                </div>
+            </a>
+        }
+    </div>
+}
+else
+{
+    <div class="empty-state">
+        <div class="empty-icon">🗂️</div>
+        <h3>No projects yet</h3>
+        <p>Project JSON files will appear here once added to <code>Data/JsonData/projects/</code></p>
+    </div>
+}
