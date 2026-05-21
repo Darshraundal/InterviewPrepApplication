@@ -11,6 +11,9 @@ obj/
 *.db-shm
 *.db-wal
 
+# ASP.NET Core Data Protection keys (encryption keys — never commit these)
+DataProtectionKeys/
+
 # OS
 Thumbs.db
 .DS_Store

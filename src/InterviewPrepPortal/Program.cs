@@ -2,6 +2,7 @@ using InterviewPrepPortal.Data;
 using InterviewPrepPortal.Interfaces;
 using InterviewPrepPortal.Models;
 using InterviewPrepPortal.Services;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,14 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 // CACHING — used by Singleton JSON services
 // ─────────────────────────────────────────────────────────────────────────────
 builder.Services.AddMemoryCache();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA PROTECTION — persist keys to disk so auth cookies survive app restarts
+// (on Azure F1 the instance sleeps/restarts; without this users get logged out)
+// ─────────────────────────────────────────────────────────────────────────────
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        Path.Combine(builder.Environment.ContentRootPath, "DataProtectionKeys")));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COOKIE AUTH — redirect to custom Account controller, not Identity UI pages
