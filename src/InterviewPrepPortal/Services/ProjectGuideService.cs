@@ -113,11 +113,11 @@ public class ProjectGuideService(IWebHostEnvironment env, IMemoryCache cache, IL
     private async Task<Dictionary<string, ProjectDetail>> LoadProjectDetailsAsync(IReadOnlyList<ProjectGuide> index)
     {
         var result = new Dictionary<string, ProjectDetail>();
-        var baseDir = Path.Combine(env.ContentRootPath, "Data", "JsonData", "projects");
 
         foreach (var project in index)
         {
-            var filePath = Path.Combine(env.ContentRootPath, "Data", "JsonData", project.DataFile);
+            // dataFile is relative to the projects/ subfolder (e.g. "foliotrack.json")
+            var filePath = Path.Combine(env.ContentRootPath, "Data", "JsonData", "projects", project.DataFile);
             if (!File.Exists(filePath))
             {
                 logger.LogWarning("Project data file not found: {File}", project.DataFile);
@@ -127,13 +127,17 @@ public class ProjectGuideService(IWebHostEnvironment env, IMemoryCache cache, IL
             try
             {
                 await using var stream = File.OpenRead(filePath);
-                var detail = await JsonSerializer.DeserializeAsync<ProjectDetail>(stream, JsonOpts);
-                if (detail != null)
-                {
-                    result[project.Slug.ToLowerInvariant()] = detail;
-                    logger.LogInformation("Loaded {Count} questions for project {Project}",
-                        detail.Questions.Count, project.Name);
-                }
+
+                // The JSON has questions nested inside sections (sections[].questions[]).
+                // Deserialize into the JSON-specific shape, then map to the domain model.
+                var raw = await JsonSerializer.DeserializeAsync<ProjectDetailJson>(stream, JsonOpts);
+                if (raw == null) continue;
+
+                var detail = MapToProjectDetail(raw);
+                result[project.Slug.ToLowerInvariant()] = detail;
+
+                logger.LogInformation("Loaded {Count} questions for project {Project}",
+                    detail.Questions.Count, project.Name);
             }
             catch (Exception ex)
             {
@@ -143,4 +147,59 @@ public class ProjectGuideService(IWebHostEnvironment env, IMemoryCache cache, IL
 
         return result;
     }
+
+    /// <summary>
+    /// Maps the JSON-specific shape (sections with nested questions) to the domain
+    /// ProjectDetail (flat questions list + separate sections list).
+    /// </summary>
+    private static ProjectDetail MapToProjectDetail(ProjectDetailJson raw)
+    {
+        var sections = new List<ProjectSection>();
+        var questions = new List<ProjectQuestion>();
+
+        for (int i = 0; i < raw.Sections.Count; i++)
+        {
+            var rawSec = raw.Sections[i];
+            var sectionId = Slugify(rawSec.Name);
+
+            sections.Add(new ProjectSection
+            {
+                Id = sectionId,
+                Name = rawSec.Name,
+                SortOrder = i
+            });
+
+            foreach (var rawQ in rawSec.Questions)
+            {
+                questions.Add(new ProjectQuestion
+                {
+                    Id = rawQ.Id,
+                    ProjectId = rawQ.ProjectId,
+                    Section = sectionId,
+                    QuestionText = rawQ.QuestionText,
+                    Answer = rawQ.Answer,
+                    ProjectExample = rawQ.ProjectExample,
+                    FollowUps = rawQ.FollowUps,
+                    ImportantForInterview = rawQ.ImportantForInterview,
+                    Difficulty = rawQ.Difficulty,
+                    Frequency = rawQ.Frequency,
+                    Tags = rawQ.Tags,
+                    SortOrder = rawQ.SortOrder > 0 ? rawQ.SortOrder : questions.Count,
+                    IsActive = rawQ.IsActive
+                });
+            }
+        }
+
+        return new ProjectDetail
+        {
+            ProjectId = raw.ProjectId,
+            ArchitectureSummary = raw.ArchitectureSummary,
+            Sections = sections,
+            Questions = questions
+        };
+    }
+
+    private static string Slugify(string name) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            name.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
 }
