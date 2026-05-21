@@ -28,6 +28,9 @@ public class Question
     [JsonPropertyName("followUps")]
     public List<string> FollowUps { get; set; } = [];
 
+    [JsonPropertyName("followUpAnswers")]
+    public Dictionary<string, string> FollowUpAnswers { get; set; } = [];
+
     [JsonPropertyName("tip")]
     public string? Tip { get; set; }
 
