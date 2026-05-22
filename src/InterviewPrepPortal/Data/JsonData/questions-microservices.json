@@ -19,7 +19,11 @@
         }
       ],
       "tip": "<strong>Start with a monolith.</strong> Microservices have enormous operational overhead (service discovery, distributed tracing, network partitions, eventual consistency). Only split when you have clear team/scaling boundaries that justify the complexity. Most startups shouldn't use microservices.",
-      "tags": ["microservices", "architecture", "monolith"],
+      "tags": [
+        "microservices",
+        "architecture",
+        "monolith"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -41,7 +45,12 @@
         }
       ],
       "tip": "<strong>API Gateway is a single point of failure</strong> — deploy it with multiple instances behind a load balancer. YARP handles hot-reload of route configuration without restart, which is crucial for zero-downtime routing changes.",
-      "tags": ["microservices", "api-gateway", "architecture", "yarp"],
+      "tags": [
+        "microservices",
+        "api-gateway",
+        "architecture",
+        "yarp"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -63,7 +72,12 @@
         }
       ],
       "tip": "<strong>Outbox pattern</strong> — solves the dual-write problem: saving to DB and publishing an event are not atomic. If you save and crash before publishing, the event is lost. Solution: write events to an Outbox DB table in the same transaction, then a background job publishes them reliably.",
-      "tags": ["microservices", "event-driven", "messaging", "azure-service-bus"],
+      "tags": [
+        "microservices",
+        "event-driven",
+        "messaging",
+        "azure-service-bus"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -85,7 +99,12 @@
         }
       ],
       "tip": "<strong>Polly is the standard resilience library for .NET.</strong> In .NET 8, use <code>AddStandardResilienceHandler()</code> (from Microsoft.Extensions.Http.Resilience) which configures retry + circuit breaker + timeout with sensible defaults. Don't roll your own retry logic.",
-      "tags": ["microservices", "circuit-breaker", "polly", "resilience"],
+      "tags": [
+        "microservices",
+        "circuit-breaker",
+        "polly",
+        "resilience"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -107,8 +126,133 @@
         }
       ],
       "tip": "<strong>Vertical Slice Architecture</strong> is an alternative — organize by feature (Portfolio creation, Portfolio listing) rather than technical layers. Each feature has its own command, handler, validator, and query in one folder. Scales better with teams than the horizontal Clean Architecture layers.",
-      "tags": ["microservices", "architecture", "clean-architecture", "design"],
+      "tags": [
+        "microservices",
+        "architecture",
+        "clean-architecture",
+        "design"
+      ],
       "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "ms-006",
+      "category": "microservices",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is Docker and how do you containerize an ASP.NET Core application?",
+      "answer": "<p>Docker packages your application and all its dependencies into a container that runs identically on any machine — dev laptop, CI server, Azure. The classic 'it works on my machine' problem disappears. I've been using Docker in every project for the last 3 years and it genuinely changed how we deploy.</p><h4>Core concepts:</h4><ul><li><strong>Image</strong> — a read-only blueprint (your app + runtime + OS layer). Built from a Dockerfile.</li><li><strong>Container</strong> — a running instance of an image. You can run many containers from one image.</li><li><strong>Registry</strong> — storage for images. Docker Hub, Azure Container Registry (ACR), GitHub Container Registry.</li><li><strong>Docker Compose</strong> — run multi-container apps (app + DB + Redis) together with one command.</li></ul><h4>Dockerfile for an ASP.NET Core app (multi-stage build):</h4><pre><code class=\"language-dockerfile\"># Stage 1: Build\nFROM mcr.microsoft.com/dotnet/sdk:8.0 AS build\nWORKDIR /src\nCOPY [\"MyApp/MyApp.csproj\", \"MyApp/\"]\nRUN dotnet restore \"MyApp/MyApp.csproj\"\nCOPY . .\nWORKDIR \"/src/MyApp\"\nRUN dotnet publish \"MyApp.csproj\" -c Release -o /app/publish\n\n# Stage 2: Runtime image (smaller -- no SDK)\nFROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime\nWORKDIR /app\nEXPOSE 8080\nCOPY --from=build /app/publish .\nENTRYPOINT [\"dotnet\", \"MyApp.dll\"]</code></pre><p>The multi-stage build is important — the final image only contains the runtime, not the 700MB SDK. Result: a small, secure image.</p><h4>docker-compose.yml for local dev:</h4><pre><code class=\"language-yaml\">version: '3.8'\nservices:\n  api:\n    build: .\n    ports:\n      - \"5000:8080\"\n    environment:\n      - ASPNETCORE_ENVIRONMENT=Development\n      - ConnectionStrings__Default=Server=db;Database=MyApp;User=sa;Password=YourPass123!\n    depends_on:\n      - db\n      - redis\n\n  db:\n    image: mcr.microsoft.com/mssql/server:2022-latest\n    environment:\n      - SA_PASSWORD=YourPass123!\n      - ACCEPT_EULA=Y\n    ports:\n      - \"1433:1433\"\n\n  redis:\n    image: redis:7-alpine\n    ports:\n      - \"6379:6379\"</code></pre><pre><code class=\"language-bash\"># Run everything\ndocker-compose up -d\n\n# View logs\ndocker-compose logs -f api\n\n# Rebuild after code change\ndocker-compose up -d --build api</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between Docker and Kubernetes?",
+          "answer": "<p>Docker runs individual containers. Kubernetes orchestrates many containers across many machines — it's a container management platform.</p><p>Think of it this way: Docker is like having trucks. Kubernetes is like having a logistics company that decides how many trucks to run, restarts broken trucks, routes traffic between them, scales up more trucks during busy periods, and does rolling deployments of new truck models without stopping service.</p><p><strong>Kubernetes adds:</strong> auto-scaling (scale to zero, scale to 100 based on CPU/traffic), self-healing (restart crashed containers), rolling deployments with zero downtime, service discovery, load balancing between pods, secrets management, health probe integration.</p><p>For small apps, Docker Compose on a VM or Azure App Service for Containers is enough. For large-scale microservices, you need Kubernetes (AKS on Azure, EKS on AWS).</p>"
+        }
+      ],
+      "tip": "<strong>.dockerignore matters.</strong> Always have a .dockerignore file excluding bin/, obj/, .git, node_modules, etc. Otherwise COPY . . sends gigabytes of unnecessary files to the Docker build context, making builds very slow.",
+      "tags": [
+        "docker",
+        "containers",
+        "deployment",
+        "aspnetcore",
+        "compose"
+      ],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "ms-007",
+      "category": "microservices",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is gRPC and when would you use it instead of REST?",
+      "answer": "<p>gRPC is a high-performance, contract-first RPC framework from Google. Instead of REST's text-based JSON over HTTP/1.1, gRPC uses <strong>Protocol Buffers (Protobuf)</strong> for serialisation and runs over <strong>HTTP/2</strong>. I've used it for internal service-to-service communication where performance and strong typing mattered more than browser compatibility.</p><h4>Why gRPC is faster than REST:</h4><ul><li><strong>Protobuf</strong> — binary serialisation, 3-5x smaller payload than JSON, faster to serialise/deserialise.</li><li><strong>HTTP/2</strong> — multiplexing (multiple requests over one connection), header compression, server push.</li><li><strong>Strongly typed contracts</strong> — .proto files define the schema; code is generated in both client and server languages. No mismatches, no manual mapping.</li></ul><h4>Setting up gRPC in ASP.NET Core:</h4><pre><code class=\"language-protobuf\">// orders.proto\nsyntax = \"proto3\";\npackage orders;\n\nservice OrderService {\n    rpc GetOrder (GetOrderRequest) returns (OrderReply);\n    rpc StreamOrders (StreamOrdersRequest) returns (stream OrderReply); // server streaming\n    rpc CreateOrder (CreateOrderRequest) returns (OrderReply);\n}\n\nmessage GetOrderRequest { int32 order_id = 1; }\nmessage OrderReply {\n    int32 id = 1;\n    string status = 2;\n    double total = 3;\n}</code></pre><pre><code class=\"language-csharp\">// Server -- implement the generated abstract class\npublic class OrderGrpcService : OrderService.OrderServiceBase\n{\n    public override async Task&lt;OrderReply&gt; GetOrder(\n        GetOrderRequest request, ServerCallContext context)\n    {\n        var order = await _db.Orders.FindAsync(request.OrderId);\n        return new OrderReply { Id = order.Id, Status = order.Status };\n    }\n}\n\n// Program.cs\nbuilder.Services.AddGrpc();\napp.MapGrpcService&lt;OrderGrpcService&gt;();\n\n// Client -- generated strongly-typed client\nvar channel = GrpcChannel.ForAddress(\"https://orders-service:5001\");\nvar client = new OrderService.OrderServiceClient(channel);\nvar reply = await client.GetOrderAsync(new GetOrderRequest { OrderId = 1 });</code></pre><h4>gRPC streaming — where it really shines:</h4><pre><code class=\"language-csharp\">// Server streaming -- server pushes multiple messages to client\npublic override async Task StreamOrders(\n    StreamOrdersRequest request,\n    IServerStreamWriter&lt;OrderReply&gt; responseStream,\n    ServerCallContext context)\n{\n    await foreach (var order in _db.Orders.AsAsyncEnumerable())\n    {\n        await responseStream.WriteAsync(new OrderReply { Id = order.Id });\n        await Task.Delay(100); // simulating real-time data\n    }\n}</code></pre><h4>REST vs gRPC — when to use which:</h4><ul><li><strong>REST</strong> — public APIs, browser clients, third-party consumers, human-readable debugging needed, simple CRUD.</li><li><strong>gRPC</strong> — internal microservice-to-microservice calls, high-throughput data pipelines, real-time streaming, polyglot environments (Go service calling .NET service), mobile clients needing small payloads.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is grpc-web and why is it needed?",
+          "answer": "<p>Standard gRPC requires HTTP/2 with full control over HTTP headers — something browsers can't do directly via the Fetch API or XMLHttpRequest. <strong>grpc-web</strong> is a modified protocol that wraps gRPC over HTTP/1.1 in a way browsers can consume. You add a grpc-web proxy (Envoy or the Grpc.AspNetCore.Web middleware) on the server side. The browser calls the proxy using grpc-web; the proxy translates to regular gRPC for the backend. This lets you use gRPC from Angular/React frontends. Honestly though, for browser clients I usually stick with REST unless the performance need is proven — the proxy adds complexity.</p>"
+        }
+      ],
+      "tip": "<strong>gRPC requires HTTP/2.</strong> If you're deploying behind a proxy or load balancer, make sure it supports HTTP/2 end-to-end. Some older load balancers don't — they terminate HTTP/2 and downgrade to HTTP/1.1, breaking gRPC silently.",
+      "tags": [
+        "grpc",
+        "protobuf",
+        "http2",
+        "microservices",
+        "streaming"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "ms-008",
+      "category": "microservices",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is SignalR and when would you use it over regular REST polling?",
+      "answer": "<p>SignalR is ASP.NET Core's real-time communication library. It lets the <strong>server push data to connected clients</strong> without the client having to ask. Before I used SignalR, I had a dashboard that polled every 5 seconds — it was hammering the API and still felt laggy. SignalR eliminated both problems.</p><h4>How SignalR works:</h4><p>SignalR automatically chooses the best transport available:</p><ul><li><strong>WebSockets</strong> — true full-duplex, persistent connection. Preferred when available.</li><li><strong>Server-Sent Events (SSE)</strong> — server-to-client only, one-directional, over HTTP.</li><li><strong>Long Polling</strong> — fallback for environments where WebSockets aren't supported.</li></ul><h4>Setting up SignalR:</h4><pre><code class=\"language-csharp\">// Hub -- your real-time endpoint\npublic class OrderHub : Hub\n{\n    // Server method clients can call\n    public async Task JoinOrderGroup(string orderId)\n        =&gt; await Groups.AddToGroupAsync(Context.ConnectionId, $\"order-{orderId}\");\n\n    public async Task LeaveOrderGroup(string orderId)\n        =&gt; await Groups.RemoveFromGroupAsync(Context.ConnectionId, $\"order-{orderId}\");\n\n    public override async Task OnDisconnectedAsync(Exception ex)\n    {\n        // cleanup\n        await base.OnDisconnectedAsync(ex);\n    }\n}\n\n// Program.cs\nbuilder.Services.AddSignalR();\napp.MapHub&lt;OrderHub&gt;(\"/hubs/orders\");\n\n// Push from any service -- inject IHubContext\npublic class OrderService\n{\n    private readonly IHubContext&lt;OrderHub&gt; _hub;\n\n    public async Task UpdateOrderStatusAsync(int orderId, string status)\n    {\n        await _db.SaveChangesAsync();\n\n        // Push update to all clients watching this order\n        await _hub.Clients\n            .Group($\"order-{orderId}\")\n            .SendAsync(\"OrderStatusUpdated\", new { orderId, status });\n    }\n}</code></pre><h4>JavaScript client:</h4><pre><code class=\"language-javascript\">const connection = new signalR.HubConnectionBuilder()\n    .withUrl(\"/hubs/orders\")\n    .withAutomaticReconnect() // auto-reconnect on disconnect\n    .build();\n\nconnection.on(\"OrderStatusUpdated\", (data) =&gt; {\n    console.log(`Order ${data.orderId} is now ${data.status}`);\n    updateUI(data);\n});\n\nawait connection.start();\nawait connection.invoke(\"JoinOrderGroup\", orderId);</code></pre><h4>When SignalR vs REST polling:</h4><ul><li><strong>Use SignalR when</strong>: live dashboards, order tracking, notifications, chat, collaborative editing, stock prices, live sports scores — anything where the server initiates the update.</li><li><strong>Use REST polling when</strong>: updates are infrequent, clients are not always connected, infrastructure doesn't support WebSockets (some proxies don't), or simplicity outweighs real-time needs.</li></ul><h4>Scale-out with Redis backplane:</h4><pre><code class=\"language-csharp\">// Multiple servers -- Redis backplane keeps all servers in sync\nbuilder.Services.AddSignalR()\n    .AddStackExchangeRedis(config[\"Redis:ConnectionString\"]);</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between WebSockets and SignalR?",
+          "answer": "<p>WebSockets is the low-level browser/HTTP protocol for persistent bidirectional connections. SignalR is a higher-level abstraction on top of WebSockets (and other transports). SignalR adds: automatic transport fallback (WebSockets → SSE → Long Polling), connection management and reconnection, hub/method model (vs raw messages), group management, authentication integration, and scale-out via Redis/Azure Service Bus backplane. For most apps, use SignalR — it handles all the edge cases. Use raw WebSockets only if you need maximum control or minimal payload overhead, like a trading terminal.</p>"
+        }
+      ],
+      "tip": "<strong>SignalR in Azure:</strong> If you're on Azure, consider Azure SignalR Service — it offloads connection management from your app servers, handles scale-out automatically, and supports millions of concurrent connections without you managing a Redis backplane.",
+      "tags": [
+        "signalr",
+        "websockets",
+        "real-time",
+        "aspnetcore",
+        "push"
+      ],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "ms-009",
+      "category": "microservices",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is CI/CD and how do you set it up for a .NET application?",
+      "answer": "<p>CI/CD automates the process of building, testing, and deploying your code. Before we had a pipeline, deployments were manual, error-prone, and took 2 hours. With CI/CD it's 10 minutes and fully automated. It's one of those things that feels optional until you've experienced it, then you can't go back.</p><h4>CI (Continuous Integration):</h4><p>Every push to the repo triggers an automated pipeline that builds the code and runs all tests. If tests fail, the build fails and you get notified. Nobody merges broken code.</p><h4>CD (Continuous Delivery/Deployment):</h4><p>Automatically deploy to an environment (staging, production) after CI passes. Delivery = automated up to a manual approval gate. Deployment = fully automated, no human needed.</p><h4>GitHub Actions pipeline for ASP.NET Core:</h4><pre><code class=\"language-yaml\"># .github/workflows/ci-cd.yml\nname: CI/CD Pipeline\n\non:\n  push:\n    branches: [main, develop]\n  pull_request:\n    branches: [main]\n\njobs:\n  build-and-test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n\n      - name: Setup .NET\n        uses: actions/setup-dotnet@v4\n        with:\n          dotnet-version: '8.0.x'\n\n      - name: Restore dependencies\n        run: dotnet restore\n\n      - name: Build\n        run: dotnet build --no-restore --configuration Release\n\n      - name: Run tests\n        run: dotnet test --no-build --configuration Release --verbosity normal\n            --collect:\"XPlat Code Coverage\"\n\n      - name: Publish\n        if: github.ref == 'refs/heads/main'\n        run: dotnet publish --configuration Release -o ./publish\n\n      - name: Deploy to Azure Web App\n        if: github.ref == 'refs/heads/main'\n        uses: azure/webapps-deploy@v2\n        with:\n          app-name: 'my-app-name'\n          slot-name: 'staging'\n          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}\n          package: ./publish</code></pre><h4>Azure DevOps pipeline (YAML):</h4><pre><code class=\"language-yaml\"># azure-pipelines.yml\ntrigger:\n  branches:\n    include: [main]\n\npool:\n  vmImage: 'ubuntu-latest'\n\nsteps:\n- task: UseDotNet@2\n  inputs:\n    version: '8.x'\n\n- script: dotnet restore\n  displayName: 'Restore'\n\n- script: dotnet build --configuration Release\n  displayName: 'Build'\n\n- script: dotnet test --configuration Release --logger trx\n  displayName: 'Test'\n\n- task: DotNetCoreCLI@2\n  displayName: 'Publish'\n  inputs:\n    command: publish\n    publishWebProjects: true\n    arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'\n\n- task: AzureWebApp@1\n  displayName: 'Deploy to Azure'\n  inputs:\n    azureSubscription: 'MyServiceConnection'\n    appName: 'my-dotnet-app'\n    package: '$(Build.ArtifactStagingDirectory)/**/*.zip'</code></pre><h4>What a good pipeline includes:</h4><ul><li>Restore → Build → Unit Tests → Integration Tests → Publish → Deploy to staging → Run smoke tests → Deploy to production (with approval gate).</li><li>Branch strategy: feature branches → PR to main → CI runs → merge → CD to staging → manual approve → CD to prod.</li><li>Secrets management: never put connection strings in pipeline YAML — use GitHub Secrets, Azure Key Vault, or pipeline variable groups.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is a blue-green deployment?",
+          "answer": "<p>Blue-green deployment runs two identical production environments simultaneously: <strong>Blue</strong> (current production, serving live traffic) and <strong>Green</strong> (the new version, being tested). When green is verified, you switch the load balancer to route all traffic from blue to green. If something goes wrong, you flip back to blue instantly — zero downtime rollback.</p><p>In Azure App Service, this is called <strong>deployment slots</strong>: you deploy to the 'staging' slot, run warm-up and smoke tests, then do a slot swap — Azure atomically routes traffic from staging to production. The swap is instant and reversible.</p><pre><code class=\"language-bash\"># Azure CLI\naz webapp deployment slot swap \\\n    --name my-app \\\n    --resource-group my-rg \\\n    --slot staging \\\n    --target-slot production</code></pre>"
+        }
+      ],
+      "tip": "<strong>Fail fast principle:</strong> Put the fastest checks first (build, unit tests) and slowest last (integration tests, E2E tests). You want developers to get feedback in 2-3 minutes for common failures, not wait 20 minutes to find out a syntax error broke the build.",
+      "tags": [
+        "cicd",
+        "github-actions",
+        "azure-devops",
+        "deployment",
+        "testing"
+      ],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "ms-010",
+      "category": "microservices",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is Azure App Service? How do you deploy an ASP.NET Core app to it?",
+      "answer": "<p>Azure App Service is a fully managed PaaS (Platform as a Service) for hosting web applications, APIs, and mobile backends. You give it your code or container, Azure handles the OS, patching, scaling, load balancing, and SSL. I've deployed maybe a dozen projects to App Service — it's the fastest way to get a .NET app live in the cloud.</p><h4>Key features I use regularly:</h4><ul><li><strong>Deployment slots</strong> — staging and production environments with instant swap for zero-downtime deploys.</li><li><strong>Auto-scaling</strong> — scale out to more instances based on CPU/memory/requests. Scale in during quiet periods.</li><li><strong>Built-in SSL</strong> — free managed certificates for custom domains.</li><li><strong>Managed Identity</strong> — your app can talk to Azure SQL, Key Vault, Storage without storing any credentials anywhere.</li><li><strong>Application Insights integration</strong> — one click to enable full telemetry, performance monitoring, alerting.</li></ul><h4>Deployment options:</h4><pre><code class=\"language-bash\"># 1. GitHub Actions (most common -- see CI/CD question)\n# Uses azure/webapps-deploy action\n\n# 2. Azure CLI\naz login\naz webapp up \\\n    --name my-dotnet-app \\\n    --resource-group my-rg \\\n    --runtime \"DOTNETCORE|8.0\"\n\n# 3. dotnet publish + zip deploy\ndotnet publish -c Release -o ./publish\ncd publish && zip -r ../app.zip .\naz webapp deployment source config-zip \\\n    --name my-dotnet-app \\\n    --resource-group my-rg \\\n    --src app.zip</code></pre><h4>Configuration best practices:</h4><pre><code class=\"language-csharp\">// App Service auto-injects environment variables as configuration\n// In Azure Portal: Configuration → Application Settings\n// These override appsettings.json\n\n// In code -- reads from env vars set in App Service config\nvar connStr = builder.Configuration[\"ConnectionStrings:Default\"];\n\n// For secrets -- use Key Vault references in App Settings\n// Value: @Microsoft.KeyVault(SecretUri=https://myvault.vault.azure.net/secrets/DbPassword)\n// App Service resolves it automatically with Managed Identity</code></pre><h4>App Service Plan tiers (choose wisely for cost):</h4><ul><li><strong>Free/Shared</strong> — dev/test only, shared infrastructure, no custom domain SSL, no deployment slots.</li><li><strong>Basic</strong> — dedicated VMs, custom domains and SSL, no auto-scale.</li><li><strong>Standard</strong> — auto-scale, deployment slots (5), daily backups. Good for most production apps.</li><li><strong>Premium</strong> — more power, VNet integration, more slots. For high-traffic or compliance requirements.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is Azure Functions and when would you use it instead of App Service?",
+          "answer": "<p>Azure Functions is <strong>serverless</strong> — you write individual functions triggered by events (HTTP request, timer, Service Bus message, Blob storage upload, Cosmos DB change feed). You pay per execution, not per hour of a running server. Cold start time is the trade-off.</p><p><strong>Use Azure Functions when:</strong> You have event-driven workloads (process an image when uploaded to Blob Storage, send an email on a timer, react to a queue message). Short-lived operations that don't need to be always-on. Cost-sensitive workloads with unpredictable traffic — you pay per execution not per server.</p><p><strong>Use App Service when:</strong> You have a long-running web app or API that needs persistent connections, WebSockets (SignalR), warm startup time requirements, or complex routing. Always-on with predictable traffic.</p><pre><code class=\"language-csharp\">// Azure Function example -- HTTP trigger\npublic class OrderProcessingFunction\n{\n    [Function(\"ProcessOrder\")]\n    public async Task Run(\n        [ServiceBusTrigger(\"orders-queue\", Connection = \"ServiceBus\")] string message,\n        FunctionContext context)\n    {\n        var order = JsonSerializer.Deserialize&lt;Order&gt;(message);\n        await _orderService.ProcessAsync(order);\n    }\n}</code></pre>"
+        }
+      ],
+      "tip": "<strong>Use Managed Identity everywhere in Azure.</strong> Instead of storing connection strings with passwords in App Settings, use Managed Identity to authenticate to Azure SQL, Redis, Key Vault, Storage. No credentials to rotate, no secrets to accidentally commit.",
+      "tags": [
+        "azure",
+        "app-service",
+        "deployment",
+        "azure-functions",
+        "cloud"
+      ],
+      "sortOrder": 10,
       "isActive": true
     }
   ]

@@ -946,6 +946,54 @@
       ],
       "sortOrder": 35,
       "isActive": true
+    },
+    {
+      "id": "oops-036",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is CTS (Common Type System) and CLS (Common Language Specification) in .NET?",
+      "answer": "<p>These two are the foundation of why C# and VB.NET can work together without any issues — something I never really appreciated until I had to debug an interop issue between assemblies.</p><h4>CTS — Common Type System</h4><p>CTS defines all the data types and programming constructs that the CLR supports, and the rules governing how they interact. It answers questions like: what's an integer, what's a class, how does inheritance work at the runtime level. Both C# and VB.NET compile down to CTS types — so a C# <code>int</code> and a VB.NET <code>Integer</code> are literally the same CTS type: <code>System.Int32</code>.</p><p>CTS types fall into two buckets — value types (structs, enums, primitives) stored on the stack, and reference types (classes, interfaces, delegates) stored on the heap.</p><h4>CLS — Common Language Specification</h4><p>CTS is the full set of what the runtime supports. CLS is the <em>subset</em> that every .NET language must support if you want your library to be consumable from any .NET language. Think of CLS as the minimum contract for cross-language compatibility.</p><pre><code class=\"language-csharp\">// CLS-compliant — works from C#, VB.NET, F#\npublic class OrderService\n{\n    public List&lt;Order&gt; GetOrders() { return new List&lt;Order&gt;(); }\n}\n\n// NOT CLS-compliant — unsigned types like uint, ulong are not in CLS\n// VB.NET doesn't have a uint equivalent\npublic uint GetCount() { return 42; } // violates CLS\n\n// Mark assembly to check compliance at compile time\n[assembly: CLSCompliant(true)] // compiler will warn on violations</code></pre><h4>Real-world relevance:</h4><ul><li>If you're building a public NuGet library, follow CLS rules — don't expose <code>uint</code>, <code>ulong</code>, unsigned types in public APIs.</li><li>If you're building for your own team in C# only, you can ignore CLS entirely.</li><li>Most developers never think about CTS/CLS directly — the CLR handles it transparently. It matters when building SDKs or doing language interop.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between CTS value types and reference types at memory level?",
+          "answer": "<p>Value types (int, bool, struct, enum) are allocated on the <strong>stack</strong> — they live and die with the method call. When you assign a value type, you get a full copy — modifying the copy doesn't affect the original. Reference types (class, string, array, delegate) are allocated on the <strong>heap</strong> — the variable holds a reference (pointer) to the heap memory. When you assign a reference type, both variables point to the same object. This is why passing a class instance to a method lets the method modify the object, but passing an int doesn't. Stack is fast and self-managing; heap requires garbage collection. Understanding this distinction explains a lot of subtle C# bugs around mutation and unexpected side effects.</p>"
+        }
+      ],
+      "tip": "<strong>Interview shortcut:</strong> CTS = the full type system the runtime defines. CLS = the safe subset every language understands. CLSCompliant attribute = 'please warn me if I break CLS rules in my public API'.",
+      "tags": [
+        "cts",
+        "cls",
+        "clr",
+        "interop",
+        "dotnet"
+      ],
+      "sortOrder": 36,
+      "isActive": true
+    },
+    {
+      "id": "oops-037",
+      "category": "oops",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What is Reflection in .NET? When have you actually used it?",
+      "answer": "<p>Reflection is the ability to inspect and interact with types, methods, properties, and attributes at <strong>runtime</strong> — without knowing them at compile time. It's powerful but slow, so I use it deliberately, not casually.</p><h4>What you can do with Reflection:</h4><pre><code class=\"language-csharp\">// Inspect a type\nType type = typeof(OrderService);\nConsole.WriteLine(type.Name);          // OrderService\nConsole.WriteLine(type.FullName);      // MyApp.Services.OrderService\nConsole.WriteLine(type.IsClass);       // true\n\n// Get all public methods\nforeach (var method in type.GetMethods())\n    Console.WriteLine(method.Name);\n\n// Get properties and their values\nvar order = new Order { Id = 1, Status = \"Pending\" };\nforeach (var prop in order.GetType().GetProperties())\n    Console.WriteLine($\"{prop.Name} = {prop.GetValue(order)}\");\n\n// Create instance dynamically — useful in plugin systems\nType serviceType = Type.GetType(\"MyApp.Services.EmailService\");\nvar instance = Activator.CreateInstance(serviceType);\n\n// Invoke a method dynamically\nvar method = serviceType.GetMethod(\"Send\");\nmethod.Invoke(instance, new object[] { \"hi@email.com\", \"Hello\" });\n\n// Read custom attributes — this is where I use it most\n[AttributeUsage(AttributeTargets.Property)]\npublic class AuditFieldAttribute : Attribute { }\n\npublic class User\n{\n    [AuditField]\n    public string Email { get; set; }\n    public string Password { get; set; } // not audited\n}\n\n// At runtime, find all properties marked [AuditField]\nvar auditableProps = typeof(User)\n    .GetProperties()\n    .Where(p => p.IsDefined(typeof(AuditFieldAttribute), false));\n// Only Email — use this to build generic audit log, CSV export, etc.</code></pre><h4>When I've actually used it:</h4><ul><li><strong>Auto-mapping</strong> — building a simple object mapper that copies matching property names between DTOs before I reached for AutoMapper.</li><li><strong>Custom attribute processing</strong> — decorating model properties with <code>[SensitiveData]</code> and using reflection in a logging middleware to mask those fields in logs.</li><li><strong>Plugin architecture</strong> — loading assemblies from a folder at runtime and discovering all classes implementing <code>IPlugin</code> without a hard compile-time reference.</li><li><strong>Generic repository</strong> — <code>GetById&lt;T&gt;</code> using reflection to find the primary key property marked with <code>[Key]</code>.</li></ul><h4>Performance reality:</h4><p>Reflection is <strong>10–100x slower</strong> than a direct call because it bypasses compile-time optimisations. For hot paths, cache the reflected metadata: store <code>PropertyInfo[]</code> in a static dictionary keyed by type — pay the reflection cost once, not on every call.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between Reflection and dynamic in C#?",
+          "answer": "<p><code>dynamic</code> uses the DLR (Dynamic Language Runtime) and is essentially syntactic sugar over reflection — it resolves method calls at runtime but with cleaner syntax. Reflection gives you full control: you can discover types, iterate members, read attributes. <code>dynamic</code> just lets you call methods without compile-time type checking. For inspecting metadata and attributes, you need reflection. For simply calling methods on an unknown type, <code>dynamic</code> is cleaner. Both are slow compared to static dispatch — neither belongs in tight loops.</p>"
+        }
+      ],
+      "tip": "<strong>Cache reflected metadata.</strong> Never call GetProperties() or GetMethod() inside a loop or per-request. Call it once at startup, store in a ConcurrentDictionary&lt;Type, PropertyInfo[]&gt;, reuse forever.",
+      "tags": [
+        "reflection",
+        "attributes",
+        "runtime",
+        "activator",
+        "csharp"
+      ],
+      "sortOrder": 37,
+      "isActive": true
     }
   ]
 }

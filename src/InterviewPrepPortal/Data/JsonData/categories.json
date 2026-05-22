@@ -268,6 +268,23 @@
         "join"
       ],
       "isActive": true
+    },
+    {
+      "id": "testing",
+      "name": "Testing",
+      "slug": "testing",
+      "emoji": "🧪",
+      "description": "Unit testing with xUnit, mocking with Moq, integration tests, TDD, code coverage",
+      "sortOrder": 17,
+      "tags": [
+        "unit-testing",
+        "xunit",
+        "moq",
+        "tdd",
+        "integration-testing",
+        "coverage"
+      ],
+      "isActive": true
     }
   ]
 }

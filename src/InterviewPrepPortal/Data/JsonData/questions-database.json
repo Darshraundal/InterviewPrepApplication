@@ -1226,6 +1226,55 @@
       ],
       "sortOrder": 44,
       "isActive": true
+    },
+    {
+      "id": "db-045",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is denormalization? When do you intentionally break normal form?",
+      "answer": "<p>Normalisation removes redundancy and protects data integrity. Denormalisation deliberately re-introduces some redundancy for performance. It's a trade-off I've had to make a few times on reporting-heavy systems.</p><h4>Why normalisation causes performance pain:</h4><p>A fully normalised schema requires JOINs to get useful data. A 5-table JOIN to display one product in a product listing page, running 10,000 times per minute, adds up. The query is correct but slow.</p><h4>Common denormalisation strategies:</h4><h5>1. Stored/computed columns (most common)</h5><pre><code class=\"language-sql\">-- Instead of computing total every time:\nSELECT SUM(Quantity * UnitPrice) FROM OrderItems WHERE OrderId = 1\n\n-- Store it directly on the order:\nALTER TABLE Orders ADD TotalAmount DECIMAL(10,2);\n-- Update on every order item change\n-- Trade-off: one extra update per write, zero extra work per read</code></pre><h5>2. Flattening lookup tables</h5><pre><code class=\"language-sql\">-- Normalised: Orders JOIN Customers to get CustomerName\n-- Denormalised: store CustomerName directly on Order\nALTER TABLE Orders ADD CustomerName NVARCHAR(100);\n-- Risk: customer changes name -- Orders still show old name\n-- Acceptable when: Orders are historical records (name at time of order matters)</code></pre><h5>3. Read model / CQRS projection tables</h5><p>Rather than denormalising the transactional tables, create separate read-optimised tables that aggregate data. The write side stays normalised; the read side is pre-joined.</p><pre><code class=\"language-sql\">-- Read model table for product listing page\nCREATE TABLE ProductListingReadModel (\n    ProductId    INT,\n    Name         NVARCHAR(200),\n    CategoryName NVARCHAR(100), -- denormalised from Categories\n    Price        DECIMAL(10,2),\n    StockCount   INT,           -- denormalised from Inventory\n    AverageRating DECIMAL(3,2), -- pre-computed from Reviews\n    ReviewCount  INT\n);\n-- Rebuilt when products/categories/inventory/reviews change\n-- SELECT is now a single table scan -- blazing fast</code></pre><h4>When I denormalise:</h4><ul><li>Reporting/analytics queries that join 5+ tables and run constantly.</li><li>Historical records where the value at point-in-time matters more than current value (order confirmation email, invoice line items).</li><li>Read-heavy endpoints where the join cost is measured and proven to be the bottleneck.</li><li>Data warehouses / OLAP — these are intentionally denormalised (star schema).</li></ul><h4>When I don't:</h4><ul><li>OLTP — transactional systems should stay normalised to preserve data integrity.</li><li>Before measuring — denormalisation adds complexity; prove you need it first.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between OLTP and OLAP database design?",
+          "answer": "<p><strong>OLTP (Online Transaction Processing)</strong> — designed for fast, concurrent reads and writes of individual rows. Think: a bank processing deposits, an e-commerce site placing orders. Highly normalised (3NF or higher), many narrow tables, optimised for INSERT/UPDATE/DELETE. SQL Server, PostgreSQL in transactional mode.</p><p><strong>OLAP (Online Analytical Processing)</strong> — designed for complex analytical queries over large volumes of historical data. Think: 'What were sales by region for the last 12 months, broken down by product category?'. Intentionally denormalised — star schema or snowflake schema, wide fact tables, dimension tables. Optimised for SELECT aggregations over millions of rows. Azure Synapse, Redshift, BigQuery, Snowflake.</p><p>Most real applications have both: an OLTP database for day-to-day operations, and a data warehouse (OLAP) for reporting. ETL or CDC (Change Data Capture) moves data from OLTP to OLAP on a schedule.</p>"
+        }
+      ],
+      "tip": "<strong>CQRS + read models is the modern approach.</strong> Instead of denormalising your transactional tables (which creates data consistency headaches), create separate read-optimised projections. Your write model stays clean; your read model is optimised for queries.",
+      "tags": [
+        "denormalization",
+        "performance",
+        "sql",
+        "cqrs",
+        "oltp",
+        "olap"
+      ],
+      "sortOrder": 45,
+      "isActive": true
+    },
+    {
+      "id": "db-046",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is SQL Server Connection Pooling? How does it work and what are the pitfalls?",
+      "answer": "<p>Creating a new database connection is expensive — it involves network handshakes, authentication, and resource allocation on the SQL Server side. Connection pooling reuses existing connections rather than creating new ones on every request. ADO.NET handles this automatically — you don't write any pooling code yourself, but understanding it explains a lot of production issues.</p><h4>How it works:</h4><p>When you call <code>conn.Open()</code>, ADO.NET doesn't always create a new physical connection. It checks a pool of available connections with the same connection string. If one is available, it returns it. When you call <code>conn.Close()</code> or <code>conn.Dispose()</code> (via <code>using</code>), the connection doesn't actually close — it returns to the pool for the next caller.</p><pre><code class=\"language-csharp\">// Pool settings in connection string\nvar connStr = new SqlConnectionStringBuilder\n{\n    DataSource = \"server\",\n    InitialCatalog = \"MyDb\",\n    IntegratedSecurity = true,\n    Pooling = true,          // enabled by default\n    MinPoolSize = 5,         // keep 5 connections always open\n    MaxPoolSize = 100,       // max connections in pool\n    ConnectTimeout = 30\n}.ConnectionString;</code></pre><h4>EF Core and pooling:</h4><p>When you register DbContext as Scoped (the default), EF Core creates a new DbContext per request — but that DbContext's underlying SqlConnection still uses the ADO.NET pool. There's also <strong>DbContext pooling</strong> in EF Core, which pools the DbContext object itself:</p><pre><code class=\"language-csharp\">// EF Core DbContext pooling -- higher throughput for simple cases\nbuilder.Services.AddDbContextPool&lt;AppDbContext&gt;(opts =&gt;\n    opts.UseSqlServer(connStr),\n    poolSize: 128); // default 1024</code></pre><h4>Connection pool exhaustion — the silent killer:</h4><p>This is the production issue that looks like random timeouts with the error: <em>'Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool.'</em></p><p>It happens when:</p><ul><li>You forget to dispose SqlConnection (no <code>using</code> block) — connections leak into the pool and are never returned.</li><li>You hold connections open during long operations (slow loops, waiting for user input).</li><li>Traffic spike exceeds MaxPoolSize.</li><li>Long-running transactions hold connections until committed.</li></ul><pre><code class=\"language-csharp\">// BAD -- connection never returned to pool\nvar conn = new SqlConnection(connStr);\nconn.Open();\n// ... forgot to close or dispose\n\n// GOOD -- always use 'using'\nusing var conn = new SqlConnection(connStr);\nconn.Open();\n// conn.Dispose() called automatically, connection returned to pool</code></pre><h4>Diagnosing pool exhaustion:</h4><ul><li>Monitor <strong>sp_who2</strong> or <strong>sys.dm_exec_sessions</strong> in SQL Server to see active connections.</li><li>Use <strong>Performance Counters</strong>: 'NumberOfReclaimedConnections', 'NumberOfPooledConnections'.</li><li>Set a lower MaxPoolSize in dev to reproduce the issue faster.</li></ul>",
+      "followUps": [
+        {
+          "question": "How does changing a connection string affect pooling?",
+          "answer": "<p>Connection pools are keyed on the exact connection string — every unique string gets its own pool. So if you dynamically build connection strings with different usernames, passwords, or options, you'll create a separate pool for each unique string. In multi-tenant apps where each tenant has its own DB user, this means N connection pools (one per tenant). That's usually fine but be aware of the pool-per-tenant overhead. If connection strings differ only by whitespace or property order, ADO.NET treats them as different strings — this is a common gotcha that leads to unexpected pool fragmentation.</p>"
+        }
+      ],
+      "tip": "<strong>Always use 'using' for SqlConnection.</strong> This is the single most important rule. Connection leaks are insidious — the app works fine under low load and mysteriously breaks under traffic spikes.",
+      "tags": [
+        "connection-pooling",
+        "adonet",
+        "sql-server",
+        "performance",
+        "efcore"
+      ],
+      "sortOrder": 46,
+      "isActive": true
     }
   ]
 }

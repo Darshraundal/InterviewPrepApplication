@@ -23,7 +23,12 @@
         }
       ],
       "tip": "<strong>Never use .Result or .Wait() on a Task in ASP.NET Core</strong> — it blocks the thread AND can cause deadlocks in contexts with a SynchronizationContext (like old ASP.NET or WinForms). Always await.",
-      "tags": ["async", "await", "task", "concurrency"],
+      "tags": [
+        "async",
+        "await",
+        "task",
+        "concurrency"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -45,7 +50,12 @@
         }
       ],
       "tip": "<strong>Library code should always use ConfigureAwait(false)</strong> to avoid capturing the caller's SynchronizationContext. Application code (controllers, UI code-behind) doesn't need it because there's an expectation to return to the original context.",
-      "tags": ["async", "await", "deadlock", "synchronization-context"],
+      "tags": [
+        "async",
+        "await",
+        "deadlock",
+        "synchronization-context"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -67,7 +77,12 @@
         }
       ],
       "tip": "<strong>Task.WhenAll exception handling:</strong> Even if one task throws, WhenAll waits for all to complete before rethrowing. Catch <code>AggregateException</code> and check <code>.InnerExceptions</code>, or await each task individually after WhenAll to get per-task exceptions.",
-      "tags": ["async", "task", "parallel", "concurrency"],
+      "tags": [
+        "async",
+        "task",
+        "parallel",
+        "concurrency"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -94,7 +109,12 @@
         }
       ],
       "tip": "<strong>Always pass CancellationToken through your entire call chain.</strong> Not passing it to EF Core or HttpClient means the DB query/HTTP call continues even after the client disconnects — wasted compute and DB connections.",
-      "tags": ["async", "cancellation-token", "task", "aspnetcore"],
+      "tags": [
+        "async",
+        "cancellation-token",
+        "task",
+        "aspnetcore"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -116,7 +136,12 @@
         }
       ],
       "tip": "<strong>Don't use Task.Run for I/O-bound work in ASP.NET Core</strong> — it wastes a thread pool thread to do nothing but wait. Task.Run is for CPU-bound work you want to run concurrently without blocking the current thread.",
-      "tags": ["async", "thread", "task", "concurrency"],
+      "tags": [
+        "async",
+        "thread",
+        "task",
+        "concurrency"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -138,7 +163,12 @@
         }
       ],
       "tip": "<strong>The only acceptable async void is event handlers</strong> — and even then, wrap in try/catch. For all other scenarios use <code>async Task</code>. If you need fire-and-forget, use <code>IHostedService</code> / <code>BackgroundService</code> or <code>IBackgroundTaskQueue</code> pattern.",
-      "tags": ["async", "async-void", "exception-handling", "antipattern"],
+      "tags": [
+        "async",
+        "async-void",
+        "exception-handling",
+        "antipattern"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -160,7 +190,12 @@
         }
       ],
       "tip": "<strong>Always release in a finally block</strong> — if the protected code throws and you don't release, the semaphore slots are permanently consumed and the app eventually hangs with all tasks stuck in WaitAsync.",
-      "tags": ["async", "concurrency", "semaphore", "throttling"],
+      "tags": [
+        "async",
+        "concurrency",
+        "semaphore",
+        "throttling"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -182,7 +217,12 @@
         }
       ],
       "tip": "<strong>Don't prematurely optimise with ValueTask.</strong> It's harder to use correctly (single-await only, no WhenAll) and only helps under extreme allocation pressure. Measure first; optimise second.",
-      "tags": ["async", "task", "valuetask", "performance"],
+      "tags": [
+        "async",
+        "task",
+        "valuetask",
+        "performance"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -204,7 +244,12 @@
         }
       ],
       "tip": "<strong>Task.Run in ASP.NET Core has a hidden cost:</strong> you're borrowing a thread pool thread that could otherwise handle a new incoming request. For very high-throughput APIs, even short CPU work in Task.Run adds up. Prefer dedicated background queues for heavy work.",
-      "tags": ["async", "task", "cpu-bound", "thread-pool"],
+      "tags": [
+        "async",
+        "task",
+        "cpu-bound",
+        "thread-pool"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -226,8 +271,37 @@
         }
       ],
       "tip": "<strong>EF Core's AsAsyncEnumerable()</strong> streams rows from the DB one at a time — perfect for batch processing large tables. Without it, <code>ToListAsync()</code> loads everything into memory first. Critical difference for million-row tables.",
-      "tags": ["async", "iasyncenumerable", "streaming", "efcore"],
+      "tags": [
+        "async",
+        "iasyncenumerable",
+        "streaming",
+        "efcore"
+      ],
       "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "async-011",
+      "category": "async",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the lock keyword in C#? When do you use it and what are its gotchas?",
+      "answer": "<p>The <code>lock</code> statement ensures only one thread at a time can execute a block of code. Under the hood it calls <code>Monitor.Enter()</code> and <code>Monitor.Exit()</code>. When I worked on a background job that was updating a shared in-memory dictionary, this was the first thing I reached for.</p><pre><code class=\"language-csharp\">public class OrderProcessor\n{\n    private readonly object _lock = new object(); // dedicated lock object\n    private readonly Dictionary&lt;int, Order&gt; _cache = new();\n\n    public void UpdateOrder(int id, Order order)\n    {\n        lock (_lock) // only one thread enters at a time\n        {\n            _cache[id] = order;\n        } // Monitor.Exit() called automatically — even if exception thrown\n    }\n\n    public Order GetOrder(int id)\n    {\n        lock (_lock)\n        {\n            return _cache.TryGetValue(id, out var o) ? o : null;\n        }\n    }\n}</code></pre><h4>Rules I follow:</h4><ul><li><strong>Always lock on a private readonly object</strong> — never on <code>this</code>, never on a <code>Type</code>, never on a string (strings are interned — two locks on the same string literal could deadlock each other).</li><li><strong>Keep the locked region small</strong> — only the minimum code that must be atomic. I/O, network calls, database calls should never be inside a lock.</li><li><strong>Never await inside a lock</strong> — <code>lock</code> blocks threads, not async tasks. Awaiting inside a lock is a classic bug that can cause deadlocks or lock the wrong thread.</li></ul><pre><code class=\"language-csharp\">// WRONG -- can deadlock or behave unpredictably\nlock (_lock)\n{\n    await SomeAsyncMethod(); // compile error in some cases, runtime bug in others\n}\n\n// CORRECT -- use SemaphoreSlim for async-safe locking\nprivate readonly SemaphoreSlim _sem = new SemaphoreSlim(1, 1);\n\npublic async Task UpdateAsync(int id, Order order)\n{\n    await _sem.WaitAsync(); // async-friendly \"lock\"\n    try\n    {\n        _cache[id] = order;\n    }\n    finally\n    {\n        _sem.Release(); // always release in finally\n    }\n}</code></pre><h4>When I use each:</h4><ul><li><code>lock</code> — synchronous code, protecting in-memory state, short operations.</li><li><code>SemaphoreSlim(1,1)</code> — async code that needs mutual exclusion.</li><li><code>ConcurrentDictionary</code>, <code>ConcurrentQueue</code> — when the built-in thread-safe collections fit the use case, I skip manual locking altogether.</li><li><code>Interlocked.Increment/Decrement</code> — for simple counter operations. Much faster than lock.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is a deadlock in multithreading and how do you avoid it?",
+          "answer": "<p>A deadlock happens when two or more threads are each waiting for a lock that the other holds — they're stuck forever. Classic scenario: Thread A holds Lock1, waits for Lock2. Thread B holds Lock2, waits for Lock1. Neither can proceed.</p><p><strong>How to avoid:</strong></p><ul><li><strong>Consistent lock ordering</strong> — always acquire multiple locks in the same order everywhere in your code.</li><li><strong>Timeout on lock acquisition</strong> — use <code>Monitor.TryEnter(lock, timeout)</code> instead of <code>lock</code>, then handle the failure gracefully.</li><li><strong>Avoid nested locks</strong> — the more locks you hold simultaneously, the higher the deadlock risk.</li><li><strong>Use higher-level abstractions</strong> — <code>ConcurrentDictionary</code>, <code>Channel&lt;T&gt;</code>, or message-passing patterns remove the need for explicit locking.</li><li><strong>Async deadlock in ASP.NET</strong> — the other common deadlock: calling <code>.Result</code> or <code>.Wait()</code> on a Task in code that runs on the ASP.NET synchronization context. Always use <code>await</code> end-to-end, never block on async code.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Modern alternative:</strong> Before reaching for lock, ask if ConcurrentDictionary, ConcurrentQueue, or Channel&lt;T&gt; solves the problem. They're designed for thread safety and eliminate manual locking for common patterns.",
+      "tags": [
+        "lock",
+        "thread-safety",
+        "concurrency",
+        "semaphore",
+        "deadlock"
+      ],
+      "sortOrder": 11,
       "isActive": true
     }
   ]

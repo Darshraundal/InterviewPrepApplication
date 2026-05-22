@@ -615,6 +615,127 @@
       ],
       "sortOrder": 22,
       "isActive": true
+    },
+    {
+      "id": "webapi-023",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you implement caching in ASP.NET Core? What are IMemoryCache and IDistributedCache?",
+      "answer": "<p>Caching is one of the first things I look at when an API is slow. In one project, adding a 5-minute cache on a product catalogue endpoint cut database load by 70%.</p><h4>IMemoryCache — in-process, single server</h4><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddMemoryCache();\n\n// In a service\npublic class ProductService\n{\n    private readonly IMemoryCache _cache;\n    private readonly AppDbContext _db;\n\n    public ProductService(IMemoryCache cache, AppDbContext db)\n    {\n        _cache = cache; _db = db;\n    }\n\n    public async Task&lt;List&lt;Product&gt;&gt; GetProductsAsync()\n    {\n        const string cacheKey = \"products:all\";\n\n        // GetOrCreateAsync -- atomic: get if exists, create if not\n        return await _cache.GetOrCreateAsync(cacheKey, async entry =&gt;\n        {\n            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);\n            entry.SlidingExpiration = TimeSpan.FromMinutes(2);\n            entry.Priority = CacheItemPriority.High;\n            return await _db.Products.ToListAsync();\n        });\n    }\n\n    public void InvalidateProducts()\n    {\n        _cache.Remove(\"products:all\"); // bust the cache on write\n    }\n}</code></pre><h4>IDistributedCache — shared across multiple servers (Redis)</h4><p>IMemoryCache doesn't work in a load-balanced environment — each server has its own memory. If a user hits Server A and caches data, Server B doesn't have it. Use Redis for shared distributed cache.</p><pre><code class=\"language-csharp\">// Install: Microsoft.Extensions.Caching.StackExchangeRedis\nbuilder.Services.AddStackExchangeRedisCache(options =&gt;\n{\n    options.Configuration = config[\"Redis:ConnectionString\"]; // \"localhost:6379\"\n    options.InstanceName = \"MyApp:\";\n});\n\n// Usage with JSON serialization\npublic async Task&lt;Product&gt; GetProductAsync(int id)\n{\n    string key = $\"product:{id}\";\n    var cached = await _cache.GetStringAsync(key);\n\n    if (cached != null)\n        return JsonSerializer.Deserialize&lt;Product&gt;(cached);\n\n    var product = await _db.Products.FindAsync(id);\n    if (product != null)\n    {\n        var options = new DistributedCacheEntryOptions\n        {\n            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)\n        };\n        await _cache.SetStringAsync(key, JsonSerializer.Serialize(product), options);\n    }\n    return product;\n}</code></pre><h4>Response Caching — HTTP-level cache headers</h4><pre><code class=\"language-csharp\">// Cache the entire HTTP response\n[HttpGet]\n[ResponseCache(Duration = 60, VaryByQueryKeys = new[] { \"category\" })]\npublic IActionResult GetCategories() { ... }\n\n// Program.cs\nbuilder.Services.AddResponseCaching();\napp.UseResponseCaching();</code></pre><h4>Which one to use?</h4><ul><li><strong>IMemoryCache</strong> — single-server apps, small data, very fast.</li><li><strong>IDistributedCache / Redis</strong> — multi-server, sessions, heavy objects, data that must be consistent across instances.</li><li><strong>ResponseCache</strong> — caching full HTTP responses for GET endpoints, CDN-friendly.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is cache stampede and how do you prevent it?",
+          "answer": "<p>Cache stampede (thundering herd) happens when a popular cache entry expires and 100 concurrent requests all find a cache miss simultaneously, all hit the database at once, and all try to repopulate the cache. The DB gets hammered right when the cache would have helped the most.</p><p><strong>Solutions:</strong></p><ul><li><strong>GetOrCreateAsync</strong> is <em>not</em> atomic for distributed cache — it can still have races. For in-process IMemoryCache, Microsoft's GetOrCreateAsync has basic single-key locking, but it's not a full stampede guard.</li><li><strong>Probabilistic early expiration</strong> — re-fetch the value slightly before it expires, with a small probability that increases as expiry approaches.</li><li><strong>Locking pattern</strong> — use a per-key SemaphoreSlim to ensure only one request repopulates each cache key at a time. Others wait for the result.</li><li><strong>Background refresh</strong> — use a background service (BackgroundService/IHostedService) to proactively refresh cache before it expires.</li></ul><p>In practice, for non-critical data, I accept brief stampedes. For high-traffic endpoints, I use a locking pattern or background refresh.</p>"
+        }
+      ],
+      "tip": "<strong>Cache invalidation is the hard part.</strong> Caching reads is easy; keeping the cache consistent after writes is the challenge. Pattern I use: clear the cache key immediately after a write. For complex scenarios, use cache tags or versioned keys.",
+      "tags": [
+        "caching",
+        "imemorycache",
+        "redis",
+        "distributed-cache",
+        "performance"
+      ],
+      "sortOrder": 23,
+      "isActive": true
+    },
+    {
+      "id": "webapi-024",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you implement structured logging in ASP.NET Core? Tell me about Serilog.",
+      "answer": "<p>The built-in <code>ILogger&lt;T&gt;</code> is great for writing logs, but the default provider just dumps text to the console. In any production project I've worked on, the first thing I do is replace the default logging with <strong>Serilog</strong> — because structured logging is the difference between searchable insights and a wall of text.</p><h4>What is structured logging?</h4><p>Instead of writing <code>'User 42 placed order 99'</code> as a plain string, structured logging captures the properties separately: <code>{ UserId: 42, OrderId: 99, Action: 'PlaceOrder' }</code>. This lets you query logs like a database — 'show me all failed orders in the last hour for users in London'.</p><h4>Setting up Serilog in ASP.NET Core:</h4><pre><code class=\"language-csharp\">// Install: Serilog.AspNetCore, Serilog.Sinks.Console, Serilog.Sinks.File\n// Optional: Serilog.Sinks.Seq (UI for log exploration), Serilog.Sinks.Elasticsearch\n\n// Program.cs\nLog.Logger = new LoggerConfiguration()\n    .MinimumLevel.Information()\n    .MinimumLevel.Override(\"Microsoft\", LogEventLevel.Warning) // suppress noisy MS logs\n    .MinimumLevel.Override(\"Microsoft.EntityFrameworkCore\", LogEventLevel.Information)\n    .Enrich.FromLogContext()          // include scope data\n    .Enrich.WithMachineName()        // know which server logged it\n    .Enrich.WithEnvironmentName()\n    .WriteTo.Console(outputTemplate: \"[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}\")\n    .WriteTo.File(\"logs/app-.log\",\n        rollingInterval: RollingInterval.Day,\n        retainedFileCountLimit: 7)\n    .CreateLogger();\n\ntry\n{\n    builder.Host.UseSerilog(); // replace default logging with Serilog\n    var app = builder.Build();\n    app.UseSerilogRequestLogging(); // log every HTTP request with timing\n    app.Run();\n}\ncatch (Exception ex)\n{\n    Log.Fatal(ex, \"Application startup failed\");\n}\nfinally\n{\n    Log.CloseAndFlush(); // ensure buffered logs are written before shutdown\n}</code></pre><h4>Using ILogger in code (always inject — never use Log.Logger directly in classes):</h4><pre><code class=\"language-csharp\">public class OrderService\n{\n    private readonly ILogger&lt;OrderService&gt; _logger;\n\n    public OrderService(ILogger&lt;OrderService&gt; logger)\n    {\n        _logger = logger;\n    }\n\n    public async Task&lt;Order&gt; PlaceOrderAsync(int userId, OrderDto dto)\n    {\n        // Structured log — {UserId} and {ProductId} are named properties\n        _logger.LogInformation(\"Placing order for user {UserId}, product {ProductId}\",\n            userId, dto.ProductId);\n\n        try\n        {\n            var order = await _db.SaveOrderAsync(dto);\n            _logger.LogInformation(\"Order {OrderId} placed successfully\", order.Id);\n            return order;\n        }\n        catch (Exception ex)\n        {\n            _logger.LogError(ex, \"Failed to place order for user {UserId}\", userId);\n            throw;\n        }\n    }\n}\n\n// Log Scopes -- attach context to all logs within a block\nusing (_logger.BeginScope(new { RequestId = HttpContext.TraceIdentifier }))\n{\n    _logger.LogInformation(\"Processing\"); // RequestId included automatically\n}</code></pre><h4>Log levels — when to use each:</h4><ul><li><code>LogTrace</code> — very detailed diagnostics, disabled in production.</li><li><code>LogDebug</code> — dev-time info, disable in prod to reduce noise.</li><li><code>LogInformation</code> — normal business events (user logged in, order placed).</li><li><code>LogWarning</code> — unexpected but handled situations (retry needed, fallback used).</li><li><code>LogError</code> — failures that affected a request but app keeps running.</li><li><code>LogCritical</code> — app is about to crash or is in a broken state.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between Serilog and NLog? Which do you prefer?",
+          "answer": "<p>Both are mature structured logging frameworks. The differences are mostly style and ecosystem:</p><ul><li><strong>Serilog</strong> — fluent API for configuration, strongly typed destructuring, huge sink ecosystem (100+ sinks: Seq, Elasticsearch, Application Insights, Datadog, etc.). I prefer it because the setup is code-first and version-controllable — no XML config files.</li><li><strong>NLog</strong> — XML or code configuration, been around longer, very stable. Popular in enterprises that have been on .NET Framework since the beginning. NLog's Layout Renderers are very powerful for text-based log formatting.</li></ul><p>My preference: Serilog + Seq for local dev (beautiful UI, searchable), Serilog + Application Insights or Datadog for production. Both are excellent — if a project already uses NLog, I keep it. If starting fresh, I pick Serilog.</p>"
+        }
+      ],
+      "tip": "<strong>Never log sensitive data.</strong> Passwords, credit card numbers, PII — strip them before logging. Serilog's Destructuring.ByTransforming() lets you define how objects are logged, so you can mask sensitive fields project-wide.",
+      "tags": [
+        "logging",
+        "serilog",
+        "structured-logging",
+        "ilogger",
+        "aspnetcore"
+      ],
+      "sortOrder": 24,
+      "isActive": true
+    },
+    {
+      "id": "webapi-025",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What are Health Checks in ASP.NET Core and how do you set them up?",
+      "answer": "<p>Health checks are endpoints that tell your infrastructure (load balancers, Kubernetes, Azure App Service) whether your app is alive and ready to serve traffic. In every project I've deployed to Azure, the first thing the DevOps team asks for is a health check endpoint — it's what makes zero-downtime deployments possible.</p><h4>Two concepts:</h4><ul><li><strong>Liveness</strong> — is the app running? If not, restart it.</li><li><strong>Readiness</strong> — is the app ready to accept traffic? If not, don't route requests to it (e.g., still warming up, DB connection not ready).</li></ul><h4>Basic setup:</h4><pre><code class=\"language-csharp\">// Install: Microsoft.AspNetCore.Diagnostics.HealthChecks\n// For DB: AspNetCore.HealthChecks.SqlServer\n// For Redis: AspNetCore.HealthChecks.Redis\n\n// Program.cs\nbuilder.Services\n    .AddHealthChecks()\n    // Built-in DB check\n    .AddSqlServer(\n        connectionString: config.GetConnectionString(\"Default\"),\n        name: \"sql-server\",\n        failureStatus: HealthStatus.Degraded,\n        tags: new[] { \"db\", \"readiness\" })\n    // Redis check\n    .AddRedis(\n        config[\"Redis:ConnectionString\"],\n        name: \"redis\",\n        tags: new[] { \"cache\", \"readiness\" })\n    // Custom check\n    .AddCheck&lt;ExternalApiHealthCheck&gt;(\"payment-api\", tags: new[] { \"external\" });\n\n// Map endpoints\napp.MapHealthChecks(\"/health\"); // simple -- just 200/503\napp.MapHealthChecks(\"/health/detail\", new HealthCheckOptions\n{\n    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse // JSON detail\n});\n// Readiness check -- only checks 'readiness' tagged checks\napp.MapHealthChecks(\"/health/ready\", new HealthCheckOptions\n{\n    Predicate = check =&gt; check.Tags.Contains(\"readiness\")\n});\n// Liveness -- just check app is running (no DB check)\napp.MapHealthChecks(\"/health/live\", new HealthCheckOptions\n{\n    Predicate = _ =&gt; false // no checks, just return Healthy if app responds\n});</code></pre><h4>Custom health check:</h4><pre><code class=\"language-csharp\">public class ExternalApiHealthCheck : IHealthCheck\n{\n    private readonly HttpClient _http;\n    public ExternalApiHealthCheck(IHttpClientFactory factory)\n        =&gt; _http = factory.CreateClient();\n\n    public async Task&lt;HealthCheckResult&gt; CheckHealthAsync(\n        HealthCheckContext context, CancellationToken ct = default)\n    {\n        try\n        {\n            var response = await _http.GetAsync(\"https://api.payment.com/ping\", ct);\n            return response.IsSuccessStatusCode\n                ? HealthCheckResult.Healthy(\"Payment API reachable\")\n                : HealthCheckResult.Degraded($\"Payment API returned {response.StatusCode}\");\n        }\n        catch (Exception ex)\n        {\n            return HealthCheckResult.Unhealthy(\"Payment API unreachable\", ex);\n        }\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How does Kubernetes use health checks?",
+          "answer": "<p>Kubernetes has two probes that map directly to liveness and readiness:</p><ul><li><strong>livenessProbe</strong> — hits your <code>/health/live</code> endpoint. If it fails N times, Kubernetes kills the pod and restarts it.</li><li><strong>readinessProbe</strong> — hits your <code>/health/ready</code> endpoint. If it fails, Kubernetes stops routing traffic to this pod (removes it from the service's load balancer) but doesn't restart it. The pod comes back into rotation when it starts passing again.</li></ul><p>This gives you safe rolling deployments: new pods start up, pass readiness, then get traffic. Old pods drain and terminate. No downtime.</p>"
+        }
+      ],
+      "tip": "<strong>Separate liveness from readiness.</strong> Liveness should be trivial — just return 200. Readiness should check dependencies (DB, Redis). If you mix them, a DB blip will cause all your pods to restart simultaneously — exactly the wrong time for a restart.",
+      "tags": [
+        "health-checks",
+        "aspnetcore",
+        "kubernetes",
+        "deployment",
+        "monitoring"
+      ],
+      "sortOrder": 25,
+      "isActive": true
+    },
+    {
+      "id": "webapi-026",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How does JSON serialization work in ASP.NET Core? System.Text.Json vs Newtonsoft.Json?",
+      "answer": "<p>ASP.NET Core 3.0+ ships with <strong>System.Text.Json</strong> as the default serialiser, replacing the old dependency on <strong>Newtonsoft.Json (Json.NET)</strong>. I've used both extensively and there are real differences to know.</p><h4>System.Text.Json (default in .NET 6/7/8)</h4><pre><code class=\"language-csharp\">// Manual serialization\nvar product = new Product { Id = 1, Name = \"Widget\", Price = 9.99m };\nstring json = JsonSerializer.Serialize(product);\n// { \"Id\":1, \"Name\":\"Widget\", \"Price\":9.99 }\n\n// Deserialization\nvar dto = JsonSerializer.Deserialize&lt;Product&gt;(json);\n\n// Options\nvar options = new JsonSerializerOptions\n{\n    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,  // camelCase properties\n    WriteIndented = true,                               // pretty print\n    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, // skip nulls\n    PropertyNameCaseInsensitive = true                 // case-insensitive reads\n};\n\n// Attributes\npublic class Order\n{\n    [JsonPropertyName(\"order_id\")]     // custom property name in JSON\n    public int Id { get; set; }\n\n    [JsonIgnore]                        // never serialize this\n    public string InternalNote { get; set; }\n\n    [JsonConverter(typeof(DateTimeOffsetConverter))]\n    public DateTimeOffset CreatedAt { get; set; }\n}</code></pre><h4>Configure globally in Program.cs:</h4><pre><code class=\"language-csharp\">builder.Services.AddControllers()\n    .AddJsonOptions(opts =&gt;\n    {\n        opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;\n        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());\n        opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;\n    });</code></pre><h4>When to switch to Newtonsoft.Json:</h4><pre><code class=\"language-csharp\">// Install: Microsoft.AspNetCore.Mvc.NewtonsoftJson\nbuilder.Services.AddControllers()\n    .AddNewtonsoftJson(opts =&gt;\n    {\n        opts.SerializerSettings.ContractResolver =\n            new CamelCasePropertyNamesContractResolver();\n        opts.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;\n        opts.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;\n    });</code></pre><h4>System.Text.Json vs Newtonsoft — real differences:</h4><ul><li><strong>Performance</strong>: System.Text.Json is faster and uses less memory — it was built for performance from the ground up.</li><li><strong>Features</strong>: Newtonsoft has more features — dynamic serialisation, LINQ to JSON (<code>JObject</code>/<code>JArray</code>), better handling of edge cases, polymorphic serialisation without extra config.</li><li><strong>Circular references</strong>: Newtonsoft handles these natively with <code>ReferenceLoopHandling.Ignore</code>. System.Text.Json needs <code>ReferenceHandler.Preserve</code> or you restructure the DTO.</li><li><strong>Migration friction</strong>: Existing projects using Newtonsoft-specific features need effort to migrate. I don't migrate unless there's a performance need.</li></ul><p><strong>My rule:</strong> New projects use System.Text.Json. Legacy projects stay on Newtonsoft. If I need JObject/dynamic JSON manipulation, Newtonsoft wins.</p>",
+      "followUps": [
+        {
+          "question": "How do you handle polymorphic serialization (serialize derived types) in System.Text.Json?",
+          "answer": "<pre><code class=\"language-csharp\">// .NET 7+ -- built-in polymorphic serialization\n[JsonPolymorphic]\n[JsonDerivedType(typeof(Circle), typeDiscriminator: \"circle\")]\n[JsonDerivedType(typeof(Rectangle), typeDiscriminator: \"rectangle\")]\npublic abstract class Shape { public string Color { get; set; } }\npublic class Circle : Shape { public double Radius { get; set; } }\npublic class Rectangle : Shape { public double Width { get; set; } public double Height { get; set; } }\n\n// Serializes with $type discriminator:\n// { \"$type\": \"circle\", \"Radius\": 5.0, \"Color\": \"Red\" }</code></pre><p>Before .NET 7, this required a custom JsonConverter or switching to Newtonsoft. In .NET 7+, it's first-class support.</p>"
+        }
+      ],
+      "tip": "<strong>Performance tip:</strong> If you're serializing a lot in hot paths, use System.Text.Json's source generation (<code>[JsonSerializable]</code> attribute) to generate serializer code at compile time, eliminating runtime reflection entirely.",
+      "tags": [
+        "json",
+        "serialization",
+        "system-text-json",
+        "newtonsoft",
+        "aspnetcore"
+      ],
+      "sortOrder": 26,
+      "isActive": true
+    },
+    {
+      "id": "webapi-027",
+      "category": "webapi",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "How do you improve ASP.NET Core Web API performance? What's your checklist?",
+      "answer": "<p>Performance tuning is something I approach methodically — measure first, optimise second. Here's the checklist I go through:</p><h4>1. Database — usually the biggest win</h4><ul><li>Add indexes on columns used in WHERE, JOIN, ORDER BY clauses. Check execution plans for table scans.</li><li>Use <code>AsNoTracking()</code> in EF Core for read-only queries — no change tracking overhead.</li><li>Fix N+1 problems with <code>Include()</code> / <code>ThenInclude()</code>.</li><li>Select only what you need: <code>.Select(x =&gt; new { x.Id, x.Name })</code> instead of loading the whole entity.</li><li>Use Dapper for complex reporting queries where EF Core's generated SQL is inefficient.</li></ul><h4>2. Caching</h4><ul><li>Cache expensive DB queries with IMemoryCache or Redis. Even a 30-second cache on a product list can eliminate thousands of queries.</li><li>Use Response Caching for GET endpoints that don't change per-user.</li><li>Cache computed results (reports, aggregations) in the background via IHostedService.</li></ul><h4>3. Async all the way</h4><ul><li>All I/O (DB, HTTP calls, file reads) should be async — never block with <code>.Result</code> or <code>.Wait()</code>.</li><li>Use <code>Task.WhenAll</code> to run independent async operations in parallel instead of sequentially.</li></ul><h4>4. HTTP and API design</h4><ul><li>Enable GZIP/Brotli response compression — can reduce response size by 70-80%.</li><li>Use <code>IAsyncEnumerable</code> + streaming for large result sets instead of loading everything into memory.</li><li>Pagination on all list endpoints — never return unbounded lists.</li></ul><pre><code class=\"language-csharp\">// Response compression\nbuilder.Services.AddResponseCompression(opts =&gt;\n{\n    opts.EnableForHttps = true;\n    opts.Providers.Add&lt;BrotliCompressionProvider&gt;();\n    opts.Providers.Add&lt;GzipCompressionProvider&gt;();\n});\napp.UseResponseCompression();\n\n// Streaming large datasets\n[HttpGet(\"export\")]\npublic async IAsyncEnumerable&lt;OrderDto&gt; ExportOrders(\n    [EnumeratorCancellation] CancellationToken ct)\n{\n    await foreach (var order in _db.Orders.AsAsyncEnumerable().WithCancellation(ct))\n        yield return new OrderDto(order); // streams row by row, low memory\n}</code></pre><h4>5. Reduce allocations in hot paths</h4><ul><li>Use <code>Span&lt;T&gt;</code> and <code>Memory&lt;T&gt;</code> to avoid array copies in parsing/processing code.</li><li>Use <code>StringBuilder</code> for string concatenation in loops.</li><li>Use object pools (<code>ObjectPool&lt;T&gt;</code>) for frequently created objects.</li><li>Run a profiler (dotMemory, PerfView, BenchmarkDotNet) before optimising — don't guess.</li></ul><h4>6. Connection pooling</h4><p>SQL Server and HttpClient connections are pooled by default. Don't create new SqlConnection or HttpClient per request — use DI-injected DbContext (scoped) and IHttpClientFactory.</p><h4>7. Output caching (ASP.NET Core 7+)</h4><pre><code class=\"language-csharp\">builder.Services.AddOutputCache();\napp.UseOutputCache();\n\n[HttpGet]\n[OutputCache(Duration = 60, VaryByQueryKeys = new[] { \"category\" })]\npublic async Task&lt;IActionResult&gt; GetProducts(string category) { ... }</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you measure performance issues in ASP.NET Core?",
+          "answer": "<p>I never guess at performance problems — I measure:</p><ul><li><strong>Application Insights / Datadog / Jaeger</strong> — distributed tracing in production. Shows which endpoint is slow and why (DB calls, external calls, CPU).</li><li><strong>MiniProfiler</strong> — dev-time profiling, shows DB query count and timing inline on every page/API response. Great for catching N+1 on the spot.</li><li><strong>BenchmarkDotNet</strong> — micro-benchmarks to compare two implementations (e.g., System.Text.Json vs Newtonsoft speed).</li><li><strong>dotnet-counters / dotnet-trace</strong> — CLI tools for live production metrics (GC, thread pool, request queue).</li><li><strong>EF Core logging</strong> — set log level to Debug to see all SQL generated. Catching a query that generates 200 SQL statements is usually the first performance fix.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Order of impact:</strong> Database (indexes, N+1) > Caching > Async > HTTP compression > Memory allocations. Fix the database first. Nine times out of ten, a slow API is a slow query.",
+      "tags": [
+        "performance",
+        "caching",
+        "async",
+        "compression",
+        "efcore",
+        "webapi"
+      ],
+      "sortOrder": 27,
+      "isActive": true
     }
   ]
 }

