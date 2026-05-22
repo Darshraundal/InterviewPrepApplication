@@ -132,8 +132,30 @@
                     @if (q.FollowUps.Any())
                     {
                         <div class="section-label">Follow-up Questions</div>
-                        <ul class="followups-list">
-                            @foreach (var fu in q.FollowUps) { <li>@fu</li> }
+                        <ul class="followups-list" style="list-style:none;padding:0;margin:0;">
+                            @foreach (var fu in q.FollowUps)
+                            {
+                                var fuId = $"fu-{q.Id}-{fu.GetHashCode():x}";
+                                var hasAnswer = q.FollowUpAnswers.ContainsKey(fu);
+                                <li style="margin-bottom:8px;">
+                                    @if (hasAnswer)
+                                    {
+                                        <button class="fu-toggle-btn"
+                                                onclick="toggleFollowUp('@fuId')"
+                                                style="background:none;border:none;cursor:pointer;text-align:left;width:100%;padding:0;display:flex;align-items:center;gap:6px;color:var(--ip-text-2);font-size:.85rem;">
+                                            <span class="fu-chevron" id="chev-@fuId" style="font-size:.7rem;transition:transform .2s;">▶</span>
+                                            <span>@fu</span>
+                                        </button>
+                                        <div id="@fuId" class="fu-answer-panel" style="display:none;margin-top:8px;padding:12px;background:var(--ip-surface-2,rgba(30,41,59,.6));border-left:3px solid var(--ip-accent,#6366f1);border-radius:0 6px 6px 0;font-size:.83rem;line-height:1.65;">
+                                            @Html.Raw(q.FollowUpAnswers[fu])
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:.85rem;color:var(--ip-text-2);">@fu</span>
+                                    }
+                                </li>
+                            }
                         </ul>
                     }
 
@@ -174,4 +196,17 @@ else
         <h3>No questions found</h3>
         <p>Try adjusting your filters or <a asp-action="Detail" asp-route-slug="@cat.Slug">clear all filters</a></p>
     </div>
+}
+
+@section Scripts {
+    <script>
+        function toggleFollowUp(id) {
+            const panel = document.getElementById(id);
+            const chev  = document.getElementById('chev-' + id);
+            if (!panel) return;
+            const isOpen = panel.style.display !== 'none';
+            panel.style.display = isOpen ? 'none' : 'block';
+            if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+        }
+    </script>
 }

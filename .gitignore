@@ -17,3 +17,6 @@ DataProtectionKeys/
 # OS
 Thumbs.db
 .DS_Store
+
+# Claude Code internal (worktrees, agent state)
+.claude/worktrees/
