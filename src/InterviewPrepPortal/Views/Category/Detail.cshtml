@@ -135,8 +135,8 @@
                         <ul class="followups-list" style="list-style:none;padding:0;margin:0;">
                             @foreach (var fu in q.FollowUps)
                             {
-                                var fuId = $"fu-{q.Id}-{fu.GetHashCode():x}";
-                                var hasAnswer = q.FollowUpAnswers.ContainsKey(fu);
+                                var fuId = $"fu-{q.Id}-{fu.Question.GetHashCode():x}";
+                                var hasAnswer = !string.IsNullOrWhiteSpace(fu.Answer);
                                 <li style="margin-bottom:8px;">
                                     @if (hasAnswer)
                                     {
@@ -144,15 +144,15 @@
                                                 onclick="toggleFollowUp('@fuId')"
                                                 style="background:none;border:none;cursor:pointer;text-align:left;width:100%;padding:0;display:flex;align-items:center;gap:6px;color:var(--ip-text-2);font-size:.85rem;">
                                             <span class="fu-chevron" id="chev-@fuId" style="font-size:.7rem;transition:transform .2s;">▶</span>
-                                            <span>@fu</span>
+                                            <span>@fu.Question</span>
                                         </button>
                                         <div id="@fuId" class="fu-answer-panel" style="display:none;margin-top:8px;padding:12px;background:var(--ip-surface-2,rgba(30,41,59,.6));border-left:3px solid var(--ip-accent,#6366f1);border-radius:0 6px 6px 0;font-size:.83rem;line-height:1.65;">
-                                            @Html.Raw(q.FollowUpAnswers[fu])
+                                            @Html.Raw(fu.Answer)
                                         </div>
                                     }
                                     else
                                     {
-                                        <span style="font-size:.85rem;color:var(--ip-text-2);">@fu</span>
+                                        <span style="font-size:.85rem;color:var(--ip-text-2);">@fu.Question</span>
                                     }
                                 </li>
                             }
