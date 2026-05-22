@@ -40,6 +40,13 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: ⚙️ Set App Service to 64-bit
+        run: |
+          az webapp config set \
+            --name ${{ env.AZURE_WEBAPP_NAME }} \
+            --resource-group InterviewPrepration \
+            --use-32bit-worker-process false
+
       - name: ☁️ Deploy to Azure App Service
         uses: azure/webapps-deploy@v2
         with:
