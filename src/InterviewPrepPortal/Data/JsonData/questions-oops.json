@@ -19,7 +19,13 @@
         }
       ],
       "tip": "<strong>Abstraction vs Encapsulation:</strong> Abstraction is about hiding complexity at the design level (\"what it does\"). Encapsulation is about hiding implementation at the code level (\"how it does it\"). Interfaces are abstraction; private fields are encapsulation.",
-      "tags": ["oops", "inheritance", "polymorphism", "abstraction", "encapsulation"],
+      "tags": [
+        "oops",
+        "inheritance",
+        "polymorphism",
+        "abstraction",
+        "encapsulation"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -41,7 +47,11 @@
         }
       ],
       "tip": "<strong>Prefer interfaces over abstract classes</strong> for .NET dependency injection — you can only mock/substitute interfaces cleanly. Abstract classes are fine for template method pattern where you're sharing implementation, not just a contract.",
-      "tags": ["oops", "interface", "abstract-class"],
+      "tags": [
+        "oops",
+        "interface",
+        "abstract-class"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -63,7 +73,12 @@
         }
       ],
       "tip": "<strong>Method hiding vs overriding:</strong> <code>override</code> replaces the base method (virtual dispatch). <code>new</code> hides the base method — calling through the base type still calls the base method. Always prefer <code>override</code>; use <code>new</code> only intentionally.",
-      "tags": ["oops", "polymorphism", "overloading", "overriding"],
+      "tags": [
+        "oops",
+        "polymorphism",
+        "overloading",
+        "overriding"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -85,7 +100,11 @@
         }
       ],
       "tip": "<strong>Expose collections as IReadOnlyList&lt;T&gt;</strong> — returning the internal <code>List&lt;T&gt;</code> directly lets callers add/remove items bypassing your validation. Return <code>AsReadOnly()</code> or the <code>IReadOnlyList&lt;T&gt;</code> interface.",
-      "tags": ["oops", "encapsulation", "access-modifiers"],
+      "tags": [
+        "oops",
+        "encapsulation",
+        "access-modifiers"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -107,7 +126,11 @@
         }
       ],
       "tip": "<strong>Composition over Inheritance rule of thumb:</strong> Ask \"is a\" vs \"has a\". <code>Dog IS AN Animal</code> → inheritance. <code>Car HAS AN Engine</code> → composition. If in doubt, compose — it's easier to change later.",
-      "tags": ["oops", "inheritance", "composition"],
+      "tags": [
+        "oops",
+        "inheritance",
+        "composition"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -129,7 +152,11 @@
         }
       ],
       "tip": "<strong>Covariance (out T)</strong> — can use a more derived type. <code>IEnumerable&lt;Dog&gt;</code> can be assigned to <code>IEnumerable&lt;Animal&gt;</code>. <strong>Contravariance (in T)</strong> — can use a less derived type. Used on method parameters. Most developers just need to know generic collections are covariant when the type parameter is <code>out</code>.",
-      "tags": ["oops", "generics", "csharp"],
+      "tags": [
+        "oops",
+        "generics",
+        "csharp"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -155,7 +182,12 @@
         }
       ],
       "tip": "<strong>Events vs delegates:</strong> A public delegate field lets anyone invoke it. An event wraps the delegate and restricts external code to += and -= only — the raising is encapsulated inside the class. Always use events for the observer pattern.",
-      "tags": ["oops", "delegates", "events", "csharp"],
+      "tags": [
+        "oops",
+        "delegates",
+        "events",
+        "csharp"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -181,7 +213,13 @@
         }
       ],
       "tip": "<strong>Structs are copied by value</strong> — passing a large struct to a method copies every field. Use <code>in</code> parameter modifier to pass readonly reference: <code>void Process(in LargeStruct s)</code>. Or just use class if it's large or mutable.",
-      "tags": ["oops", "value-types", "reference-types", "csharp", "memory"],
+      "tags": [
+        "oops",
+        "value-types",
+        "reference-types",
+        "csharp",
+        "memory"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -207,7 +245,13 @@
         }
       ],
       "tip": "<strong>Native AOT (.NET 7+)</strong> compiles the entire application to native machine code at build time — no JIT at runtime. Startup time drops from ~100ms to single-digit ms, memory footprint shrinks. Trade-off: no runtime code generation (no Reflection.Emit), larger binary.",
-      "tags": ["oops", "clr", "jit", "dotnet", "runtime"],
+      "tags": [
+        "oops",
+        "clr",
+        "jit",
+        "dotnet",
+        "runtime"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -233,7 +277,13 @@
         }
       ],
       "tip": "<strong>GC pressure rule of thumb:</strong> Don't fight the GC — it's well-optimized for short-lived objects. Optimize when profiling shows Gen2 collections happening frequently (full GC). Use <code>dotnet-counters</code> or Application Insights to monitor GC stats in production.",
-      "tags": ["oops", "gc", "garbage-collection", "memory", "dotnet"],
+      "tags": [
+        "oops",
+        "gc",
+        "garbage-collection",
+        "memory",
+        "dotnet"
+      ],
       "sortOrder": 10,
       "isActive": true
     },
@@ -255,7 +305,13 @@
         }
       ],
       "tip": "<strong>var is NOT the same as dynamic.</strong> <code>var</code> is just syntactic sugar — the actual type is known at compile time. <code>dynamic</code> bypasses compile-time type checking entirely. Always prefer <code>var</code> over <code>dynamic</code> unless you specifically need late binding.",
-      "tags": ["oops", "csharp", "var", "dynamic", "type-system"],
+      "tags": [
+        "oops",
+        "csharp",
+        "var",
+        "dynamic",
+        "type-system"
+      ],
       "sortOrder": 11,
       "isActive": true
     },
@@ -277,7 +333,12 @@
         }
       ],
       "tip": "<strong>Use static readonly instead of const for public API values</strong> that might change between library versions. const is baked into the calling assembly — a version bump without recompile will use the old value. static readonly is evaluated fresh at runtime.",
-      "tags": ["oops", "const", "readonly", "csharp"],
+      "tags": [
+        "oops",
+        "const",
+        "readonly",
+        "csharp"
+      ],
       "sortOrder": 12,
       "isActive": true
     },
@@ -303,7 +364,13 @@
         }
       ],
       "tip": "<strong>In ASP.NET Core DI, registered services are automatically disposed</strong> at the end of the request (Scoped) or app shutdown (Singleton). You still need <code>using</code> for objects created manually (new SqlConnection, new StreamReader, etc.).",
-      "tags": ["oops", "idisposable", "memory", "using", "csharp"],
+      "tags": [
+        "oops",
+        "idisposable",
+        "memory",
+        "using",
+        "csharp"
+      ],
       "sortOrder": 13,
       "isActive": true
     },
@@ -325,7 +392,13 @@
         }
       ],
       "tip": "<strong>string.Join is often faster than StringBuilder for collections:</strong> <code>string.Join(\", \", items)</code> is cleaner and optimized. Use StringBuilder when you're building a string step-by-step with conditional logic.",
-      "tags": ["oops", "string", "stringbuilder", "csharp", "performance"],
+      "tags": [
+        "oops",
+        "string",
+        "stringbuilder",
+        "csharp",
+        "performance"
+      ],
       "sortOrder": 14,
       "isActive": true
     },
@@ -347,7 +420,12 @@
         }
       ],
       "tip": "<strong>String is sealed for safety:</strong> If string were extensible, an attacker could create a malicious subclass with a modified <code>GetHashCode()</code> or <code>Equals()</code> — breaking Dictionary lookups and security checks. Many framework types are sealed for the same reason.",
-      "tags": ["oops", "sealed", "inheritance", "csharp"],
+      "tags": [
+        "oops",
+        "sealed",
+        "inheritance",
+        "csharp"
+      ],
       "sortOrder": 15,
       "isActive": true
     },
@@ -373,7 +451,12 @@
         }
       ],
       "tip": "<strong>Always use <code>throw</code> not <code>throw ex</code></strong> when rethrowing. The stack trace is your most valuable debugging tool in production. Losing it with <code>throw ex</code> forces you to reproduce the bug rather than reading the trace.",
-      "tags": ["oops", "exceptions", "try-catch", "csharp"],
+      "tags": [
+        "oops",
+        "exceptions",
+        "try-catch",
+        "csharp"
+      ],
       "sortOrder": 16,
       "isActive": true
     },
@@ -395,7 +478,13 @@
         }
       ],
       "tip": "<strong>Closure capture gotcha with loops:</strong> Capturing a loop variable in a lambda captures the variable, not its current value. By the time the lambda executes, the loop may have finished and the variable holds the last value. Fix: <code>var captured = loopVar; var lambda = () =&gt; Use(captured);</code>",
-      "tags": ["oops", "lambda", "delegates", "linq", "csharp"],
+      "tags": [
+        "oops",
+        "lambda",
+        "delegates",
+        "linq",
+        "csharp"
+      ],
       "sortOrder": 17,
       "isActive": true
     },
@@ -417,7 +506,12 @@
         }
       ],
       "tip": "<strong>Interview tip:</strong> Default for class members = <code>private</code>. Default for top-level types = <code>internal</code>. The most restrictive access modifier that still works is always preferred — it minimises the public API surface and makes refactoring easier. If you can make it <code>private</code>, do it.",
-      "tags": ["oops", "access-modifiers", "encapsulation", "csharp"],
+      "tags": [
+        "oops",
+        "access-modifiers",
+        "encapsulation",
+        "csharp"
+      ],
       "sortOrder": 18,
       "isActive": true
     },
@@ -439,7 +533,14 @@
         }
       ],
       "tip": "<strong>Rule:</strong> Money and financial calculations → always <code>decimal</code>. Scientific/physics calculations → <code>double</code>. GPU/graphics → <code>float</code>. Never mix <code>float</code>/<code>double</code> with <code>decimal</code> without explicit cast. In SQL Server, <code>MONEY</code> and <code>DECIMAL(p,s)</code> columns should map to C# <code>decimal</code>.",
-      "tags": ["oops", "csharp", "decimal", "double", "float", "numeric"],
+      "tags": [
+        "oops",
+        "csharp",
+        "decimal",
+        "double",
+        "float",
+        "numeric"
+      ],
       "sortOrder": 19,
       "isActive": true
     },
@@ -461,7 +562,15 @@
         }
       ],
       "tip": "<strong>Interview flow:</strong> C# → IL (build time, Roslyn) → Native code (runtime, RyuJIT). JIT = first-call compilation, cached thereafter. The warm-up cost is the only real downside. Native AOT eliminates JIT entirely for scenarios needing instant startup. CLR provides GC, type safety, threading, and interop on top of JIT.",
-      "tags": ["oops", "jit", "clr", "compilation", "il", "aot", "performance"],
+      "tags": [
+        "oops",
+        "jit",
+        "clr",
+        "compilation",
+        "il",
+        "aot",
+        "performance"
+      ],
       "sortOrder": 20,
       "isActive": true
     },
@@ -483,7 +592,12 @@
         }
       ],
       "tip": "<strong>When to use static:</strong> Utility methods (no state, no side effects), extension methods, constants. <strong>When NOT to use static:</strong> Services that need DI, anything you'd want to mock in tests, anything with mutable shared state (thread-safety nightmares). Static class = no instance, no interface, no inheritance, no mocking.",
-      "tags": ["oops", "static", "extension-methods", "csharp"],
+      "tags": [
+        "oops",
+        "static",
+        "extension-methods",
+        "csharp"
+      ],
       "sortOrder": 21,
       "isActive": true
     },
@@ -505,7 +619,12 @@
         }
       ],
       "tip": "<strong>Most common real-world uses:</strong> Private helper/state types that only make sense in context of the outer class. Builder pattern where <code>MyClass.Builder</code> makes the association obvious. Iterator/enumerator implementations (<code>IEnumerator&lt;T&gt;</code> inside a custom collection). Rarely needed in typical business code — most devs encounter nested classes more when reading framework source than when writing application code.",
-      "tags": ["oops", "nested-class", "csharp", "encapsulation"],
+      "tags": [
+        "oops",
+        "nested-class",
+        "csharp",
+        "encapsulation"
+      ],
       "sortOrder": 22,
       "isActive": true
     },
@@ -527,8 +646,305 @@
         }
       ],
       "tip": "<strong>Rule:</strong> Always use <code>Add()</code> when building a list. Only use <code>Insert()</code> when position within the list truly matters — remember it's O(n). If you find yourself calling <code>Insert(0, ...)</code> frequently (prepend), consider a <code>Queue&lt;T&gt;</code> or reversing your build order. Pre-allocate with <code>new List&lt;T&gt;(capacity)</code> when you know the approximate size to avoid repeated resizes.",
-      "tags": ["oops", "list", "collections", "csharp", "time-complexity"],
+      "tags": [
+        "oops",
+        "list",
+        "collections",
+        "csharp",
+        "time-complexity"
+      ],
       "sortOrder": 23,
+      "isActive": true
+    },
+    {
+      "id": "oops-024",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the difference between managed code and unmanaged code in .NET?",
+      "answer": "<p><strong>Managed code</strong> runs under the control of the Common Language Runtime (CLR). The CLR handles memory management (garbage collection), type safety, exception handling, and security. Any language that compiles to MSIL/CIL — C#, VB.NET, F# — produces managed code.</p><p><strong>Unmanaged code</strong> runs directly on the OS without CLR supervision. The developer is responsible for memory allocation and deallocation (malloc/free in C, new/delete in C++). Win32 APIs, COM components, and native C/C++ DLLs are unmanaged.</p><h4>How they interact in .NET:</h4><ul><li><strong>P/Invoke (Platform Invocation Services)</strong> — lets managed code call unmanaged functions in native DLLs. Commonly used to call Windows API functions not wrapped in .NET.</li><li><strong><code>unsafe</code> keyword</strong> — allows pointer arithmetic inside C# code. That block runs as managed but with reduced CLR protections.</li><li><strong>COM Interop</strong> — allows managed code to call COM objects and vice versa via Runtime Callable Wrappers (RCW) and COM Callable Wrappers (CCW).</li></ul><pre><code class=\"language-csharp\">// P/Invoke example — calling an unmanaged Win32 API\n[DllImport(\"user32.dll\", CharSet = CharSet.Unicode)]\nstatic extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);\n\n// unsafe block — pointer arithmetic in managed code\nunsafe\n{\n    int x = 42;\n    int* ptr = &x;\n    Console.WriteLine(*ptr); // 42\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is MSIL / CIL and how does the CLR execute it?",
+          "answer": "<p>When you compile C# code, the compiler (csc/Roslyn) does NOT produce native machine code. It produces <strong>Microsoft Intermediate Language (MSIL)</strong>, also called <strong>Common Intermediate Language (CIL)</strong> — a CPU-independent bytecode format stored in a .dll or .exe assembly. At runtime, the CLR's <strong>JIT (Just-In-Time) compiler</strong> translates MSIL to native machine code on the fly the first time each method is called, then caches the result. This is why .NET apps start slightly slower but reach near-native speed once warmed up. .NET 6+ also ships <strong>ReadyToRun (R2R)</strong> — pre-JIT compilation done at publish time to reduce startup latency.</p>"
+        },
+        {
+          "question": "What are the benefits of managed code over unmanaged code?",
+          "answer": "<p><strong>Benefits of managed code:</strong></p><ul><li><strong>Automatic memory management</strong> — GC handles heap allocation and collection; no memory leaks from forgetting to free memory.</li><li><strong>Type safety</strong> — CLR verifies types at runtime, preventing type confusion attacks and pointer errors.</li><li><strong>Exception handling</strong> — structured try/catch/finally across the entire call stack.</li><li><strong>Security</strong> — CLR enforces code access security.</li><li><strong>Cross-language interoperability</strong> — C# code can call VB.NET code seamlessly because both compile to the same CIL.</li></ul><p><strong>When you'd choose unmanaged:</strong> game engines (raw performance), device drivers, or integrating with legacy COM/Win32 systems that have no managed wrapper.</p>"
+        }
+      ],
+      "tip": "<strong>Interviewer shortcut:</strong> 'Managed = CLR controls memory; Unmanaged = you control memory'. The CLR's garbage collector is the defining difference.",
+      "tags": [
+        "clr",
+        "managed",
+        "unmanaged",
+        "pinvoke",
+        "gc"
+      ],
+      "sortOrder": 24,
+      "isActive": true
+    },
+    {
+      "id": "oops-025",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is boxing and unboxing in C#? What are the performance implications?",
+      "answer": "<p>C# has two kinds of types: <strong>value types</strong> (int, double, bool, struct, enum) that live on the stack, and <strong>reference types</strong> (class, string, object) that live on the heap.</p><p><strong>Boxing</strong> is the implicit conversion of a value type to <code>object</code> (or to an interface type it implements). The CLR wraps the value in a new heap object.</p><p><strong>Unboxing</strong> is the explicit cast from <code>object</code> back to the value type. If the cast doesn't match the original type, an <code>InvalidCastException</code> is thrown at runtime.</p><pre><code class=\"language-csharp\">int number = 42;          // value type on stack\nobject boxed = number;    // BOXING — heap allocation, value copied into object wrapper\nint unboxed = (int)boxed; // UNBOXING — cast back, value copied out\n\n// InvalidCastException — unboxed type must match original\ndouble bad = (double)boxed; // throws! original was int, not double</code></pre><h4>Performance implications:</h4><ul><li>Every boxing operation allocates a new object on the heap → GC pressure.</li><li>Unboxing requires a type check + copy.</li><li>In hot loops, repeated boxing can be a serious bottleneck.</li></ul><pre><code class=\"language-csharp\">// BAD — ArrayList boxes every int\nvar list = new ArrayList();\nfor (int i = 0; i < 1_000_000; i++)\n    list.Add(i); // 1M boxing operations!\n\n// GOOD — List&lt;T&gt; is generic, no boxing\nvar list = new List&lt;int&gt;();\nfor (int i = 0; i < 1_000_000; i++)\n    list.Add(i); // zero boxing</code></pre>",
+      "followUps": [
+        {
+          "question": "Where does implicit boxing happen without you realising it?",
+          "answer": "<p>Boxing happens silently in these common scenarios:</p><ul><li>Passing a value type to a method that accepts <code>object</code>: <code>Console.WriteLine(42)</code> — 42 gets boxed.</li><li>Storing value types in non-generic collections (<code>ArrayList</code>, <code>Hashtable</code>).</li><li>Calling an interface method on a value type through an interface variable: <code>IComparable c = 42;</code> boxes the int.</li><li>String interpolation / <code>string.Format</code> before .NET 6's improved overloads: <code>$\"Value: {myInt}\"</code> historically boxed the int.</li><li>Using <code>object</code> as a generic constraint instead of <code>T</code>.</li></ul><p>The fix in all cases is to use generics (<code>List&lt;T&gt;</code>, generic interfaces) or ensure overloads exist for the concrete value type.</p>"
+        }
+      ],
+      "tip": "<strong>Key rule:</strong> Generics (List&lt;T&gt;, Dictionary&lt;K,V&gt;) were invented largely to eliminate boxing. If you see <code>ArrayList</code> or non-generic collections in modern C#, that's a code smell.",
+      "tags": [
+        "boxing",
+        "unboxing",
+        "value-type",
+        "reference-type",
+        "performance"
+      ],
+      "sortOrder": 25,
+      "isActive": true
+    },
+    {
+      "id": "oops-026",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is the difference between a namespace and an assembly in .NET?",
+      "answer": "<p>These are two completely different concepts that are often confused because they look similar in code.</p><h4>Namespace</h4><p>A <strong>namespace</strong> is a <em>logical</em> grouping of types to avoid name collisions and organise code. It exists only at the source-code and metadata level — it has no physical boundary at runtime.</p><ul><li>Declared with the <code>namespace</code> keyword.</li><li>The same namespace can span multiple files, multiple projects, and even multiple assemblies.</li><li>Referenced with <code>using System.Collections.Generic;</code>.</li></ul><h4>Assembly</h4><p>An <strong>assembly</strong> is a <em>physical</em> deployment and versioning unit — a <code>.dll</code> or <code>.exe</code> file. It is the actual output of building a project.</p><ul><li>Contains compiled MSIL code, metadata, and embedded resources.</li><li>Has a unique identity: name + version + culture + public key token (for strong-named assemblies).</li><li>The CLR loads, versions, and security-checks at the assembly level.</li><li>A single assembly can contain multiple namespaces.</li><li>A single namespace can be split across multiple assemblies (e.g., <code>System.Collections</code> is in <code>mscorlib.dll</code> and <code>System.dll</code>).</li></ul><pre><code class=\"language-csharp\">// Namespace — logical grouping\nnamespace MyApp.Services\n{\n    public class EmailService { }\n    public class SmsService { }\n}\n\n// Assembly — the .dll file\n// MyApp.Services.dll (built from the project)\n// Can contain namespaces: MyApp.Services, MyApp.Models, etc.</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the Global Assembly Cache (GAC)?",
+          "answer": "<p>The <strong>GAC</strong> is a machine-wide cache for shared .NET Framework assemblies. When multiple applications need the same assembly (e.g., <code>System.dll</code>), a single copy in the GAC is shared rather than each app bundling its own copy. Assemblies in the GAC must be <em>strong-named</em> (signed with a public/private key pair) to guarantee authenticity. In modern <strong>.NET Core / .NET 5+</strong>, the GAC is largely gone — each app bundles its own copy of runtime libraries (either self-contained publish, or via a shared runtime installation in a versioned folder). This eliminates the classic .NET Framework \"DLL Hell\" problem where a shared GAC assembly update could break unrelated apps."
+        }
+      ],
+      "tip": "<strong>One-liner:</strong> Namespace = folder (logical), Assembly = DLL file (physical). You can have the same namespace in different DLLs, and a DLL can contain many namespaces.",
+      "tags": [
+        "namespace",
+        "assembly",
+        "clr",
+        "dll"
+      ],
+      "sortOrder": 26,
+      "isActive": true
+    },
+    {
+      "id": "oops-027",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are the ref and out keywords in C#? When do you use each?",
+      "answer": "<p>Both <code>ref</code> and <code>out</code> allow a method to modify a variable in the caller's scope by passing a reference to it, rather than a copy.</p><h4>ref</h4><ul><li>The variable <strong>must be initialised before</strong> passing.</li><li>The method may or may not modify it — it's optional.</li><li>Used when the method needs to read the current value <em>and</em> potentially update it.</li></ul><h4>out</h4><ul><li>The variable does <strong>not need to be initialised</strong> before passing (the compiler enforces that the method assigns it before returning).</li><li>The method <strong>must assign</strong> the out parameter before the method returns.</li><li>Used when the method produces an output value, like <code>int.TryParse</code>.</li></ul><pre><code class=\"language-csharp\">// ref — must be assigned before call, method may read+write\nvoid Increment(ref int value)\n{\n    value += 1; // reads current value and updates it\n}\nint x = 10;\nIncrement(ref x); // x is now 11\n\n// out — no prior assignment needed, must be assigned inside method\nbool TryGetUser(int id, out User user)\n{\n    user = _db.Find(id); // must assign before return\n    return user != null;\n}\n// Caller — out variable declared inline (C# 7+)\nif (TryGetUser(1, out User found))\n    Console.WriteLine(found.Name);\n\n// Classic real-world example\nif (int.TryParse(\"123\", out int result))\n    Console.WriteLine(result); // 123</code></pre><h4>Key difference table:</h4><ul><li><strong>ref:</strong> caller must initialise → method may read/write</li><li><strong>out:</strong> caller need not initialise → method must write</li></ul>",
+      "followUps": [
+        {
+          "question": "Can you overload a method by changing only ref/out?",
+          "answer": "<p>No — <code>ref</code> and <code>out</code> are not part of the method signature for the purposes of overload resolution between each other. You <em>can</em> have one overload with <code>ref</code> and one without, but you cannot have one with <code>ref</code> and one with <code>out</code> for the same parameter type — the compiler considers them the same signature and reports an error. Also, you <strong>cannot</strong> use <code>ref</code> and <code>out</code> with <code>async</code> methods or iterator methods (<code>yield return</code>).</p>"
+        },
+        {
+          "question": "What is the 'in' keyword in C#? How is it different from ref?",
+          "answer": "<p>The <code>in</code> keyword (C# 7.2+) passes a variable by reference but marks it as <strong>read-only</strong> — the method cannot modify it. It's mainly a performance optimisation for large structs: instead of copying a 200-byte struct on every call, you pass a reference but guarantee immutability. <code>ref</code>: read + write. <code>in</code>: read only. <code>out</code>: write only (from caller perspective).</p><pre><code class=\"language-csharp\">void Display(in LargeStruct s)\n{\n    Console.WriteLine(s.Name); // fine\n    s.Name = \"new\"; // compile error — cannot modify 'in' parameter\n}</code></pre>"
+        }
+      ],
+      "tip": "<strong>Memory aid:</strong> <code>out</code> = output (the method gives you something). <code>ref</code> = reference (two-way, you give something, method may change it). The classic use of <code>out</code> is the <code>TryXxx</code> pattern.",
+      "tags": [
+        "ref",
+        "out",
+        "parameters",
+        "csharp"
+      ],
+      "sortOrder": 27,
+      "isActive": true
+    },
+    {
+      "id": "oops-028",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What are the different types of constructors in C#?",
+      "answer": "<p>A constructor is a special method that initialises an object. C# supports several types:</p><ol><li><strong>Default Constructor</strong> — no parameters. If you don't define any constructor, C# generates one automatically. Once you define a parameterized constructor, the default is no longer auto-generated.</li><li><strong>Parameterized Constructor</strong> — accepts arguments to set initial state.</li><li><strong>Copy Constructor</strong> — takes an instance of the same type and copies its values. C# has no built-in copy constructor (unlike C++), but you write one manually.</li><li><strong>Static Constructor</strong> — no access modifier, no parameters, runs once before any instance is created or any static member is accessed. Used to initialise static fields.</li><li><strong>Private Constructor</strong> — prevents direct instantiation. Used in Singleton pattern and factory methods.</li></ol><pre><code class=\"language-csharp\">public class Person\n{\n    public string Name { get; set; }\n    public int Age  { get; set; }\n\n    // 1. Default constructor\n    public Person() { Name = \"Unknown\"; }\n\n    // 2. Parameterized constructor\n    public Person(string name, int age) { Name = name; Age = age; }\n\n    // 3. Copy constructor (manual)\n    public Person(Person other) { Name = other.Name; Age = other.Age; }\n\n    // 4. Static constructor\n    static Person() { Console.WriteLine(\"Person type loaded\"); }\n\n    // 5. Private constructor (used in Singleton)\n    private Person(bool singleton) { }\n    public static Person Instance { get; } = new Person(true);\n}\n\n// Constructor chaining with : this()\npublic Person(string name) : this(name, 0) { }</code></pre>",
+      "followUps": [
+        {
+          "question": "What is constructor chaining and why is it useful?",
+          "answer": "<p>Constructor chaining calls one constructor from another in the same class using <code>: this()</code> syntax, or calls the parent class constructor using <code>: base()</code>. It avoids duplicate initialisation logic.</p><pre><code class=\"language-csharp\">public class Order\n{\n    public int Id { get; }\n    public string Status { get; }\n    public DateTime CreatedAt { get; }\n\n    // Primary constructor with all logic\n    public Order(int id, string status, DateTime createdAt)\n    {\n        Id = id; Status = status; CreatedAt = createdAt;\n    }\n\n    // Convenience overloads chain to the primary\n    public Order(int id) : this(id, \"Pending\", DateTime.UtcNow) { }\n    public Order(int id, string status) : this(id, status, DateTime.UtcNow) { }\n}</code></pre><p>Using <code>: base(args)</code> calls the parent class constructor before the child's body runs, ensuring the parent is properly initialised first.</p>"
+        }
+      ],
+      "tip": "<strong>Static constructor gotcha:</strong> You can't control when a static constructor runs (CLR decides), you can't call it explicitly, and if it throws, the type becomes unusable for the lifetime of the AppDomain.",
+      "tags": [
+        "constructor",
+        "static-constructor",
+        "singleton",
+        "csharp"
+      ],
+      "sortOrder": 28,
+      "isActive": true
+    },
+    {
+      "id": "oops-029",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What are the different uses of the 'using' keyword in C#?",
+      "answer": "<p>The <code>using</code> keyword has four distinct uses in C#:</p><h4>1. using directive — namespace import</h4><pre><code class=\"language-csharp\">using System.Collections.Generic; // import namespace\nusing static System.Math;         // import static members (C# 6)\nusing Alias = System.Text.StringBuilder; // type alias</code></pre><h4>2. using statement — deterministic disposal (C# 1-7)</h4><p>Creates a scope; calls <code>Dispose()</code> on the object when the block exits — even if an exception is thrown. Requires the type to implement <code>IDisposable</code>.</p><pre><code class=\"language-csharp\">using (var conn = new SqlConnection(connStr))\nusing (var cmd  = new SqlCommand(sql, conn))\n{\n    conn.Open();\n    cmd.ExecuteNonQuery();\n} // Dispose() called on both, in reverse order</code></pre><h4>3. using declaration — scope-based disposal (C# 8+)</h4><p>No braces needed; the object is disposed at the end of the enclosing scope.</p><pre><code class=\"language-csharp\">void ProcessFile(string path)\n{\n    using var reader = new StreamReader(path);\n    string content = reader.ReadToEnd();\n    // reader.Dispose() called at end of method\n}</code></pre><h4>4. global using — project-wide import (C# 10+)</h4><pre><code class=\"language-csharp\">// In GlobalUsings.cs — applies to every file in the project\nglobal using System.Text.Json;\nglobal using Microsoft.Extensions.Logging;</code></pre>",
+      "followUps": [
+        {
+          "question": "What happens if Dispose() throws an exception inside a using block?",
+          "answer": "<p>If the body of the <code>using</code> block throws an exception <em>and</em> <code>Dispose()</code> also throws, the original exception is lost — only the <code>Dispose</code> exception propagates. This is a known C# design trade-off. Best practice: write <code>Dispose()</code> so it never throws (catch any internal exceptions and log them instead). This is one reason the <code>IDisposable</code> pattern typically has a <code>try/catch</code> inside <code>Dispose(bool disposing)</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Rule of thumb:</strong> Any class that holds unmanaged resources (file handles, DB connections, network sockets) should implement <code>IDisposable</code>, and callers should always wrap it in <code>using</code>.",
+      "tags": [
+        "using",
+        "idisposable",
+        "dispose",
+        "csharp"
+      ],
+      "sortOrder": 29,
+      "isActive": true
+    },
+    {
+      "id": "oops-030",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is early binding and late binding in C#? Give real examples.",
+      "answer": "<p><strong>Early binding (static binding)</strong> — the compiler resolves which method to call at <em>compile time</em>. The exact method is baked into the IL. This is the default for all regular method calls.</p><p><strong>Late binding (dynamic binding)</strong> — the method to call is resolved at <em>runtime</em>, not compile time. Used with virtual methods, interfaces, and the <code>dynamic</code> keyword.</p><h4>Early binding example — method call resolved at compile time:</h4><pre><code class=\"language-csharp\">var sb = new StringBuilder();\nsb.Append(\"hello\"); // Compiler knows exactly which Append overload to call\n// Fast — direct method call in IL</code></pre><h4>Late binding via virtual dispatch (polymorphism):</h4><pre><code class=\"language-csharp\">Animal animal = new Dog(); // reference is Animal, object is Dog\nanimal.Speak();            // LATE BINDING — resolved at runtime via vtable\n// Which Speak() runs? Dog.Speak() — not Animal.Speak()\n// The runtime checks the actual object type\n\npublic class Animal { public virtual void Speak() => Console.WriteLine(\"...\"); }\npublic class Dog : Animal  { public override void Speak() => Console.WriteLine(\"Woof!\"); }</code></pre><h4>Late binding via 'dynamic' keyword:</h4><pre><code class=\"language-csharp\">dynamic obj = GetSomething(); // could be any type\nobj.DoWork();                 // resolved at runtime using DLR\n// No compile-time checking — if DoWork() doesn't exist, RuntimeBinderException at runtime</code></pre><h4>Late binding via Reflection:</h4><pre><code class=\"language-csharp\">Type type = Type.GetType(\"MyApp.Services.EmailService\");\nvar instance = Activator.CreateInstance(type);\ntype.GetMethod(\"SendEmail\").Invoke(instance, new object[] { \"hi\" });</code></pre><p><strong>Performance:</strong> Early binding = fast. Late binding (especially reflection/dynamic) = slower due to runtime type resolution overhead.</p>",
+      "followUps": [
+        {
+          "question": "How does virtual method dispatch (vtable) work?",
+          "answer": "<p>Every class with virtual methods has a <strong>vtable</strong> (virtual dispatch table) — an array of function pointers, one per virtual method. When an object is created, its vtable pointer is set to the vtable of its <em>actual</em> type. When you call <code>animal.Speak()</code> on a <code>Dog</code> instance through an <code>Animal</code> reference, the CLR looks up <code>Speak</code> in Dog's vtable and calls it — regardless of what the reference variable's declared type is. This is how polymorphism works at the machine level. The lookup adds one level of indirection compared to a direct (early-bound) call, but in practice the overhead is negligible.</p>"
+        }
+      ],
+      "tip": "<strong>Interview link:</strong> Late binding via virtual dispatch = polymorphism. Late binding via <code>dynamic</code>/reflection = runtime flexibility at the cost of type safety and performance.",
+      "tags": [
+        "early-binding",
+        "late-binding",
+        "polymorphism",
+        "dynamic",
+        "reflection",
+        "virtual"
+      ],
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "id": "oops-031",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "Can an abstract class have a parameterized constructor? How do you call it from a derived class?",
+      "answer": "<p><strong>Yes</strong> — abstract classes can have constructors, including parameterized ones. Constructors in abstract classes are used to initialise fields/properties that belong to the abstract class itself. Since you can never directly instantiate an abstract class (<code>new Animal()</code> is a compile error), its constructor is always called indirectly through a derived class.</p><h4>How the derived class calls it — using <code>: base()</code></h4><pre><code class=\"language-csharp\">public abstract class Shape\n{\n    public string Color { get; }\n    public int BorderWidth { get; }\n\n    // Parameterized constructor on the abstract class\n    protected Shape(string color, int borderWidth)\n    {\n        Color = color;\n        BorderWidth = borderWidth;\n    }\n\n    public abstract double Area(); // must be overridden\n}\n\npublic class Circle : Shape\n{\n    public double Radius { get; }\n\n    // Derived class MUST call a base constructor via : base(...)\n    public Circle(double radius, string color, int borderWidth)\n        : base(color, borderWidth) // calls Shape's constructor\n    {\n        Radius = radius;\n    }\n\n    public override double Area() => Math.PI * Radius * Radius;\n}\n\n// Usage\nvar c = new Circle(5.0, \"Red\", 2);\nConsole.WriteLine(c.Color);  // \"Red\" — set by Shape's constructor via base()\nConsole.WriteLine(c.Area()); // 78.54</code></pre><h4>Key rules:</h4><ul><li>If the abstract class has <em>only</em> a parameterized constructor (no default), all derived classes <strong>must</strong> call <code>: base(...)</code> explicitly.</li><li>The <code>: base()</code> call always runs <em>before</em> the derived class constructor body.</li><li>Abstract class constructors are typically <code>protected</code> (no point making them <code>public</code> since the class can't be instantiated directly).</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the order of constructor execution in an inheritance chain?",
+          "answer": "<p>Constructors run from the <strong>top of the hierarchy down</strong> — the base class constructor always completes before the derived class constructor body runs. For a three-level chain <code>A → B → C</code>:</p><ol><li><code>C</code>'s constructor is called</li><li>Before <code>C</code>'s body runs, <code>: base()</code> invokes <code>B</code>'s constructor</li><li>Before <code>B</code>'s body runs, <code>: base()</code> invokes <code>A</code>'s constructor</li><li><code>A</code>'s body executes first</li><li>Then <code>B</code>'s body</li><li>Finally <code>C</code>'s body</li></ol><p>This guarantees that base class invariants are established before the derived class can use them.</p>"
+        }
+      ],
+      "tip": "<strong>Common mistake:</strong> Forgetting that if you add a parameterized constructor to an abstract base class without keeping a default constructor, all existing derived classes will fail to compile until they add <code>: base(...)</code>.",
+      "tags": [
+        "abstract-class",
+        "constructor",
+        "inheritance",
+        "base"
+      ],
+      "sortOrder": 31,
+      "isActive": true
+    },
+    {
+      "id": "oops-032",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "Can a class implement two interfaces that have the same method name? How do you handle conflicts?",
+      "answer": "<p><strong>Yes</strong> — a class can implement two interfaces with the same method signature. There are two ways to handle it:</p><h4>Option 1: Single implicit implementation (satisfies both)</h4><p>If both interfaces require the exact same contract, one method body satisfies both.</p><pre><code class=\"language-csharp\">interface IReader { string Read(); }\ninterface IWriter { string Read(); } // same signature\n\npublic class DataProcessor : IReader, IWriter\n{\n    public string Read() => \"data\"; // one method satisfies both interfaces\n}\n\nDataProcessor dp = new DataProcessor();\ndp.Read();                   // calls the single Read()\n((IReader)dp).Read();        // same method\n((IWriter)dp).Read();        // same method</code></pre><h4>Option 2: Explicit interface implementation (different behaviour per interface)</h4><p>Prefix the method name with the interface name. Explicitly implemented methods are only accessible through the interface reference — they are hidden on the class type.</p><pre><code class=\"language-csharp\">interface ILogger  { void Log(string msg); }\ninterface IAuditor { void Log(string msg); }\n\npublic class AuditLogger : ILogger, IAuditor\n{\n    void ILogger.Log(string msg)  => Console.WriteLine($\"[LOG] {msg}\");\n    void IAuditor.Log(string msg) => Console.WriteLine($\"[AUDIT] {msg}\");\n}\n\nAuditLogger al = new AuditLogger();\n// al.Log(\"test\");        // compile error — not accessible on concrete type\n((ILogger)al).Log(\"test\");  // [LOG] test\n((IAuditor)al).Log(\"test\"); // [AUDIT] test</code></pre><h4>Explicit interface implementation — other use cases:</h4><ul><li>Hiding interface members that don't make sense on the public API of the class.</li><li>Implementing <code>IEnumerable.GetEnumerator()</code> (non-generic) alongside <code>IEnumerable&lt;T&gt;.GetEnumerator()</code>.</li></ul>",
+      "followUps": [
+        {
+          "question": "Can an interface have a default implementation (default interface methods)?",
+          "answer": "<p>Yes, since <strong>C# 8</strong>, interfaces can have <strong>default method implementations</strong>. This allows adding new methods to existing interfaces without breaking all implementing classes.</p><pre><code class=\"language-csharp\">interface IShape\n{\n    double Area();\n    // Default implementation — implementing classes can override or use this\n    string Describe() => $\"This shape has area {Area():F2}\";\n}\n\nclass Circle : IShape\n{\n    public double Radius { get; set; }\n    public double Area() => Math.PI * Radius * Radius;\n    // No need to implement Describe() — uses the default\n}\n\nIShape s = new Circle { Radius = 3 };\nConsole.WriteLine(s.Describe()); // works via default implementation</code></pre><p>Default interface methods are only accessible through the interface reference, not the concrete type.</p>"
+        }
+      ],
+      "tip": "<strong>Explicit implementation rule:</strong> The method is only accessible through the interface reference. This is intentional — it keeps the class's public API clean while still fulfilling the interface contract.",
+      "tags": [
+        "interface",
+        "explicit-implementation",
+        "polymorphism",
+        "csharp"
+      ],
+      "sortOrder": 32,
+      "isActive": true
+    },
+    {
+      "id": "oops-033",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is the difference between Array and ArrayList in C#? When do you use List<T>?",
+      "answer": "<p>These three types all store sequences of items, but they differ significantly in type safety, flexibility, and performance.</p><h4>Array (<code>int[]</code>, <code>string[]</code>)</h4><ul><li><strong>Fixed size</strong> — set at creation, cannot grow or shrink.</li><li><strong>Strongly typed</strong> — only the declared element type allowed.</li><li><strong>Zero boxing</strong> for value types.</li><li><strong>Fastest random access</strong> — O(1), contiguous memory.</li><li>Use when size is known upfront and doesn't change.</li></ul><h4>ArrayList (System.Collections)</h4><ul><li><strong>Dynamic size</strong> — grows automatically.</li><li><strong>Stores <code>object</code></strong> — not type-safe, requires casting to retrieve elements.</li><li><strong>Boxing for every value type</strong> — storing an <code>int</code> boxes it to <code>object</code>.</li><li>Legacy type from .NET 1.x — avoid in modern code.</li></ul><h4>List&lt;T&gt; (System.Collections.Generic)</h4><ul><li><strong>Dynamic size</strong> — like ArrayList, grows automatically (doubles capacity).</li><li><strong>Strongly typed</strong> — no casting, no boxing for value types.</li><li><strong>Best of both worlds</strong> — type safety + dynamic sizing.</li><li><strong>The default choice</strong> for most collections in modern C#.</li></ul><pre><code class=\"language-csharp\">// Array — fixed, typed\nint[] arr = new int[3] { 1, 2, 3 };\narr[0] = 99; // O(1)\n// arr[3] = 4; // IndexOutOfRangeException — can't grow\n\n// ArrayList — dynamic, but untyped (avoid)\nvar al = new ArrayList();\nal.Add(42);         // boxes int → object\nal.Add(\"oops\");     // no compile error — mixed types allowed\nint n = (int)al[0]; // must cast — risky\n\n// List&lt;T&gt; — dynamic + typed (use this)\nvar list = new List&lt;int&gt;();\nlist.Add(42);    // no boxing\nlist.Add(43);\n// list.Add(\"x\"); // compile error — type-safe\nint x = list[0]; // no cast needed</code></pre>",
+      "followUps": [
+        {
+          "question": "When is it better to use an array over List<T>?",
+          "answer": "<p>Prefer arrays when:</p><ul><li>The size is <strong>fixed and known</strong> (e.g., RGB values — always 3 elements).</li><li>You need <strong>maximum performance</strong> — arrays avoid the overhead of List's internal size checks.</li><li>Working with <strong>interop / unsafe code</strong> that requires contiguous memory.</li><li><strong>Multidimensional data</strong> — <code>int[,]</code> or <code>int[][]</code> are natural; List of Lists is clunky.</li><li><strong>Spans and Memory&lt;T&gt;</strong> — <code>Span&lt;T&gt;</code> works directly over arrays for zero-copy slicing.</li></ul><p>In most application-level code, <code>List&lt;T&gt;</code> is simpler and the performance difference is negligible. Use arrays in hot paths, parsing, serialisation, or when returning from a method where the caller shouldn't modify the size.</p>"
+        }
+      ],
+      "tip": "<strong>Interview shortcut:</strong> ArrayList = legacy, untyped, causes boxing. List&lt;T&gt; = modern, typed, no boxing. Use List&lt;T&gt; always unless you need a fixed-size typed array.",
+      "tags": [
+        "array",
+        "arraylist",
+        "list",
+        "generics",
+        "collections"
+      ],
+      "sortOrder": 33,
+      "isActive": true
+    },
+    {
+      "id": "oops-034",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between virtual/override and the new keyword for method hiding in C#?",
+      "answer": "<p>This is a classic C# polymorphism question. Both allow a derived class to provide a different implementation of a base class method, but they behave differently when calling through a base reference.</p><h4>virtual + override — true polymorphism (runtime dispatch)</h4><ul><li>The base method is marked <code>virtual</code> and the derived provides <code>override</code>.</li><li>Calling through a <strong>base type reference</strong> calls the <strong>derived</strong> implementation — because the vtable is used for dispatch.</li></ul><pre><code class=\"language-csharp\">public class Animal  { public virtual  void Speak() => Console.WriteLine(\"...\"); }\npublic class Dog : Animal { public override void Speak() => Console.WriteLine(\"Woof\"); }\n\nAnimal a = new Dog();\na.Speak(); // \"Woof\" — override participates in virtual dispatch</code></pre><h4>new — method hiding (compile-time resolution)</h4><ul><li>The derived class declares a <em>new</em> method with the same name using the <code>new</code> keyword.</li><li>This <strong>hides</strong> the base method — it does NOT override it.</li><li>Calling through a <strong>base type reference</strong> calls the <strong>base</strong> implementation — the new method is invisible through the base reference.</li></ul><pre><code class=\"language-csharp\">public class Animal  { public void Speak() => Console.WriteLine(\"...\"); }\npublic class Dog : Animal { public new void Speak() => Console.WriteLine(\"Woof\"); }\n\nDog   d = new Dog();    d.Speak(); // \"Woof\" — calls Dog.Speak()\nAnimal a = new Dog();   a.Speak(); // \"...\"  — calls Animal.Speak() — hiding, NOT polymorphism!</code></pre><h4>The critical difference:</h4><table><tr><th>Scenario</th><th>override</th><th>new</th></tr><tr><td>Called via derived reference (Dog d)</td><td>Derived</td><td>Derived</td></tr><tr><td>Called via base reference (Animal a)</td><td>Derived ✅</td><td>Base ❌</td></tr></table>",
+      "followUps": [
+        {
+          "question": "What happens if you use 'new' without the keyword explicitly?",
+          "answer": "<p>If you define a method in a derived class with the same signature as a base class method, without marking it <code>override</code> or <code>new</code>, C# will compile it but issue a <strong>compiler warning</strong>: <em>'Dog.Speak()' hides inherited member 'Animal.Speak()'. Use the new keyword if hiding was intended.</em> The behaviour is the same as <code>new</code> — the base method is hidden. The compiler warning is C#'s way of saying \"this looks unintentional\". Adding <code>new</code> explicitly silences the warning and documents the intent.</p>"
+        }
+      ],
+      "tip": "<strong>Key interview question:</strong> 'Animal a = new Dog(); a.Speak(); what prints?' If Speak is <code>override</code> → Dog's version. If it's <code>new</code> → Animal's version. This tests whether you understand runtime dispatch vs compile-time resolution.",
+      "tags": [
+        "virtual",
+        "override",
+        "new",
+        "polymorphism",
+        "method-hiding",
+        "inheritance"
+      ],
+      "sortOrder": 34,
+      "isActive": true
+    },
+    {
+      "id": "oops-035",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are extension methods in C#? How do you create one and when do you use them?",
+      "answer": "<p>Extension methods let you add new methods to an existing type <strong>without modifying that type's source code</strong> — even for types you don't own (sealed classes, built-in types, third-party libraries).</p><h4>Rules for creating an extension method:</h4><ul><li>Must be defined in a <strong>static class</strong></li><li>Must be a <strong>static method</strong></li><li>The first parameter specifies the type being extended, prefixed with <code>this</code></li></ul><pre><code class=\"language-csharp\">// Define — static class, static method, 'this' on first param\npublic static class StringExtensions\n{\n    public static bool IsNullOrEmpty(this string s)\n        => string.IsNullOrEmpty(s);\n\n    public static string Truncate(this string s, int maxLength)\n        => s.Length <= maxLength ? s : s[..maxLength] + \"...\";\n\n    public static string ToTitleCase(this string s)\n        => System.Globalization.CultureInfo.CurrentCulture\n               .TextInfo.ToTitleCase(s.ToLower());\n}\n\n// Use — called as if it were an instance method\nstring name = \"hello world\";\nConsole.WriteLine(name.ToTitleCase());     // \"Hello World\"\nConsole.WriteLine(name.Truncate(5));       // \"hello...\"\nConsole.WriteLine(((string)null).IsNullOrEmpty()); // true (no NullRef!)</code></pre><h4>Where extension methods are used heavily:</h4><ul><li><strong>LINQ</strong> — <code>Where</code>, <code>Select</code>, <code>OrderBy</code> are all extension methods on <code>IEnumerable&lt;T&gt;</code> defined in <code>System.Linq.Enumerable</code>.</li><li><strong>IServiceCollection</strong> — <code>AddControllers()</code>, <code>AddDbContext()</code> are extension methods on <code>IServiceCollection</code>.</li><li><strong>IApplicationBuilder</strong> — <code>UseRouting()</code>, <code>UseAuthentication()</code> are extension methods on <code>IApplicationBuilder</code>.</li></ul><h4>Limitations:</h4><ul><li>Cannot access private/protected members of the extended type.</li><li>If an instance method with the same signature exists, the instance method takes priority.</li><li>Extension methods are <em>syntactic sugar</em> — they are still static calls at the IL level.</li></ul>",
+      "followUps": [
+        {
+          "question": "Can extension methods be called on null references?",
+          "answer": "<p>Yes — and this is one of their advantages. Because extension methods are really static method calls, the object can be null without throwing a <code>NullReferenceException</code> (as long as your extension method handles null):</p><pre><code class=\"language-csharp\">public static bool IsNullOrEmpty(this string s) \n    => string.IsNullOrEmpty(s); // handles null safely\n\nstring s = null;\nbool result = s.IsNullOrEmpty(); // fine — no NullReferenceException</code></pre><p>This is why many utility extension methods do a null check on <code>this</code> at the start. Instance methods would throw if called on null.</p>"
+        }
+      ],
+      "tip": "<strong>LINQ connection:</strong> Every LINQ method (Where, Select, GroupBy) is an extension method on IEnumerable&lt;T&gt;. When you write <code>list.Where(x => x > 0)</code>, the compiler translates it to <code>Enumerable.Where(list, x => x > 0)</code>.",
+      "tags": [
+        "extension-methods",
+        "static",
+        "linq",
+        "csharp"
+      ],
+      "sortOrder": 35,
       "isActive": true
     }
   ]

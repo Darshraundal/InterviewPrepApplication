@@ -19,7 +19,11 @@
         }
       ],
       "tip": "<strong>Fat Controller anti-pattern:</strong> Controllers should be thin orchestrators — receive request, call service, return result. Business logic in controllers is untestable and violates SRP. Move all business logic to services.",
-      "tags": ["mvc", "aspnetcore", "pattern"],
+      "tags": [
+        "mvc",
+        "aspnetcore",
+        "pattern"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -41,7 +45,11 @@
         }
       ],
       "tip": "<strong>Over-posting attack:</strong> If you bind a POST directly to a domain model, a malicious user can set any public property by including it in the form. Use <code>[Bind(\"Name,Description\")]</code> or separate input models (DTOs) for POST/PUT actions.",
-      "tags": ["mvc", "viewmodel", "security"],
+      "tags": [
+        "mvc",
+        "viewmodel",
+        "security"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -63,7 +71,12 @@
         }
       ],
       "tip": "<strong>PRG pattern is important for browser UX</strong> — after a POST, redirecting to GET prevents \"Form resubmission\" warnings when the user refreshes. Always redirect after a successful POST; use TempData to carry the success message across.",
-      "tags": ["mvc", "tempdata", "prg", "razor"],
+      "tags": [
+        "mvc",
+        "tempdata",
+        "prg",
+        "razor"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -85,7 +98,12 @@
         }
       ],
       "tip": "<strong>asp-append-version</strong> appends a content hash to the URL: <code>site.css?v=abc123</code>. This busts the CDN/browser cache whenever the file changes, without requiring you to manually update version numbers. Use it on all static asset references.",
-      "tags": ["mvc", "razor", "tag-helpers", "views"],
+      "tags": [
+        "mvc",
+        "razor",
+        "tag-helpers",
+        "views"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -107,7 +125,12 @@
         }
       ],
       "tip": "<strong>Use View Components for server-rendered widgets that need their own data.</strong> Use partial views for splitting large views into manageable pieces that share the parent's model. If the widget needs independent async data loading, it must be a View Component — partial views can't run async code independently.",
-      "tags": ["mvc", "partial-views", "view-components", "razor"],
+      "tags": [
+        "mvc",
+        "partial-views",
+        "view-components",
+        "razor"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -129,7 +152,12 @@
         }
       ],
       "tip": "<strong>Key difference:</strong> In MVC the Controller <em>selects and pushes to</em> the View. In MVVM the View <em>pulls from and binds to</em> the ViewModel automatically. ASP.NET Core = MVC. Angular/Blazor = MVVM. Your InterviewPrepPortal is MVC; your FolioTrack Angular frontend is MVVM.",
-      "tags": ["mvc", "mvvm", "architecture", "pattern"],
+      "tags": [
+        "mvc",
+        "mvvm",
+        "architecture",
+        "pattern"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -151,7 +179,13 @@
         }
       ],
       "tip": "<strong>For interviews:</strong> emphasise cross-platform support, performance (Kestrel + Native AOT), Docker-ready, and the unified .NET 5+ story. .NET Framework 4.x is in maintenance mode — no new features. Target .NET 8 LTS for new projects. Know the key difference in Program.cs between pre-.NET 6 (Startup class) and .NET 6+ (minimal hosting).",
-      "tags": ["dotnet", "dotnet-core", "dotnet-framework", "platform", "program-cs"],
+      "tags": [
+        "dotnet",
+        "dotnet-core",
+        "dotnet-framework",
+        "platform",
+        "program-cs"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -173,8 +207,232 @@
         }
       ],
       "tip": "<strong>Decision rule:</strong> Session = temporary server-side state within a visit (wizard steps, cart). Cookie = lightweight browser-side preference that survives visits (theme, language). Auth = JWT in an HttpOnly cookie (NOT localStorage — XSS can steal localStorage). Default ASP.NET Core session timeout = <strong>20 minutes sliding</strong>.",
-      "tags": ["mvc", "session", "cookie", "state", "http", "security"],
+      "tags": [
+        "mvc",
+        "session",
+        "cookie",
+        "state",
+        "http",
+        "security"
+      ],
       "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "mvc-009",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the ASP.NET Core MVC request lifecycle / pipeline?",
+      "answer": "<p>Understanding the full request lifecycle is important for debugging and for knowing where to inject custom behaviour.</p><h4>High-level flow:</h4><ol><li><strong>HTTP Request arrives</strong> at Kestrel (or IIS) and enters the ASP.NET Core middleware pipeline.</li><li><strong>Middleware pipeline runs</strong> — each <code>Use()</code> middleware executes in order: authentication, authorisation, routing, CORS, static files, etc.</li><li><strong>Routing middleware</strong> matches the URL to a controller/action and stores the route data.</li><li><strong>Controller instantiation</strong> — the framework creates the controller using DI to inject constructor dependencies.</li><li><strong>Authorization filters</strong> — <code>IAuthorizationFilter.OnAuthorization</code> runs. If denied, short-circuits here.</li><li><strong>Resource filters</strong> — <code>OnResourceExecuting</code> runs (before model binding).</li><li><strong>Model binding</strong> — values from route, query string, form, and body are bound to action parameters.</li><li><strong>Model validation</strong> — data annotation validators run; <code>ModelState.IsValid</code> is set.</li><li><strong>Action filters</strong> — <code>OnActionExecuting</code> runs before the action method.</li><li><strong>Action method executes</strong> — your controller code runs and returns an <code>IActionResult</code>.</li><li><strong>Action filters</strong> — <code>OnActionExecuted</code> runs after the action.</li><li><strong>Result filters</strong> — <code>OnResultExecuting</code> runs before the result is processed.</li><li><strong>View rendering</strong> (for ViewResult) — Razor template is compiled and HTML is produced.</li><li><strong>Result filters</strong> — <code>OnResultExecuted</code> runs.</li><li><strong>Exception filters</strong> — catch unhandled exceptions anywhere in the filter pipeline.</li><li><strong>Response</strong> travels back through the middleware pipeline and is sent to the client.</li></ol>",
+      "followUps": [
+        {
+          "question": "What is the difference between middleware and filters in ASP.NET Core?",
+          "answer": "<p><strong>Middleware</strong> operates on the raw HTTP pipeline — it sees <code>HttpContext</code> and runs for every request, regardless of whether MVC handles it. Use middleware for cross-cutting concerns that apply broadly: authentication, logging, HTTPS redirection, static files.</p><p><strong>Filters</strong> operate within the MVC layer — they have access to MVC abstractions like <code>ActionContext</code>, <code>ModelState</code>, and controller metadata. They only run for requests that route to MVC controllers/actions. Use filters for MVC-specific concerns: caching action results, validating ModelState, auditing specific controller actions.</p><p>Order: Middleware runs before filters. If a middleware short-circuits (returns a response), filters never run.</p>"
+        }
+      ],
+      "tip": "<strong>Order matters:</strong> Authorization filters run before action filters. If you put authorisation logic in an action filter, it runs after action filters — meaning other action filters have already run. Always use authorization filters (or middleware) for security checks.",
+      "tags": [
+        "mvc",
+        "lifecycle",
+        "pipeline",
+        "filters",
+        "middleware"
+      ],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "mvc-010",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the difference between ViewBag, ViewData, and TempData in ASP.NET Core MVC?",
+      "answer": "<p>All three pass data from a <strong>controller to a view</strong>, but they differ in scope, type safety, and lifetime.</p><h4>ViewData</h4><ul><li>Type: <code>ViewDataDictionary</code> (a <code>Dictionary&lt;string, object&gt;</code>)</li><li>Requires <strong>casting</strong> when reading values in the view.</li><li>Lifetime: <strong>current request only</strong>.</li></ul><pre><code class=\"language-csharp\">// Controller\nViewData[\"Title\"] = \"My Page\";\nViewData[\"Count\"] = 42;\n\n// View\n&lt;h1&gt;@ViewData[\"Title\"]&lt;/h1&gt;\n&lt;p&gt;@((int)ViewData[\"Count\"] + 1)&lt;/p&gt; // cast required</code></pre><h4>ViewBag</h4><ul><li>Type: <code>dynamic</code> wrapper over <code>ViewData</code> — they share the same underlying dictionary.</li><li><strong>No casting</strong> needed — dynamic resolution at runtime.</li><li>Lifetime: <strong>current request only</strong>.</li><li>No IntelliSense support.</li></ul><pre><code class=\"language-csharp\">// Controller\nViewBag.Title = \"My Page\"; // same as ViewData[\"Title\"]\nViewBag.Count = 42;\n\n// View — no cast needed\n&lt;h1&gt;@ViewBag.Title&lt;/h1&gt;\n&lt;p&gt;@(ViewBag.Count + 1)&lt;/p&gt;</code></pre><h4>TempData</h4><ul><li>Type: <code>ITempDataDictionary</code></li><li>Lifetime: <strong>survives one redirect</strong> — data persists until it is read, then it is automatically deleted.</li><li>Stored in <strong>session or cookie</strong> (configurable).</li><li>Primarily used to pass messages after a POST-Redirect-GET flow.</li></ul><pre><code class=\"language-csharp\">// Controller — POST action\nTempData[\"SuccessMessage\"] = \"Record saved!\";\nreturn RedirectToAction(\"Index\"); // survives the redirect\n\n// Controller — GET action (after redirect)\n// View\n@if (TempData[\"SuccessMessage\"] != null)\n{\n    &lt;div class=\"alert\"&gt;@TempData[\"SuccessMessage\"]&lt;/div&gt;\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the recommended approach — ViewBag/ViewData or a strongly-typed ViewModel?",
+          "answer": "<p>Always prefer a <strong>strongly-typed ViewModel</strong> over ViewBag/ViewData for main page data. Reasons:</p><ul><li><strong>Compile-time safety</strong> — typos in property names are caught at compile time, not at runtime.</li><li><strong>IntelliSense</strong> — IDE autocompletion works on ViewModel properties.</li><li><strong>Refactoring</strong> — renaming a property in a ViewModel updates all usages. Renaming a ViewBag string key doesn't.</li><li><strong>Clarity</strong> — the View's <code>@model MyViewModel</code> declaration explicitly documents what data the view expects.</li></ul><p>ViewBag/ViewData are acceptable for small ancillary data that doesn't warrant a dedicated ViewModel property (e.g., page title in a layout). For the main data of a view, use a ViewModel.</p>"
+        }
+      ],
+      "tip": "<strong>Memory trick:</strong> ViewBag = ViewData with a hat on (dynamic wrapper). TempData = Temp = temporary across ONE redirect. ViewModel = the proper way.",
+      "tags": [
+        "viewbag",
+        "viewdata",
+        "tempdata",
+        "mvc",
+        "razor"
+      ],
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "mvc-011",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the Razor view engine in ASP.NET Core MVC?",
+      "answer": "<p><strong>Razor</strong> is ASP.NET Core's server-side template engine. It lets you embed C# code directly inside HTML using the <code>@</code> symbol. Razor files have the <code>.cshtml</code> extension. The engine compiles Razor templates into C# classes at build time (or on first request), which then execute to produce the HTML response.</p><h4>Key Razor syntax:</h4><pre><code class=\"language-html\">&lt;!-- Model declaration — strongly-typed view --&gt;\n@model MyApp.ViewModels.ProductViewModel\n\n&lt;!-- Render a model property --&gt;\n&lt;h1&gt;@Model.Name&lt;/h1&gt;\n\n&lt;!-- C# expression --&gt;\n&lt;p&gt;Price: @Model.Price.ToString(\"C\")&lt;/p&gt;\n\n&lt;!-- Code block --&gt;\n@{\n    var discount = Model.Price * 0.1m;\n    ViewData[\"Title\"] = Model.Name;\n}\n\n&lt;!-- Conditional --&gt;\n@if (Model.InStock)\n{\n    &lt;span class=\"badge bg-success\"&gt;In Stock&lt;/span&gt;\n}\nelse\n{\n    &lt;span class=\"badge bg-danger\"&gt;Out of Stock&lt;/span&gt;\n}\n\n&lt;!-- Loop --&gt;\n@foreach (var tag in Model.Tags)\n{\n    &lt;span class=\"tag\"&gt;@tag&lt;/span&gt;\n}\n\n&lt;!-- HTML helper --&gt;\n@Html.DisplayFor(m =&gt; m.Name)\n\n&lt;!-- Tag helper (modern, preferred) --&gt;\n&lt;a asp-controller=\"Product\" asp-action=\"Details\" asp-route-id=\"@Model.Id\"&gt;View&lt;/a&gt;</code></pre><h4>Layout files:</h4><p><code>_Layout.cshtml</code> defines the shared HTML shell. <code>@RenderBody()</code> marks where child view content is injected. Views specify their layout in <code>_ViewStart.cshtml</code> or inline with <code>@{ Layout = \"_Layout\"; }</code>.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between HTML Helpers and Tag Helpers?",
+          "answer": "<p><strong>HTML Helpers</strong> are C# methods that return HTML strings: <code>@Html.TextBoxFor(m => m.Name)</code>. They mix C# method calls with HTML, which can be hard to read and doesn't work well with IDE HTML tooling.</p><p><strong>Tag Helpers</strong> (ASP.NET Core 1.0+) look like regular HTML attributes, making views more natural for front-end developers: <code>&lt;input asp-for=\"Name\" /&gt;</code>. They participate in normal HTML IntelliSense and are the preferred approach. Tag helpers are processed server-side and render final HTML to the client. Common tag helpers: <code>asp-for</code>, <code>asp-action</code>, <code>asp-controller</code>, <code>asp-route-*</code>, <code>asp-validation-for</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Razor files are compiled:</strong> In production, Razor views are compiled into the assembly during publish (Ahead-of-Time compilation). This means view compilation errors are caught at publish time, not first-request. Runtime compilation (for dev convenience) can be enabled separately.",
+      "tags": [
+        "razor",
+        "mvc",
+        "view",
+        "template",
+        "tag-helpers"
+      ],
+      "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "mvc-012",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the entry point of an ASP.NET Core MVC application? What happens at startup?",
+      "answer": "<p>The entry point is <strong><code>Program.cs</code></strong>. In .NET 6+ it uses top-level statements (no explicit <code>Main</code> method visible), but the compiler generates one. Here's the full startup flow:</p><h4>Program.cs structure:</h4><pre><code class=\"language-csharp\">// 1. Create the builder — configures app host, DI container, config sources\nvar builder = WebApplication.CreateBuilder(args);\n\n// 2. Register services into the DI container\nbuilder.Services.AddControllersWithViews();\nbuilder.Services.AddDbContext&lt;AppDbContext&gt;(opts =&gt;\n    opts.UseSqlite(builder.Configuration.GetConnectionString(\"Default\")));\nbuilder.Services.AddScoped&lt;IEmailService, SmtpEmailService&gt;();\n\n// 3. Build the WebApplication (finalises DI container)\nvar app = builder.Build();\n\n// 4. Configure the middleware pipeline (order matters!)\nif (app.Environment.IsDevelopment())\n    app.UseDeveloperExceptionPage();\nelse\n    app.UseExceptionHandler(\"/Home/Error\");\n\napp.UseHttpsRedirection();\napp.UseStaticFiles();     // serve wwwroot files\napp.UseRouting();\napp.UseAuthentication();  // must be before UseAuthorization\napp.UseAuthorization();\n\n// 5. Map endpoints\napp.MapControllerRoute(\n    name: \"default\",\n    pattern: \"{controller=Home}/{action=Index}/{id?}\");\n\n// 6. Start the server and listen for requests\napp.Run();</code></pre><h4>Startup sequence summary:</h4><ol><li>Configuration sources loaded (appsettings.json, environment variables, secrets)</li><li>Logging configured</li><li>Services registered (DI container built)</li><li>Middleware pipeline assembled</li><li>Server starts (Kestrel binds to port)</li><li>Requests flow through pipeline</li></ol>",
+      "followUps": [
+        {
+          "question": "What was the Startup.cs class in earlier ASP.NET Core versions?",
+          "answer": "<p>Before .NET 6, ASP.NET Core split startup logic across two places:</p><ul><li><code>Program.cs</code> — <code>Main()</code> method, creates and runs the host via <code>CreateHostBuilder()</code>.</li><li><code>Startup.cs</code> — <code>ConfigureServices(IServiceCollection)</code> for DI registrations, and <code>Configure(IApplicationBuilder)</code> for middleware. </li></ul><p>In .NET 6+, the <strong>minimal hosting model</strong> merged both into a single <code>Program.cs</code> using the <code>WebApplicationBuilder</code> pattern. The <code>Startup.cs</code> approach still works (you can still use it) but it's no longer the default template.</p>"
+        }
+      ],
+      "tip": "<strong>Middleware order is critical:</strong> UseRouting must come before UseAuthentication, UseAuthentication before UseAuthorization, and both before MapControllers. Getting the order wrong causes subtle bugs (401s, 404s, or unauthenticated requests reaching controllers).",
+      "tags": [
+        "startup",
+        "program",
+        "middleware",
+        "di",
+        "aspnetcore"
+      ],
+      "sortOrder": 12,
+      "isActive": true
+    },
+    {
+      "id": "mvc-013",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is Bundling and Minification in ASP.NET Core?",
+      "answer": "<p><strong>Bundling</strong> combines multiple CSS or JavaScript files into a single file, reducing the number of HTTP requests the browser needs to make to load a page.</p><p><strong>Minification</strong> removes unnecessary characters from CSS/JS files — whitespace, comments, long variable names — to reduce file size and improve download speed.</p><h4>Why they matter:</h4><ul><li>Without bundling: a page with 10 CSS files makes 10 HTTP requests. With bundling: 1 request.</li><li>Without minification: <code>app.js</code> might be 200KB. After minification: 80KB.</li><li>Together they significantly reduce Time-To-First-Byte and page load time.</li></ul><h4>ASP.NET Core approach — LibMan + bundleconfig.json:</h4><pre><code class=\"language-json\">// bundleconfig.json\n[\n  {\n    \"outputFileName\": \"wwwroot/css/bundle.min.css\",\n    \"inputFiles\": [\n      \"wwwroot/css/site.css\",\n      \"wwwroot/lib/bootstrap/css/bootstrap.css\"\n    ],\n    \"minify\": { \"enabled\": true }\n  },\n  {\n    \"outputFileName\": \"wwwroot/js/bundle.min.js\",\n    \"inputFiles\": [\n      \"wwwroot/js/site.js\",\n      \"wwwroot/lib/jquery/jquery.js\"\n    ],\n    \"minify\": { \"enabled\": true }\n  }\n]</code></pre><h4>Environment Tag Helper — dev vs production:</h4><pre><code class=\"language-html\">&lt;!-- In _Layout.cshtml --&gt;\n&lt;environment include=\"Development\"&gt;\n    &lt;!-- Individual files for easy debugging --&gt;\n    &lt;link rel=\"stylesheet\" href=\"~/css/site.css\" /&gt;\n&lt;/environment&gt;\n&lt;environment exclude=\"Development\"&gt;\n    &lt;!-- Bundled + minified for production --&gt;\n    &lt;link rel=\"stylesheet\" href=\"~/css/bundle.min.css\" asp-append-version=\"true\" /&gt;\n&lt;/environment&gt;</code></pre><p><code>asp-append-version=\"true\"</code> appends a hash to bust the browser cache when the file changes.</p>",
+      "followUps": [
+        {
+          "question": "What tools are commonly used for bundling and minification in modern ASP.NET Core?",
+          "answer": "<p>In modern ASP.NET Core projects you have several options:</p><ul><li><strong>BuildBundlerMinifier NuGet</strong> — processes <code>bundleconfig.json</code> at build time. Lightweight, no Node.js required.</li><li><strong>Webpack / Vite</strong> — full-featured JavaScript module bundlers. Used when the front end is complex (React, Vue, Angular with ASP.NET Core as API backend).</li><li><strong>LibMan (Library Manager)</strong> — client-side library manager built into Visual Studio, downloads CSS/JS packages from CDN/npm.</li><li><strong>ASP.NET Core SPA integration</strong> — for Angular, React SPAs, the front-end build pipeline produces optimised bundles that ASP.NET Core serves as static files.</li></ul><p>For a pure MVC (server-rendered) project, BuildBundlerMinifier is the simplest. For SPAs, use Webpack or Vite.</p>"
+        }
+      ],
+      "tip": "<strong>Cache busting:</strong> Always use <code>asp-append-version=\"true\"</code> on bundled assets. Without it, a user's browser may cache the old bundle and not see your changes for days.",
+      "tags": [
+        "bundling",
+        "minification",
+        "performance",
+        "css",
+        "javascript",
+        "mvc"
+      ],
+      "sortOrder": 13,
+      "isActive": true
+    },
+    {
+      "id": "mvc-014",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of routing in ASP.NET Core MVC?",
+      "answer": "<p>ASP.NET Core MVC supports two routing approaches that can be used together.</p><h4>1. Conventional Routing</h4><p>Routes are defined centrally in <code>Program.cs</code> using templates. The URL pattern is matched to a controller/action by convention.</p><pre><code class=\"language-csharp\">app.MapControllerRoute(\n    name: \"default\",\n    pattern: \"{controller=Home}/{action=Index}/{id?}\");\n\n// Custom conventional route\napp.MapControllerRoute(\n    name: \"blog\",\n    pattern: \"blog/{year}/{month}/{slug}\",\n    defaults: new { controller = \"Blog\", action = \"Post\" });</code></pre><p>URL <code>/Products/Details/5</code> maps to <code>ProductsController.Details(5)</code> by convention.</p><h4>2. Attribute Routing</h4><p>Routes are defined directly on controllers and actions using attributes. More explicit and flexible.</p><pre><code class=\"language-csharp\">[ApiController]\n[Route(\"api/[controller]\")]  // api/products\npublic class ProductsController : ControllerBase\n{\n    [HttpGet]                     // GET api/products\n    public IActionResult GetAll() { }\n\n    [HttpGet(\"{id:int}\")]          // GET api/products/5\n    public IActionResult GetById(int id) { }\n\n    [HttpGet(\"search\")]            // GET api/products/search\n    public IActionResult Search([FromQuery] string q) { }\n\n    [HttpPost]                    // POST api/products\n    public IActionResult Create([FromBody] ProductDto dto) { }\n}</code></pre><h4>Route Constraints:</h4><pre><code class=\"language-csharp\">[HttpGet(\"{id:int:min(1)}\")]         // id must be int >= 1\n[HttpGet(\"{name:alpha:length(3,20)}\")] // name must be alpha, 3-20 chars\n[HttpGet(\"{date:datetime}\")]          // date must be parseable as DateTime</code></pre><h4>When to use which:</h4><ul><li><strong>Conventional</strong> — traditional MVC (server-rendered views), simple CRUD controllers.</li><li><strong>Attribute</strong> — Web API controllers, complex routing, RESTful design, areas.</li></ul>",
+      "followUps": [
+        {
+          "question": "What are Areas in ASP.NET Core MVC and how do they affect routing?",
+          "answer": "<p><strong>Areas</strong> allow you to partition a large MVC app into smaller functional groupings, each with its own controllers, views, and models. Common use: separating <code>Admin</code> area from the main site.</p><pre><code class=\"language-csharp\">// Register area route BEFORE the default route\napp.MapControllerRoute(\n    name: \"areas\",\n    pattern: \"{area:exists}/{controller=Home}/{action=Index}/{id?}\");\n\n// Area controller\n[Area(\"Admin\")]\npublic class DashboardController : Controller\n{\n    public IActionResult Index() => View();\n}\n// URL: /Admin/Dashboard/Index</code></pre><p>Views go in <code>Areas/Admin/Views/Dashboard/Index.cshtml</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Web API should always use attribute routing.</strong> Conventional routing is designed for controller/action/id patterns and doesn't express RESTful resource URLs well. For APIs, <code>[Route]</code> and <code>[HttpGet/Post/etc.]</code> are the standard.",
+      "tags": [
+        "routing",
+        "mvc",
+        "attribute-routing",
+        "conventional-routing",
+        "webapi"
+      ],
+      "sortOrder": 14,
+      "isActive": true
+    },
+    {
+      "id": "mvc-015",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is RenderBody() and RenderSection() in ASP.NET Core Razor layouts?",
+      "answer": "<p>These are Razor directives used in <strong>layout files</strong> (<code>_Layout.cshtml</code>) to control where child view content and named sections are injected.</p><h4>RenderBody()</h4><p>Marks the location where the main content of a child view is rendered. Every layout must have exactly one <code>@RenderBody()</code> call.</p><pre><code class=\"language-html\">&lt;!-- _Layout.cshtml --&gt;\n&lt;!DOCTYPE html&gt;\n&lt;html&gt;\n&lt;head&gt;\n    &lt;title&gt;@ViewData[\"Title\"]&lt;/title&gt;\n    &lt;link rel=\"stylesheet\" href=\"~/css/site.css\" /&gt;\n    @await RenderSectionAsync(\"Styles\", required: false)\n&lt;/head&gt;\n&lt;body&gt;\n    &lt;nav&gt;...navbar...&lt;/nav&gt;\n    \n    &lt;main&gt;\n        @RenderBody()  &lt;!-- child view content goes here --&gt;\n    &lt;/main&gt;\n    \n    &lt;footer&gt;...&lt;/footer&gt;\n    \n    &lt;script src=\"~/js/site.js\"&gt;&lt;/script&gt;\n    @await RenderSectionAsync(\"Scripts\", required: false)\n&lt;/body&gt;\n&lt;/html&gt;</code></pre><h4>RenderSection() / RenderSectionAsync()</h4><p>Defines a named placeholder in the layout that child views can optionally fill with additional content (e.g., page-specific CSS or JavaScript).</p><ul><li><code>required: true</code> — child views MUST define this section or a runtime error occurs.</li><li><code>required: false</code> — the section is optional; if not defined, it's simply empty.</li></ul><pre><code class=\"language-html\">&lt;!-- In a child view (e.g., Index.cshtml) --&gt;\n@model ProductListViewModel\n\n&lt;h1&gt;Products&lt;/h1&gt;\n&lt;!-- Main body content — goes where @RenderBody() is in layout --&gt;\n@foreach (var p in Model.Products) { ... }\n\n&lt;!-- Named section — goes where @RenderSection(\"Scripts\") is --&gt;\n@section Scripts {\n    &lt;script src=\"~/js/datatables.min.js\"&gt;&lt;/script&gt;\n    &lt;script&gt;initDataTable('#products-table');&lt;/script&gt;\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is _ViewStart.cshtml and what is it used for?",
+          "answer": "<p><code>_ViewStart.cshtml</code> is a special file that runs before every view in the same directory (and subdirectories). Its primary use is to set the default layout so you don't have to specify it in every view.</p><pre><code class=\"language-html\">&lt;!-- Views/_ViewStart.cshtml --&gt;\n@{\n    Layout = \"_Layout\";\n}\n</code></pre><p>A view can override this by setting its own <code>@{ Layout = \"_OtherLayout\"; }</code> or setting <code>Layout = null</code> to render without any layout. <code>_ViewImports.cshtml</code> is a related file that sets global <code>@using</code> directives and <code>@addTagHelper</code> statements so they apply to all views in the folder.</p>"
+        }
+      ],
+      "tip": "<strong>Sections = injection points:</strong> Think of RenderBody as 'main slot' and RenderSection as named slots in a layout. Scripts section is the most common — it lets child views inject page-specific JavaScript at the bottom of the layout without touching the layout file.",
+      "tags": [
+        "razor",
+        "layout",
+        "renderbody",
+        "rendersection",
+        "mvc"
+      ],
+      "sortOrder": 15,
+      "isActive": true
+    },
+    {
+      "id": "mvc-016",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is the default session timeout in ASP.NET Core and how do you configure it?",
+      "answer": "<p>The default session idle timeout in ASP.NET Core is <strong>20 minutes</strong>. After 20 minutes of inactivity (no requests), the session expires and its data is cleared.</p><h4>Configuring session in Program.cs:</h4><pre><code class=\"language-csharp\">// 1. Add session services\nbuilder.Services.AddDistributedMemoryCache(); // or Redis for production\nbuilder.Services.AddSession(options =>\n{\n    options.IdleTimeout = TimeSpan.FromMinutes(30); // custom timeout\n    options.Cookie.HttpOnly = true;  // not accessible via JS\n    options.Cookie.IsEssential = true; // needed for GDPR compliance\n    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // HTTPS only\n    options.Cookie.Name = \".MyApp.Session\";\n});\n\n// 2. Add the middleware (must be between UseRouting and MapControllers)\napp.UseRouting();\napp.UseSession();  // &lt;-- must come before MapControllers\napp.MapControllerRoute(...);</code></pre><h4>Using session in a controller:</h4><pre><code class=\"language-csharp\">// Set a value\nHttpContext.Session.SetString(\"UserId\", userId.ToString());\nHttpContext.Session.SetInt32(\"CartCount\", 3);\n\n// Get a value\nstring userId = HttpContext.Session.GetString(\"UserId\");\nint? count = HttpContext.Session.GetInt32(\"CartCount\");\n\n// Remove a key\nHttpContext.Session.Remove(\"CartCount\");\n\n// Clear all session data\nHttpContext.Session.Clear();</code></pre><h4>Session vs Cookie lifetime:</h4><p>The session <code>IdleTimeout</code> is the inactivity timeout. The session cookie itself (by default) is a session cookie — it's deleted when the browser closes. To make the session survive browser restarts, you'd set a persistent cookie duration, but that's uncommon for server-side sessions.</p>",
+      "followUps": [
+        {
+          "question": "How do you use Redis as a distributed session store in production?",
+          "answer": "<p>In-memory session (<code>AddDistributedMemoryCache</code>) is only suitable for single-server deployments. In a load-balanced environment, each server has its own memory — a user may hit a different server on the next request and lose their session. Use Redis for a shared session store:</p><pre><code class=\"language-csharp\">// Install: Microsoft.Extensions.Caching.StackExchangeRedis\nbuilder.Services.AddStackExchangeRedisCache(options =>\n{\n    options.Configuration = builder.Configuration[\"Redis:ConnectionString\"];\n    options.InstanceName = \"MyApp:\";\n});\n\nbuilder.Services.AddSession(options =>\n{\n    options.IdleTimeout = TimeSpan.FromMinutes(30);\n});</code></pre><p>All servers now read/write session from the shared Redis instance. Any server can serve any user's request.</p>"
+        }
+      ],
+      "tip": "<strong>Session vs Cookie:</strong> Session stores data server-side (referenced by a cookie ID). Cookies store data client-side (sent on every request). For sensitive data, use session. For persistent preferences (theme, language), use cookies.",
+      "tags": [
+        "session",
+        "cookie",
+        "timeout",
+        "aspnetcore",
+        "mvc"
+      ],
+      "sortOrder": 16,
+      "isActive": true
+    },
+    {
+      "id": "mvc-017",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are Data Annotations in ASP.NET Core? How do you use them for validation?",
+      "answer": "<p><strong>Data Annotations</strong> are attributes from the <code>System.ComponentModel.DataAnnotations</code> namespace applied to model/ViewModel properties to declare validation rules and display metadata. ASP.NET Core MVC enforces them during model binding and populates <code>ModelState</code>.</p><h4>Common validation annotations:</h4><pre><code class=\"language-csharp\">public class RegisterViewModel\n{\n    [Required(ErrorMessage = \"Name is required\")]\n    [StringLength(100, MinimumLength = 2)]\n    [Display(Name = \"Full Name\")]\n    public string Name { get; set; }\n\n    [Required]\n    [EmailAddress(ErrorMessage = \"Invalid email format\")]\n    public string Email { get; set; }\n\n    [Required]\n    [DataType(DataType.Password)]\n    [StringLength(50, MinimumLength = 8, ErrorMessage = \"Password must be 8-50 chars\")]\n    [RegularExpression(@\"^(?=.*[A-Z])(?=.*\\d).+$\",\n        ErrorMessage = \"Must contain uppercase and digit\")]\n    public string Password { get; set; }\n\n    [Compare(\"Password\", ErrorMessage = \"Passwords do not match\")]\n    [DataType(DataType.Password)]\n    public string ConfirmPassword { get; set; }\n\n    [Range(18, 120, ErrorMessage = \"Age must be between 18 and 120\")]\n    public int Age { get; set; }\n\n    [Url]\n    public string Website { get; set; }\n}\n</code></pre><h4>Checking ModelState in the controller:</h4><pre><code class=\"language-csharp\">[HttpPost]\npublic async Task&lt;IActionResult&gt; Register(RegisterViewModel model)\n{\n    if (!ModelState.IsValid) // validation runs automatically during model binding\n        return View(model);  // return form with error messages\n\n    await _userService.CreateAsync(model);\n    return RedirectToAction(\"Success\");\n}\n</code></pre><h4>Client-side validation:</h4><p>Add jQuery Validation scripts and the unobtrusive validation script. ASP.NET Core generates <code>data-val-*</code> HTML attributes from annotations, which jQuery Validate reads to validate in the browser without a server round-trip.</p>",
+      "followUps": [
+        {
+          "question": "How do you create a custom validation attribute?",
+          "answer": "<p>Inherit from <code>ValidationAttribute</code> and override <code>IsValid(object value, ValidationContext context)</code>:</p><pre><code class=\"language-csharp\">public class NoPastDateAttribute : ValidationAttribute\n{\n    protected override ValidationResult IsValid(object value, ValidationContext ctx)\n    {\n        if (value is DateTime date && date.Date < DateTime.Today)\n            return new ValidationResult(\"Date cannot be in the past\");\n        return ValidationResult.Success;\n    }\n}\n\n// Usage\n[NoPastDate]\npublic DateTime EventDate { get; set; }</code></pre><p>For complex cross-property validation, implement <code>IValidatableObject</code> on the model class — the <code>Validate()</code> method receives the full object and can return multiple <code>ValidationResult</code>s.</p>"
+        }
+      ],
+      "tip": "<strong>Server + client validation:</strong> Data annotations give you both. The server always re-validates (don't trust the client). The client-side validation (jQuery Validate) just reduces round-trips for common errors. Never skip server-side validation.",
+      "tags": [
+        "data-annotations",
+        "validation",
+        "modelstate",
+        "mvc",
+        "model-binding"
+      ],
+      "sortOrder": 17,
       "isActive": true
     }
   ]

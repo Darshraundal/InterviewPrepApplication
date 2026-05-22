@@ -23,7 +23,11 @@
         }
       ],
       "tip": "<strong>Interview answer:</strong> Show Method 1 (LINQ) as the production approach, then Method 4 (two-pointer) to show you understand the algorithm. Mention the Unicode edge case — it shows senior-level thinking.",
-      "tags": ["coding", "string", "algorithm"],
+      "tags": [
+        "coding",
+        "string",
+        "algorithm"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -45,7 +49,12 @@
         }
       ],
       "tip": "<strong>For numbers:</strong> Convert to string and use the same approach, OR reverse mathematically (no string conversion): extract digits via modulo and rebuild in reverse. Mention both.",
-      "tags": ["coding", "string", "algorithm", "two-pointer"],
+      "tags": [
+        "coding",
+        "string",
+        "algorithm",
+        "two-pointer"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -67,7 +76,12 @@
         }
       ],
       "tip": "<strong>20! = 2,432,902,008,176,640,000</strong> (fits in long). <strong>21!</strong> overflows long. Mention this — it shows awareness of integer overflow, a common production bug.",
-      "tags": ["coding", "algorithm", "recursion", "math"],
+      "tags": [
+        "coding",
+        "algorithm",
+        "recursion",
+        "math"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -89,7 +103,12 @@
         }
       ],
       "tip": "<strong>Recursive Fibonacci is O(2^n)</strong> — interview interviewers ask it to see if you know to use memoization/iteration instead. Always show the iterative approach as your preferred solution, then explain memoization as a way to add caching to the recursive version.",
-      "tags": ["coding", "algorithm", "recursion", "dynamic-programming"],
+      "tags": [
+        "coding",
+        "algorithm",
+        "recursion",
+        "dynamic-programming"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -111,7 +130,12 @@
         }
       ],
       "tip": "<strong>If values are in range 1..n:</strong> Floyd's cycle detection or XOR trick can solve in O(n) time and O(1) space — but these are advanced. For most interviews, the HashSet approach is expected and optimal enough.",
-      "tags": ["coding", "array", "hashset", "algorithm"],
+      "tags": [
+        "coding",
+        "array",
+        "hashset",
+        "algorithm"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -137,7 +161,13 @@
         }
       ],
       "tip": "<strong>Walk through the HashMap approach step by step:</strong> for each element, compute what complement you need, check if you've seen it. This one-pass O(n) approach is the canonical answer. The interviewer is testing if you know when to trade space for time.",
-      "tags": ["coding", "array", "hashmap", "two-pointer", "algorithm"],
+      "tags": [
+        "coding",
+        "array",
+        "hashmap",
+        "two-pointer",
+        "algorithm"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -159,7 +189,12 @@
         }
       ],
       "tip": "<strong>Slow-fast pointer pattern:</strong> slow pointer (uniqueCount) tracks where to write next unique element. Fast pointer (i) scans the array. This O(1) space pattern applies to many array modification problems.",
-      "tags": ["coding", "array", "two-pointer", "algorithm"],
+      "tags": [
+        "coding",
+        "array",
+        "two-pointer",
+        "algorithm"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -181,7 +216,12 @@
         }
       ],
       "tip": "<strong>Kadane's key insight:</strong> at each position, you decide to either extend the previous subarray or start a new one from the current element. Whichever is larger becomes the current sum. Keep track of the global maximum.",
-      "tags": ["coding", "array", "dynamic-programming", "algorithm"],
+      "tags": [
+        "coding",
+        "array",
+        "dynamic-programming",
+        "algorithm"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -203,7 +243,12 @@
         }
       ],
       "tip": "<strong>Amortized O(1) for dequeue:</strong> each element crosses from inbox to outbox at most once. Even though a single dequeue might take O(n) to refill, the average across N operations is O(1). This is the amortized analysis explanation interviewers want.",
-      "tags": ["coding", "stack", "queue", "data-structures"],
+      "tags": [
+        "coding",
+        "stack",
+        "queue",
+        "data-structures"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -225,8 +270,84 @@
         }
       ],
       "tip": "<strong>mid = left + (right - left) / 2</strong> — not (left + right) / 2. The latter can overflow if left and right are both large ints. This is a classic bug that crashed the Java standard library binary search implementation in 2006. Always mention it.",
-      "tags": ["coding", "binary-search", "algorithm", "array"],
+      "tags": [
+        "coding",
+        "binary-search",
+        "algorithm",
+        "array"
+      ],
       "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "coding-011",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Print a pyramid (triangle) star pattern with N rows in C#.",
+      "answer": "<p>Pyramid patterns are a classic programming exercise that tests understanding of nested loops and string padding.</p><h4>Right-angled triangle (simple):</h4><pre><code class=\"language-csharp\">// Right-angled triangle\nvoid PrintRightTriangle(int rows)\n{\n    for (int i = 1; i <= rows; i++)\n    {\n        Console.WriteLine(new string('*', i));\n    }\n}\n// Output for rows=4:\n// *\n// **\n// ***\n// ****</code></pre><h4>Full symmetric pyramid:</h4><pre><code class=\"language-csharp\">void PrintPyramid(int rows)\n{\n    for (int i = 1; i <= rows; i++)\n    {\n        // Leading spaces\n        Console.Write(new string(' ', rows - i));\n        // Stars (2*i - 1 stars on each row)\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}\n// Output for rows=4:\n//    *\n//   ***\n//  *****\n// *******</code></pre><h4>Inverted pyramid:</h4><pre><code class=\"language-csharp\">void PrintInvertedPyramid(int rows)\n{\n    for (int i = rows; i >= 1; i--)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}\n// Output for rows=4:\n// *******\n//  *****\n//   ***\n//    *</code></pre><h4>Diamond pattern (pyramid + inverted pyramid):</h4><pre><code class=\"language-csharp\">void PrintDiamond(int rows)\n{\n    // Upper half (including middle)\n    for (int i = 1; i <= rows; i++)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n    // Lower half\n    for (int i = rows - 1; i >= 1; i--)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you print a number pyramid (Floyd's triangle)?",
+          "answer": "<pre><code class=\"language-csharp\">void PrintFloydsTriangle(int rows)\n{\n    int num = 1;\n    for (int i = 1; i <= rows; i++)\n    {\n        for (int j = 1; j <= i; j++)\n        {\n            Console.Write(num++ + \" \");\n        }\n        Console.WriteLine();\n    }\n}\n// Output:\n// 1\n// 2 3\n// 4 5 6\n// 7 8 9 10</code></pre>"
+        }
+      ],
+      "tip": "<strong>Formula:</strong> For a symmetric pyramid with N rows, row i has (2*i - 1) stars and (N - i) leading spaces. The pattern in the outer loop controls rows; the inner loops control spaces and stars.",
+      "tags": [
+        "pattern",
+        "loops",
+        "pyramid",
+        "coding"
+      ],
+      "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "coding-012",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Swap two numbers without using a temporary variable in C#.",
+      "answer": "<p>Classic interview question — three common approaches.</p><h4>Method 1: Arithmetic (addition and subtraction)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\na = a + b;  // a = 15\nb = a - b;  // b = 15 - 10 = 5  (original a)\na = a - b;  // a = 15 - 5  = 10 (original b)\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5\n\n// Limitation: integer overflow risk for very large numbers</code></pre><h4>Method 2: XOR bitwise (no overflow)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\na = a ^ b;  // a = 5 XOR 10 = 15 (binary: 0101 ^ 1010 = 1111)\nb = a ^ b;  // b = 15 XOR 10 = 5  (original a)\na = a ^ b;  // a = 15 XOR 5  = 10 (original b)\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5\n\n// Works for integers, no overflow — but only works for value types!\n// WARNING: if a and b are the same variable (same reference), XOR makes it 0!</code></pre><h4>Method 3: Tuple deconstruction (modern C#, cleanest)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\n(a, b) = (b, a); // compiler creates a temp internally but it's elegant\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5</code></pre><h4>Method 4: Multiplication/division (only for non-zero)</h4><pre><code class=\"language-csharp\">// Avoid — fails if either value is 0\na = a * b; b = a / b; a = a / b;</code></pre>",
+      "followUps": [
+        {
+          "question": "Why is the temp variable approach still preferred in production?",
+          "answer": "<p>In production code, <strong>always use the tuple swap <code>(a, b) = (b, a)</code></strong> — it's readable, safe, and the compiler optimises it. The arithmetic and XOR tricks are interview knowledge but have real limitations: arithmetic can overflow for large integers, XOR only works for integer types, and both are harder to read. The temporary variable approach is also perfectly fine — the compiler optimises it to the same machine code. Code clarity matters more than micro-optimisations for a swap operation.</p>"
+        }
+      ],
+      "tip": "<strong>In a C# interview, show all three methods</strong> (arithmetic, XOR, tuple) and mention which you'd actually use in production (tuple or temp variable). This demonstrates breadth of knowledge and practical judgment.",
+      "tags": [
+        "swap",
+        "variables",
+        "xor",
+        "arithmetic",
+        "coding"
+      ],
+      "sortOrder": 12,
+      "isActive": true
+    },
+    {
+      "id": "coding-013",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Reverse each word individually in a sentence while keeping the words in their original positions.",
+      "answer": "<p>The task: given \"Rajesh is good boy\", reverse each word's characters but keep the words in the same order → \"hselajR si doog yob\".</p><h4>Method 1: LINQ (clean and concise)</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    return string.Join(\" \",\n        sentence.Split(' ')\n                .Select(word => new string(word.Reverse().ToArray())));\n}\n\nConsole.WriteLine(ReverseEachWord(\"Rajesh is good boy\"));\n// Output: hselajR si doog yob</code></pre><h4>Method 2: Manual loop</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    string[] words  = sentence.Split(' ');\n    var result = new StringBuilder();\n\n    for (int i = 0; i < words.Length; i++)\n    {\n        char[] chars = words[i].ToCharArray();\n        Array.Reverse(chars);\n        result.Append(new string(chars));\n        if (i < words.Length - 1)\n            result.Append(' ');\n    }\n    return result.ToString();\n}\n</code></pre><h4>Method 3: Reverse whole string then reverse each word (in-place approach)</h4><pre><code class=\"language-csharp\">// Used when you want to reverse word ORDER (not characters)\n// e.g., \"hello world\" → \"world hello\"\nstring ReverseWordOrder(string sentence)\n{\n    return string.Join(\" \", sentence.Split(' ').Reverse());\n}\n// \"Rajesh is good boy\" → \"boy good is Rajesh\"</code></pre><h4>Handling edge cases:</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    if (string.IsNullOrWhiteSpace(sentence)) return sentence;\n\n    return string.Join(\" \",\n        sentence.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)\n                .Select(word => new string(word.Reverse().ToArray())));\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you reverse a string without using the Reverse() method?",
+          "answer": "<pre><code class=\"language-csharp\">// Method 1: Two-pointer approach\nstring ReverseString(string s)\n{\n    char[] chars = s.ToCharArray();\n    int left = 0, right = chars.Length - 1;\n    while (left < right)\n    {\n        (chars[left], chars[right]) = (chars[right], chars[left]); // swap\n        left++;\n        right--;\n    }\n    return new string(chars);\n}\n\n// Method 2: StringBuilder\nstring ReverseString(string s)\n{\n    var sb = new StringBuilder(s.Length);\n    for (int i = s.Length - 1; i >= 0; i--)\n        sb.Append(s[i]);\n    return sb.ToString();\n}\n\n// Note: String is immutable in C# — always work with char[] or StringBuilder for modification</code></pre>"
+        }
+      ],
+      "tip": "<strong>Distinguish the two reversal tasks:</strong> 'Reverse each word in place' = reverse the characters within each word, words stay in same positions. 'Reverse word order' = words swap positions, characters within each word stay the same. Clarify which one the interviewer means.",
+      "tags": [
+        "string",
+        "reverse",
+        "split",
+        "linq",
+        "coding"
+      ],
+      "sortOrder": 13,
       "isActive": true
     }
   ]
