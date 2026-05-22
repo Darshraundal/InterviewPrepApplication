@@ -28,7 +28,7 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: 📦 Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_PATH }}
+        run: dotnet restore ${{ env.PROJECT_PATH }} --runtime win-x64
 
       - name: 🚀 Publish
         run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-restore --output ./publish --runtime win-x64 --self-contained true
