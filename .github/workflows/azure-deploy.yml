@@ -1,0 +1,41 @@
+name: Build & Deploy to Azure
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:        # allows manual trigger from GitHub Actions UI
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/InterviewPrepPortal/InterviewPrepPortal.csproj'
+  AZURE_WEBAPP_NAME: 'InterviewPrepApplication'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: 🏗️ Build (Release)
+        run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+
+      - name: 🚀 Publish
+        run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --no-build --output ./publish
+
+      - name: ☁️ Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
