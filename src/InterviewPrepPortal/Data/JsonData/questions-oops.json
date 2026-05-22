@@ -8,9 +8,22 @@
       "frequency": "very-high",
       "question": "What are the four pillars of OOP?",
       "answer": "<p>The four pillars are the core principles that define object-oriented programming. I'll explain each with how I apply them in .NET:</p><ul><li><strong>Encapsulation</strong> — bundle data and behavior together, hide internal implementation behind a public interface. In C#: private fields, public properties with getters/setters. The <code>Portfolio</code> class exposes <code>AddHolding()</code> but hides how it validates and adjusts weights internally.</li><li><strong>Inheritance</strong> — a class (child) inherits fields and behaviors from another class (parent). In C#: the <code>: BaseClass</code> syntax. <code>ApplicationUser : IdentityUser</code> inherits all Identity fields while adding custom ones like <code>DisplayName</code>.</li><li><strong>Polymorphism</strong> — the same interface or method behaves differently for different types. In C#: method overriding (<code>virtual/override</code>), method overloading, interfaces.</li><li><strong>Abstraction</strong> — expose only what's necessary, hide complexity. In C#: interfaces and abstract classes define the \"what\", concrete implementations define the \"how\". <code>IEmailSender</code> abstracts SMTP vs SendGrid vs console-logger in tests.</li></ul>",
-      "followUps": ["What is the difference between abstraction and encapsulation?", "Can you have OOP without inheritance?"],
+      "followUps": [
+        "What is the difference between abstraction and encapsulation?",
+        "Can you have OOP without inheritance?"
+      ],
+      "followUpAnswers": {
+        "What is the difference between abstraction and encapsulation?": "<p><strong>Abstraction</strong> = design-level hiding of complexity (the <em>WHAT</em>). You define what something does via an interface without specifying how. <strong>Encapsulation</strong> = code-level hiding of internal state (the <em>HOW</em>). Private fields, properties controlling access.</p><p><strong>Classic analogy:</strong> A car <em>abstracts</em> steering/acceleration (you use pedals and wheel) and <em>encapsulates</em> its engine (you can't reach in directly).</p><ul><li>In C#: <code>IEmailSender</code> is abstraction.</li><li><code>private readonly string _smtpHost</code> is encapsulation.</li></ul>",
+        "Can you have OOP without inheritance?": "<p>Yes — interfaces, composition, and polymorphism are sufficient. Go (the language) has no class inheritance at all — it uses interfaces and struct embedding.</p><p>Modern .NET design strongly favors this: DI containers work entirely through interfaces with no inheritance required. Composition assembles behavior from smaller objects; interfaces define contracts.</p><p><strong>Inheritance is one tool among many, not the foundation of OOP.</strong></p>"
+      },
       "tip": "<strong>Abstraction vs Encapsulation:</strong> Abstraction is about hiding complexity at the design level (\"what it does\"). Encapsulation is about hiding implementation at the code level (\"how it does it\"). Interfaces are abstraction; private fields are encapsulation.",
-      "tags": ["oops", "inheritance", "polymorphism", "abstraction", "encapsulation"],
+      "tags": [
+        "oops",
+        "inheritance",
+        "polymorphism",
+        "abstraction",
+        "encapsulation"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -21,9 +34,20 @@
       "frequency": "very-high",
       "question": "What is the difference between an interface and an abstract class?",
       "answer": "<p>Both define a contract that implementing classes must fulfill, but they have key differences:</p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th>Feature</th><th>Interface</th><th>Abstract Class</th></tr><tr><td>Instantiation</td><td>Cannot instantiate</td><td>Cannot instantiate</td></tr><tr><td>Multiple inheritance</td><td>Class can implement many</td><td>Class can extend only one</td></tr><tr><td>State (fields)</td><td>No instance fields (C# 8: static fields only)</td><td>Can have instance fields</td></tr><tr><td>Default implementations</td><td>Yes (C# 8+)</td><td>Yes (non-abstract methods)</td></tr><tr><td>Constructor</td><td>No</td><td>Yes (called by derived class)</td></tr></table><p><strong>When I use what:</strong></p><ul><li><strong>Interface</strong> — for defining capabilities that unrelated classes can share. <code>IEmailSender</code>, <code>IProgressService</code> — any class can implement it regardless of its hierarchy. Perfect for DI and mocking.</li><li><strong>Abstract class</strong> — for sharing code among closely related classes. <code>BasePaymentProcessor</code> with shared validation logic, leaving only <code>ProcessPaymentAsync()</code> abstract for subclasses to implement.</li></ul><p>In the CSInvoice project, <code>IDocumentGenerate</code> is an interface because unrelated invoice types (Normal, CP, Monthly) all implement the same contract but share no common code.</p>",
-      "followUps": ["When would you choose abstract class over interface?", "What are default interface methods in C# 8?"],
+      "followUps": [
+        "When would you choose abstract class over interface?",
+        "What are default interface methods in C# 8?"
+      ],
+      "followUpAnswers": {
+        "When would you choose abstract class over interface?": "<p>Choose abstract class when:</p><ul><li>You need to share implementation code among closely related classes (<strong>Template Method pattern</strong> — base class defines the algorithm steps, derived classes fill in specifics).</li><li>You need non-public members (protected fields, protected methods) that derived classes share.</li><li>You need a constructor to initialize shared state.</li><li>You need a true <em>IS-A</em> relationship with a common ancestor.</li></ul><p><strong>Example:</strong> <code>BaseDocumentGenerator</code> with shared <code>ValidateInput()</code>, <code>LogGeneration()</code> methods, and only <code>GenerateContent()</code> abstract for each document type to implement.</p><p>In contrast, <strong>interfaces are preferred</strong> for defining capabilities that unrelated classes can share (<code>IDisposable</code>, <code>IComparable</code>, <code>IEmailSender</code>).</p>",
+        "What are default interface methods in C# 8?": "<p>C# 8 added the ability to add method implementations directly inside interfaces. An implementing class does not need to provide that method — it gets the default.</p><p><strong>Primary use case:</strong> evolving a library interface without breaking existing implementors (add a new method with a default implementation; old classes continue to compile).</p><p><strong>Downsides:</strong></p><ul><li>Can lead to diamond problem-like ambiguity if two interfaces provide conflicting defaults.</li><li>Surprising that a class can have behavior it never wrote.</li></ul><p><strong>Best practice:</strong> use sparingly — prefer abstract base classes when shared implementation is the intent.</p>"
+      },
       "tip": "<strong>Prefer interfaces over abstract classes</strong> for .NET dependency injection — you can only mock/substitute interfaces cleanly. Abstract classes are fine for template method pattern where you're sharing implementation, not just a contract.",
-      "tags": ["oops", "interface", "abstract-class"],
+      "tags": [
+        "oops",
+        "interface",
+        "abstract-class"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -34,9 +58,21 @@
       "frequency": "very-high",
       "question": "What is polymorphism and what are its types in C#?",
       "answer": "<p><strong>Polymorphism</strong> means \"many forms\" — the ability to treat different types through a common interface. Two main types in C#:</p><p><strong>1. Compile-time (static) polymorphism — method overloading:</strong></p><pre><code class=\"language-csharp\">public class EmailSender\n{\n    public void Send(string to, string subject) { ... }\n    public void Send(string to, string subject, string template) { ... }\n    // Same name, different parameter signatures — resolved at compile time\n}</code></pre><p><strong>2. Runtime (dynamic) polymorphism — method overriding via virtual/override:</strong></p><pre><code class=\"language-csharp\">public abstract class NotificationSender\n{\n    public abstract Task SendAsync(Notification n);\n}\n\npublic class EmailNotificationSender : NotificationSender\n{\n    public override async Task SendAsync(Notification n) { /* SMTP logic */ }\n}\n\npublic class SmsNotificationSender : NotificationSender\n{\n    public override async Task SendAsync(Notification n) { /* SMS logic */ }\n}\n\n// Polymorphic usage — correct Send() called at runtime\nNotificationSender sender = GetSender(notificationType);\nawait sender.SendAsync(notification);</code></pre>",
-      "followUps": ["What is method hiding vs method overriding?", "What is operator overloading?"],
+      "followUps": [
+        "What is method hiding vs method overriding?",
+        "What is operator overloading?"
+      ],
+      "followUpAnswers": {
+        "What is method hiding vs method overriding?": "<p>With <code>virtual</code>/<code>override</code> (<strong>true overriding</strong>): the runtime uses the derived class method even when the variable is typed as the base class — this is virtual dispatch / polymorphism.</p><p>With <code>new</code> (<strong>hiding</strong>): the derived class defines its own method with the same name, but calling through a base-typed variable still calls the BASE method. The new method only activates when the variable is typed as the derived class.</p><p><strong>Code example:</strong> <code>Animal a = new Dog(); a.Speak()</code></p><ul><li>With <code>override</code>: calls <code>Dog.Speak</code> (polymorphism).</li><li>With <code>new</code> (hiding): calls <code>Animal.Speak</code>.</li></ul><p>Always use <code>override</code> for polymorphism; use <code>new</code> only intentionally to deliberately hide without polymorphism (rare).</p>",
+        "What is operator overloading?": "<p>Defining custom behavior for standard operators (<code>+</code>, <code>-</code>, <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>[]</code>, etc.) on your types. In C# use static methods with the <code>operator</code> keyword.</p><p><strong>Classic use cases:</strong> Money + Money, Vector2 + Vector2, Complex numbers.</p><pre><code class=\"language-csharp\">public static Money operator +(Money a, Money b)\n    =&gt; new Money(a.Amount + b.Amount, a.Currency);</code></pre><p>C# 9+ records get value-based <code>==</code> and <code>!=</code> automatically. Comparison operators should be defined consistently (implement <code>IComparable</code>). Equality operators should also override <code>GetHashCode</code> and <code>Equals</code>.</p>"
+      },
       "tip": "<strong>Method hiding vs overriding:</strong> <code>override</code> replaces the base method (virtual dispatch). <code>new</code> hides the base method — calling through the base type still calls the base method. Always prefer <code>override</code>; use <code>new</code> only intentionally.",
-      "tags": ["oops", "polymorphism", "overloading", "overriding"],
+      "tags": [
+        "oops",
+        "polymorphism",
+        "overloading",
+        "overriding"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -47,9 +83,20 @@
       "frequency": "high",
       "question": "What is encapsulation and how do you implement it in C#?",
       "answer": "<p><strong>Encapsulation</strong> means bundling data and the methods that operate on it, and restricting direct access to internal state. The class exposes a clean public API while hiding implementation details.</p><p><strong>C# access modifiers:</strong></p><ul><li><code>public</code> — accessible from anywhere</li><li><code>private</code> — accessible only within the class</li><li><code>protected</code> — accessible within class and derived classes</li><li><code>internal</code> — accessible within the same assembly</li><li><code>private protected</code> — derived classes in same assembly only</li></ul><pre><code class=\"language-csharp\">public class Portfolio\n{\n    private decimal _totalValue;\n    private readonly List&lt;Holding&gt; _holdings = [];\n\n    public decimal TotalValue =&gt; _totalValue;  // read-only exposure\n    public IReadOnlyList&lt;Holding&gt; Holdings =&gt; _holdings.AsReadOnly();\n\n    public void AddHolding(Holding holding)\n    {\n        ArgumentNullException.ThrowIfNull(holding);\n        if (holding.Quantity &lt;= 0)\n            throw new ArgumentException(\"Quantity must be positive\");\n        _holdings.Add(holding);\n        RecalculateTotalValue();\n    }\n\n    private void RecalculateTotalValue()  // internal implementation hidden\n    {\n        _totalValue = _holdings.Sum(h =&gt; h.Quantity * h.CurrentPrice);\n    }\n}</code></pre>",
-      "followUps": ["What is the difference between a field and a property?", "What is a readonly field vs a const?"],
+      "followUps": [
+        "What is the difference between a field and a property?",
+        "What is a readonly field vs a const?"
+      ],
+      "followUpAnswers": {
+        "What is the difference between a field and a property?": "<p>A <strong>field</strong> is a direct storage variable in a class (e.g., <code>private int _count</code>). A <strong>property</strong> is a controlled access mechanism with get/set accessors that can contain logic (validation, lazy loading, change notification).</p><p>Properties should be the public face of your class — they allow you to add logic later without breaking callers. Fields should always be private. Properties can be auto-implemented (<code>public string Name { get; set; }</code>) when no logic is needed.</p><p><strong>Key differences:</strong></p><ul><li>Properties appear in serialization, data binding, and reflection in ways fields don't.</li><li>Properties can be defined in interfaces.</li><li>Properties can have different access modifiers for get vs set (<code>public string Name { get; private set; }</code>).</li></ul>",
+        "What is a readonly field vs a const?": "<p><strong>readonly:</strong> set once — either in the declaration or in the constructor. Can be different per instance. Can be any type. Value determined at runtime.</p><p><strong>const:</strong> compile-time literal only. Must be a primitive type. Same value for all instances and is baked into the calling assembly at compile time — changing a <code>const</code> in a library requires recompiling all callers.</p><p><strong>Guidance:</strong></p><ul><li>Use <code>readonly</code> when the value is determined at runtime or construction time, or might change between library versions.</li><li>Use <code>const</code> only for true never-changing literals (<code>MaxRetries = 3</code>, separator characters).</li></ul>"
+      },
       "tip": "<strong>Expose collections as IReadOnlyList&lt;T&gt;</strong> — returning the internal <code>List&lt;T&gt;</code> directly lets callers add/remove items bypassing your validation. Return <code>AsReadOnly()</code> or the <code>IReadOnlyList&lt;T&gt;</code> interface.",
-      "tags": ["oops", "encapsulation", "access-modifiers"],
+      "tags": [
+        "oops",
+        "encapsulation",
+        "access-modifiers"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -60,9 +107,20 @@
       "frequency": "high",
       "question": "What is inheritance in C# and what are its limitations?",
       "answer": "<p>Inheritance lets a derived class acquire the members (fields, properties, methods) of a base class and extend or override them.</p><pre><code class=\"language-csharp\">public class Animal\n{\n    public string Name { get; set; } = string.Empty;\n    public virtual string Speak() =&gt; \"...\";\n}\n\npublic class Dog : Animal\n{\n    public override string Speak() =&gt; \"Woof!\";\n}\n\npublic sealed class Labrador : Dog  // sealed: cannot be further derived\n{\n    public override string Speak() =&gt; \"Woof woof!\";\n}</code></pre><p><strong>Limitations of inheritance:</strong></p><ul><li><strong>Single inheritance only</strong> — C# classes can only extend one class (use interfaces for multiple contracts).</li><li><strong>Tight coupling</strong> — changes to the base class ripple to all derived classes. Fragile base class problem.</li><li><strong>Can't inherit from sealed class</strong> — <code>sealed</code> prevents further derivation (e.g., <code>String</code> is sealed).</li><li><strong>Inheritance is overused</strong> — \"Favour composition over inheritance\" is a core design principle.</li></ul>",
-      "followUps": ["What is the fragile base class problem?", "Composition vs inheritance — when to use which?"],
+      "followUps": [
+        "What is the fragile base class problem?",
+        "Composition vs inheritance — when to use which?"
+      ],
+      "followUpAnswers": {
+        "What is the fragile base class problem?": "<p>When modifications to a base class unintentionally break derived classes.</p><p><strong>Example:</strong> a base class has a virtual method <code>A()</code> that internally calls <code>B()</code>. A derived class overrides <code>B()</code>. When you change <code>A()</code> in the base to also call <code>C()</code>, the derived class's <code>B()</code> override now gets called from both <code>A()</code> and <code>C()</code> — breaking an invariant the derived class author assumed.</p><p>The derived class author cannot know what the base class will do with their override. This coupling makes large inheritance hierarchies brittle.</p><p><strong>Solution:</strong> prefer sealed classes, composition, and thin well-defined base classes. Mark members <code>sealed override</code> to end the chain.</p>",
+        "Composition vs inheritance — when to use which?": "<p>The test: <strong>IS-A</strong> vs <strong>HAS-A</strong>. <code>Dog IS AN Animal</code> → inheritance valid. <code>Car HAS AN Engine</code> → composition.</p><p><strong>Prefer composition because:</strong></p><ul><li>Behavior can be changed at runtime by swapping composed objects (Strategy pattern).</li><li>Avoids the fragile base class problem.</li><li>Easier to test — inject mock components.</li><li>Avoids explosion of class hierarchy when you have multiple dimensions of variation.</li></ul><p><strong>Inherit when:</strong> there's a genuine type relationship, you need polymorphism through a base type, and the base class is stable.</p><p>In .NET, <code>IdentityUser</code> uses inheritance (<code>ApplicationUser : IdentityUser</code>) where the IS-A relationship is genuine.</p>"
+      },
       "tip": "<strong>Composition over Inheritance rule of thumb:</strong> Ask \"is a\" vs \"has a\". <code>Dog IS AN Animal</code> → inheritance. <code>Car HAS AN Engine</code> → composition. If in doubt, compose — it's easier to change later.",
-      "tags": ["oops", "inheritance", "composition"],
+      "tags": [
+        "oops",
+        "inheritance",
+        "composition"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -73,9 +131,20 @@
       "frequency": "high",
       "question": "What are generics in C# and why are they useful?",
       "answer": "<p><strong>Generics</strong> allow you to write type-safe, reusable code without specifying the actual type until the code is used. The compiler enforces type safety at compile time (no boxing/unboxing, no casting).</p><pre><code class=\"language-csharp\">// Generic repository — works for any entity type\npublic interface IRepository&lt;T&gt; where T : class\n{\n    Task&lt;T?&gt; GetByIdAsync(int id);\n    Task&lt;IReadOnlyList&lt;T&gt;&gt; GetAllAsync();\n    Task AddAsync(T entity);\n}\n\n// Generic result wrapper — avoids exception-driven flow\npublic class Result&lt;T&gt;\n{\n    public bool IsSuccess { get; private init; }\n    public T? Value { get; private init; }\n    public string? Error { get; private init; }\n\n    public static Result&lt;T&gt; Success(T value) =&gt;\n        new() { IsSuccess = true, Value = value };\n\n    public static Result&lt;T&gt; Failure(string error) =&gt;\n        new() { IsSuccess = false, Error = error };\n}\n\n// Generic constraints\npublic class Repository&lt;T&gt; where T : class, IEntity, new() { ... }</code></pre><p>Generic constraints: <code>where T : class</code> (reference type), <code>where T : struct</code> (value type), <code>where T : new()</code> (parameterless constructor), <code>where T : IEntity</code> (must implement interface).</p>",
-      "followUps": ["What is a generic constraint?", "What is the difference between covariance and contravariance?"],
+      "followUps": [
+        "What is a generic constraint?",
+        "What is the difference between covariance and contravariance?"
+      ],
+      "followUpAnswers": {
+        "What is a generic constraint?": "<p>Constraints limit what types can be used as the generic type parameter and unlock capabilities on the type within the generic code. Written with <code>where T : constraint</code>.</p><p><strong>Common constraints:</strong></p><ul><li><code>where T : class</code> — reference type only.</li><li><code>where T : struct</code> — value type only.</li><li><code>where T : new()</code> — must have parameterless constructor (allows <code>new T()</code>).</li><li><code>where T : SomeInterface</code> — must implement interface (allows calling that interface's methods on T).</li><li><code>where T : SomeBaseClass</code> — must derive from class.</li><li><code>where T : notnull</code> — non-nullable, C# 8+.</li></ul><p><strong>Multiple constraints:</strong> <code>where T : class, IEntity, new()</code>.</p><p>Without constraints, you can only use object-level operations on T. With <code>where T : IEntity</code> you can call IEntity's methods.</p>",
+        "What is the difference between covariance and contravariance?": "<p>These describe how generic types relate when their type parameters have an inheritance relationship.</p><p><strong>Covariance (<code>out T</code>):</strong> if Dog derives from Animal, then <code>IEnumerable&lt;Dog&gt;</code> can be used where <code>IEnumerable&lt;Animal&gt;</code> is expected. The type parameter appears in output (return) position only.</p><p><strong>Contravariance (<code>in T</code>):</strong> <code>Action&lt;Animal&gt;</code> can be used where <code>Action&lt;Dog&gt;</code> is expected — a method accepting any Animal can certainly handle a Dog. The type parameter appears in input (parameter) position only.</p><p><strong>Invariance:</strong> <code>List&lt;Dog&gt;</code> is NOT a <code>List&lt;Animal&gt;</code> — because you could add a Cat through the Animal reference, corrupting the Dog list.</p><p>Arrays in C# are covariant (a bug — allows runtime exceptions). Most developers encounter this when assigning <code>IEnumerable&lt;DerivedType&gt;</code> to <code>IEnumerable&lt;BaseType&gt;</code>.</p>"
+      },
       "tip": "<strong>Covariance (out T)</strong> — can use a more derived type. <code>IEnumerable&lt;Dog&gt;</code> can be assigned to <code>IEnumerable&lt;Animal&gt;</code>. <strong>Contravariance (in T)</strong> — can use a less derived type. Used on method parameters. Most developers just need to know generic collections are covariant when the type parameter is <code>out</code>.",
-      "tags": ["oops", "generics", "csharp"],
+      "tags": [
+        "oops",
+        "generics",
+        "csharp"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -86,9 +155,23 @@
       "frequency": "medium",
       "question": "What are delegates and events in C#?",
       "answer": "<p>A <strong>delegate</strong> is a type-safe function pointer — a reference to a method that matches a specific signature. <code>Action</code>, <code>Func&lt;T&gt;</code>, and <code>Predicate&lt;T&gt;</code> are built-in delegates.</p><pre><code class=\"language-csharp\">// Built-in delegates\nFunc&lt;int, bool&gt; isEven = x =&gt; x % 2 == 0;\nAction&lt;string&gt; log = Console.WriteLine;\n\n// LINQ uses delegates extensively\nvar activeItems = items.Where(p =&gt; p.IsActive);  // Func&lt;T, bool&gt;\n\n// Event (restricts direct invocation — only class can raise it)\npublic class PaymentProcessor\n{\n    public event EventHandler&lt;PaymentCompletedEventArgs&gt;? PaymentCompleted;\n\n    protected virtual void OnPaymentCompleted(PaymentCompletedEventArgs e)\n        =&gt; PaymentCompleted?.Invoke(this, e);\n}\n\n// Subscriber\npaymentProcessor.PaymentCompleted += async (sender, e) =&gt;\n    await SendReceiptEmailAsync(e.Invoice);</code></pre><p>An <strong>event</strong> wraps a delegate with add/remove accessors — only the declaring class can raise it. Implements the Observer pattern.</p>",
-      "followUps": ["What is the difference between event and delegate?", "What is EventHandler<T>?", "What are lambda expressions?"],
+      "followUps": [
+        "What is the difference between event and delegate?",
+        "What is EventHandler<T>?",
+        "What are lambda expressions?"
+      ],
+      "followUpAnswers": {
+        "What is the difference between event and delegate?": "<p>A <strong>delegate</strong> is a type-safe function pointer — anyone with a reference to a delegate field can invoke it directly.</p><p>An <strong>event</strong> wraps a delegate with add/remove accessors — external callers can only subscribe (<code>+=</code>) or unsubscribe (<code>-=</code>), but cannot invoke the event or replace all subscribers. Only the declaring class can raise (invoke) the event.</p><p>This encapsulation is essential for the <strong>Observer pattern</strong> — the publisher controls when events fire; subscribers can only listen.</p><p>Public delegate fields are an anti-pattern because any code can invoke them or set them to <code>null</code>, breaking other subscribers.</p>",
+        "What is EventHandler<T>?": "<p><code>EventHandler&lt;TEventArgs&gt;</code> is the standard .NET delegate signature for events: <code>void (object sender, TEventArgs e)</code>.</p><ul><li>The <code>sender</code> is the object that raised the event (allows the handler to access the publisher).</li><li><code>TEventArgs</code> inherits from <code>EventArgs</code> and carries event-specific data.</li></ul><p>Following this convention allows generic event handling infrastructure (event aggregators, logging proxies) to work with any event. Always use this signature for public events — custom delegate signatures are rarely needed.</p><p>For events with no data, use the non-generic <code>EventHandler</code>.</p>",
+        "What are lambda expressions?": "<p>An anonymous inline function defined with the <code>=&gt;</code> operator. Used everywhere: LINQ queries (<code>.Where(p =&gt; p.IsActive)</code>), event handlers, callbacks, <code>Task.Run(() =&gt; DoWork())</code>.</p><p>They create closures when they reference variables from the enclosing scope.</p><p>See the dedicated lambda question (<code>oops-017</code>) for full details on Func/Action and closure gotchas.</p>"
+      },
       "tip": "<strong>Events vs delegates:</strong> A public delegate field lets anyone invoke it. An event wraps the delegate and restricts external code to += and -= only — the raising is encapsulated inside the class. Always use events for the observer pattern.",
-      "tags": ["oops", "delegates", "events", "csharp"],
+      "tags": [
+        "oops",
+        "delegates",
+        "events",
+        "csharp"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -99,9 +182,24 @@
       "frequency": "medium",
       "question": "What is the difference between value types and reference types in C#?",
       "answer": "<p><strong>Value types</strong> — stored directly where declared (stack for locals). Copying creates an independent copy. Includes: <code>int</code>, <code>double</code>, <code>bool</code>, <code>DateTime</code>, <code>struct</code>, <code>enum</code>.</p><p><strong>Reference types</strong> — variable holds a reference (pointer) to heap-allocated data. Copying copies the reference, not the data. Includes: <code>class</code>, <code>string</code>, <code>array</code>, <code>interface</code>.</p><pre><code class=\"language-csharp\">// Value type: copy semantics\nDateTime d1 = DateTime.Now;\nDateTime d2 = d1;  // independent copy\nd2 = d2.AddDays(1);  // d1 unchanged\n\n// Reference type: shared reference\nvar list1 = new List&lt;int&gt; { 1, 2, 3 };\nvar list2 = list1;  // both point to same list!\nlist2.Add(4);  // list1 also has 4!\n\n// String is reference type but behaves like value type (immutable)\nstring s1 = \"hello\";\nstring s2 = s1;\ns2 += \" world\";  // creates a new string, s1 unchanged\n\n// Boxing: value type → object (heap allocation)\nobject boxed = 42;        // boxing\nint unboxed = (int)boxed; // unboxing — expensive, avoid in hot paths</code></pre>",
-      "followUps": ["What is a nullable value type?", "What are C# records?", "What is struct vs class performance trade-off?"],
+      "followUps": [
+        "What is a nullable value type?",
+        "What are C# records?",
+        "What is struct vs class performance trade-off?"
+      ],
+      "followUpAnswers": {
+        "What is a nullable value type?": "<p>Value types (<code>int</code>, <code>bool</code>, <code>DateTime</code>, <code>struct</code>) cannot normally be null. <code>Nullable&lt;T&gt;</code> (written as <code>T?</code>) wraps a value type and adds a boolean <code>HasValue</code> flag plus the <code>Value</code> property.</p><pre><code class=\"language-csharp\">int? i = null;\nif (i.HasValue) Use(i.Value);\nint count = i ?? 0; // null-coalescing</code></pre><p><strong>C# 8 Nullable Reference Types (NRTs):</strong> enabling <code>&lt;Nullable&gt;enable&lt;/Nullable&gt;</code> in <code>.csproj</code> makes the compiler warn when reference types might be null — <code>string</code> is non-nullable, <code>string?</code> is nullable. NRTs are a static analysis feature, not a runtime change.</p>",
+        "What are C# records?": "<p>Records (C# 9) are a special class with <strong>value-based equality</strong>: two record instances are equal if all their properties are equal, regardless of reference.</p><p><strong>Features:</strong></p><ul><li>Auto-generated <code>==</code>, <code>!=</code>, <code>Equals</code>, <code>GetHashCode</code>, and <code>ToString</code> based on properties.</li><li>Immutable by default (init-only properties via positional syntax).</li><li>Non-destructive mutation via <code>with</code> expressions (<code>var p2 = p1 with { X = 5 }</code>).</li></ul><pre><code class=\"language-csharp\">public record Point(int X, int Y);\nvar p2 = p1 with { X = 5 }; // new record, p1 unchanged</code></pre><p>Perfect for DTOs, domain value objects, and immutable data transfer. <code>record struct</code> gives value semantics with stack allocation.</p>",
+        "What is struct vs class performance trade-off?": "<p><strong>Struct advantages:</strong> stack-allocated (no heap allocation, no GC pressure), value semantics (safe to copy, no reference aliasing bugs), better cache locality in arrays.</p><p><strong>Struct disadvantages:</strong> copying by value — passing a large struct copies every field (use <code>in</code> parameter for readonly reference). No inheritance. Boxing when assigned to <code>object</code>/interface variable.</p><p><strong>Guidelines:</strong> use <code>struct</code> for small (≤ 16 bytes), immutable, frequently created short-lived types (Point, Vector2, Color). Use <code>class</code> for anything larger, mutable, or needing inheritance. Mutable structs cause confusing copy-mutation bugs.</p>"
+      },
       "tip": "<strong>Structs are copied by value</strong> — passing a large struct to a method copies every field. Use <code>in</code> parameter modifier to pass readonly reference: <code>void Process(in LargeStruct s)</code>. Or just use class if it's large or mutable.",
-      "tags": ["oops", "value-types", "reference-types", "csharp", "memory"],
+      "tags": [
+        "oops",
+        "value-types",
+        "reference-types",
+        "csharp",
+        "memory"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -112,9 +210,24 @@
       "frequency": "very-high",
       "question": "What is CLR and how does .NET code execute?",
       "answer": "<p><strong>CLR (Common Language Runtime)</strong> is the virtual machine that executes .NET code. It provides: memory management (GC), type safety, exception handling, thread management, and security. When you write C#, the compiler produces <strong>IL (Intermediate Language)</strong> — not native machine code. The CLR then converts IL to native code at runtime via the <strong>JIT (Just-In-Time) compiler</strong>.</p><p><strong>Execution flow:</strong></p><ol><li>You write C# → C# compiler produces IL (in .dll/.exe)</li><li>Runtime: CLR's JIT compiler converts IL to native machine code on first execution of a method</li><li>Native code is cached in memory — subsequent calls run native code directly (no re-JIT)</li><li>GC automatically manages object lifetimes</li></ol><p><strong>Key CLR services:</strong></p><ul><li><strong>Garbage Collector</strong> — automatic memory management, generational (Gen0/Gen1/Gen2/LOH)</li><li><strong>Type safety verifier</strong> — prevents illegal memory access</li><li><strong>Exception handling</strong> — structured try/catch/finally across all .NET languages</li><li><strong>Thread support</strong> — ThreadPool, Tasks, async/await plumbing</li></ul><p>In .NET 8, the <strong>ReadyToRun (R2R)</strong> compilation model pre-compiles IL to native code at publish time, reducing JIT startup overhead — important for containerized microservices with cold starts.</p>",
-      "followUps": ["What is Native AOT in .NET 8?", "What is Roslyn?", "What is the difference between .NET CLR and Java JVM?"],
+      "followUps": [
+        "What is Native AOT in .NET 8?",
+        "What is Roslyn?",
+        "What is the difference between .NET CLR and Java JVM?"
+      ],
+      "followUpAnswers": {
+        "What is Native AOT in .NET 8?": "<p><strong>Ahead-of-Time (AOT) compilation</strong> compiles the entire application to native machine code at build time — there is no JIT at runtime.</p><p><strong>Benefits:</strong></p><ul><li>Millisecond startup times (vs ~100ms for JIT-warmed apps).</li><li>Significantly smaller memory footprint.</li><li>Single self-contained native binary.</li><li>No runtime code generation overhead.</li></ul><p><strong>Limitations:</strong></p><ul><li>No <code>Reflection.Emit</code> or runtime code generation.</li><li>Limited dynamic reflection.</li><li>Larger binary size than IL-only.</li><li>Not all NuGet libraries are AOT-compatible.</li></ul><p><strong>Best suited for:</strong> serverless/AWS Lambda (cold start sensitivity), CLI tools, microservices in containers. In .NET 8, ASP.NET Core supports Native AOT for minimal API scenarios.</p>",
+        "What is Roslyn?": "<p>Roslyn is the open-source .NET compiler platform — the C# and VB.NET compiler rewritten as a set of APIs (<strong>compiler-as-a-service</strong>).</p><p>Unlike traditional compilers that are black boxes, Roslyn exposes its internal data structures: syntax trees, semantic models (type information, symbol resolution), and diagnostics.</p><p><strong>This powers:</strong></p><ul><li>All Visual Studio / Rider IntelliSense and refactoring.</li><li>Roslyn Analyzers (custom compile-time rules, like nullable warnings, security checks).</li><li>Source Generators (code generated at compile time — eliminates runtime reflection for JSON serialization, DI, regex).</li></ul><p>If you've used <code>[JsonSerializable]</code> or EF Core compiled models, you've used Roslyn source generators.</p>",
+        "What is the difference between .NET CLR and Java JVM?": "<p>Both are managed runtime environments with GC and JIT compilation, but key differences:</p><ol><li><strong>Value types:</strong> CLR has true value types (<code>struct</code>) that live on the stack without boxing; Java boxes all primitives for collections.</li><li><strong>Generics:</strong> CLR has reified generics — <code>List&lt;int&gt;</code> and <code>List&lt;string&gt;</code> are different types at runtime; Java uses type erasure — all List types are the same at runtime (generic info lost).</li><li><strong>Language ecosystem:</strong> CLR has a unified type system across C#, F#, VB.NET; JVM languages (Kotlin, Scala) compile to bytecode but have their own type systems.</li><li><strong>Unsafe code:</strong> CLR supports pointers, <code>unsafe</code> blocks, <code>Span&lt;T&gt;</code>, and native interop directly; Java has JNI which is more cumbersome.</li></ol>"
+      },
       "tip": "<strong>Native AOT (.NET 7+)</strong> compiles the entire application to native machine code at build time — no JIT at runtime. Startup time drops from ~100ms to single-digit ms, memory footprint shrinks. Trade-off: no runtime code generation (no Reflection.Emit), larger binary.",
-      "tags": ["oops", "clr", "jit", "dotnet", "runtime"],
+      "tags": [
+        "oops",
+        "clr",
+        "jit",
+        "dotnet",
+        "runtime"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -125,9 +238,24 @@
       "frequency": "high",
       "question": "How does Garbage Collection work in .NET? What are generations?",
       "answer": "<p><strong>Garbage Collection (GC)</strong> is the CLR's automatic memory manager. It reclaims memory occupied by unreachable objects (objects with no live references) so you don't have to manually free memory.</p><p><strong>Generational GC — the key concept:</strong></p><ul><li><strong>Gen0</strong> — short-lived objects (local variables, temporary allocations). Collected most frequently. Fast — typically takes &lt;1ms.</li><li><strong>Gen1</strong> — objects that survived Gen0 collection. Buffer between Gen0 and Gen2.</li><li><strong>Gen2</strong> — long-lived objects (static fields, large caches, DbContext). Collected rarely. Expensive — can take 100ms+.</li><li><strong>LOH (Large Object Heap)</strong> — objects &gt;85KB allocated directly here. Only collected during Gen2 (full GC).</li></ul><pre><code class=\"language-csharp\">// Prefer object pooling for frequently allocated large objects\nvar pool = new ObjectPool&lt;LargeBuffer&gt;(() =&gt; new LargeBuffer());\nvar buffer = pool.Get();\ntry {\n    // use buffer\n} finally {\n    pool.Return(buffer); // reuse instead of GC\n}\n\n// Dispose patterns trigger GC-eligible state\npublic class DatabaseContext : IDisposable\n{\n    private bool _disposed;\n\n    public void Dispose()\n    {\n        if (!_disposed) {\n            _connection?.Dispose();\n            _disposed = true;\n        }\n        GC.SuppressFinalize(this);  // don't need finalizer now\n    }\n}</code></pre><p>In FolioTrack, I kept <code>FundHoldingsService</code> as a Singleton and cached fund data in-memory (Gen2) — intentional, infrequently updated. Short-lived DTO projections stay in Gen0 and are collected quickly.</p>",
-      "followUps": ["What is IDisposable and when should you implement it?", "What is a finalizer and when is it called?", "How do you diagnose a memory leak in .NET?"],
+      "followUps": [
+        "What is IDisposable and when should you implement it?",
+        "What is a finalizer and when is it called?",
+        "How do you diagnose a memory leak in .NET?"
+      ],
+      "followUpAnswers": {
+        "What is IDisposable and when should you implement it?": "<p>Implement <code>IDisposable</code> when your class: (1) directly wraps an unmanaged resource (file handle, native socket, Win32 handle via P/Invoke); (2) holds one or more <code>IDisposable</code> fields (e.g., a service that owns a <code>SqlConnection</code> or <code>StreamReader</code>).</p><p>The <code>Dispose()</code> method is called deterministically — either explicitly or via the <code>using</code> statement — to release resources immediately without waiting for GC.</p><p>Don't implement <code>IDisposable</code> speculatively — only when you own resources. In ASP.NET Core DI, Scoped and Transient services that implement <code>IDisposable</code> are automatically disposed at end of request.</p>",
+        "What is a finalizer and when is it called?": "<p>A finalizer (<code>~ClassName()</code>) is called by the GC's finalizer thread when the object is being collected — at a <strong>non-deterministic</strong> time after it becomes unreachable. Used as a last-resort safety net: if <code>Dispose()</code> was never called, the finalizer can still release unmanaged resources.</p><p><strong>Problems:</strong> non-deterministic timing; runs on GC finalizer thread (no async); finalizable objects need two GC cycles to collect.</p><p>Always call <code>GC.SuppressFinalize(this)</code> at the end of <code>Dispose()</code>. Prefer <code>SafeHandle</code> over finalizers for wrapping OS resources.</p>",
+        "How do you diagnose a memory leak in .NET?": "<p><strong>Tools:</strong></p><ul><li><code>dotnet-counters monitor --counters System.Runtime</code> — watch GC heap size, Gen0/1/2 collections in real time.</li><li><code>dotnet-dump collect</code> + <code>dotnet-dump analyze</code> — take a process memory snapshot and inspect it.</li><li>Visual Studio Diagnostic Tools (heap snapshot comparison).</li><li>Application Insights / Prometheus (long-term GC metrics in production).</li></ul><p><strong>Common causes:</strong> event handlers subscribed but never unsubscribed; static collections growing unbounded; Singleton holding Scoped services (captive dependency); unmanaged resources not disposed.</p><p><strong>Symptom pattern:</strong> heap grows steadily over time, Gen2 full collections become frequent, <code>OutOfMemoryException</code> eventually.</p>"
+      },
       "tip": "<strong>GC pressure rule of thumb:</strong> Don't fight the GC — it's well-optimized for short-lived objects. Optimize when profiling shows Gen2 collections happening frequently (full GC). Use <code>dotnet-counters</code> or Application Insights to monitor GC stats in production.",
-      "tags": ["oops", "gc", "garbage-collection", "memory", "dotnet"],
+      "tags": [
+        "oops",
+        "gc",
+        "garbage-collection",
+        "memory",
+        "dotnet"
+      ],
       "sortOrder": 10,
       "isActive": true
     },
@@ -138,9 +266,22 @@
       "frequency": "high",
       "question": "What is the difference between var and dynamic in C#?",
       "answer": "<p>Both allow you to skip explicit type declarations, but they work completely differently:</p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th>Feature</th><th>var</th><th>dynamic</th></tr><tr><td>Type resolution</td><td>Compile time (inferred from RHS)</td><td>Runtime (late binding)</td></tr><tr><td>Type safety</td><td>Fully type-safe</td><td>No compile-time checking</td></tr><tr><td>IntelliSense</td><td>Full IntelliSense</td><td>No IntelliSense</td></tr><tr><td>Performance</td><td>Same as explicit type</td><td>Slower (DLR overhead)</td></tr></table><pre><code class=\"language-csharp\">// var: compiler infers type at compile time\nvar name = \"Alice\";     // string — fully type-safe\nvar count = items.Where(x =&gt; x.Active).Count();  // int\nname = 42;              // COMPILER ERROR: can't assign int to string\n\n// dynamic: resolved at runtime — dangerous\ndynamic obj = \"hello\";\nobj = 42;               // no error — type changes at runtime!\nobj.NonExistentMethod(); // runtime exception: RuntimeBinderException\n\n// Valid use of dynamic: COM interop, reflection simplification\ndynamic excel = Activator.CreateInstance(Type.GetTypeFromProgID(\"Excel.Application\"));\nexcel.Visible = true;  // no need to cast</code></pre><p>I use <code>var</code> everywhere for readability. <code>dynamic</code> is rare — only for COM interop or deserializing unknown JSON shapes. In all my projects (FolioTrack, ServiceSelection) I avoid <code>dynamic</code>.</p>",
-      "followUps": ["Can you use var for method parameters?", "What is the DLR (Dynamic Language Runtime)?"],
+      "followUps": [
+        "Can you use var for method parameters?",
+        "What is the DLR (Dynamic Language Runtime)?"
+      ],
+      "followUpAnswers": {
+        "Can you use var for method parameters?": "<p><strong>No</strong> — <code>var</code> can only be used for local variable declarations where the right-hand side provides enough information for the compiler to infer the type.</p><p>Method parameters, return types, field declarations, and property types all require explicit types. This is intentional: method signatures are contracts consumed by other developers and tools (IntelliSense, documentation, API clients). Making them explicitly typed is essential for readability and discoverability.</p>",
+        "What is the DLR (Dynamic Language Runtime)?": "<p>The DLR is a runtime layer that sits on top of the CLR to support dynamic dispatch and dynamic languages. It powers the <code>dynamic</code> keyword in C#.</p><p><strong>Key components:</strong></p><ol><li><strong>Call site caching</strong> — the first time a dynamic call is made, the DLR resolves the method and caches the result; repeated calls with the same types skip re-resolution.</li><li><strong>Expression trees</strong> — dynamic operations are compiled to expression trees and executed.</li><li><strong>Language interop</strong> — allows IronPython and IronRuby objects to work with C#'s <code>dynamic</code> keyword.</li></ol><p>The DLR is rarely needed directly in modern C# — its main use cases are better served by source generators and <code>System.Text.Json</code> today.</p>"
+      },
       "tip": "<strong>var is NOT the same as dynamic.</strong> <code>var</code> is just syntactic sugar — the actual type is known at compile time. <code>dynamic</code> bypasses compile-time type checking entirely. Always prefer <code>var</code> over <code>dynamic</code> unless you specifically need late binding.",
-      "tags": ["oops", "csharp", "var", "dynamic", "type-system"],
+      "tags": [
+        "oops",
+        "csharp",
+        "var",
+        "dynamic",
+        "type-system"
+      ],
       "sortOrder": 11,
       "isActive": true
     },
@@ -151,9 +292,21 @@
       "frequency": "high",
       "question": "What is the difference between const, readonly, and static readonly?",
       "answer": "<p>All three create fields that can't be arbitrarily changed, but their timing and scope differ:</p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th>Feature</th><th>const</th><th>readonly</th><th>static readonly</th></tr><tr><td>When set</td><td>Compile time</td><td>Constructor or initializer</td><td>Static constructor or initializer</td></tr><tr><td>Can change per instance</td><td>No</td><td>Yes (in constructor)</td><td>No (single value)</td></tr><tr><td>Runtime value allowed</td><td>No (literal only)</td><td>Yes</td><td>Yes</td></tr></table><pre><code class=\"language-csharp\">public class Config\n{\n    // const: baked into calling assembly at compile time\n    public const int MaxRetries = 3;  // must be a literal\n    public const string DefaultCulture = \"en-US\";\n\n    // readonly: set once in constructor, can vary per instance\n    private readonly string _connectionString;\n    public Config(string cs) { _connectionString = cs; }\n\n    // static readonly: set once at class initialization, runtime value OK\n    public static readonly DateTime AppStartTime = DateTime.UtcNow;\n    public static readonly string Version =\n        Assembly.GetExecutingAssembly().GetName().Version!.ToString();\n}</code></pre><p><strong>Key gotcha with const:</strong> If you change a <code>const</code> value in assembly A, assembly B must be recompiled to see the new value — the old value was baked in at compile time. Use <code>static readonly</code> if the value might change between versions.</p>",
-      "followUps": ["What is a readonly struct?", "When would you use const vs static readonly?"],
+      "followUps": [
+        "What is a readonly struct?",
+        "When would you use const vs static readonly?"
+      ],
+      "followUpAnswers": {
+        "What is a readonly struct?": "<p>A <code>readonly struct</code> guarantees the entire struct is immutable — all fields must be readonly, all properties must be get-only, and all methods implicitly have a <code>this</code> that is a readonly reference.</p><p><strong>Benefits:</strong> the compiler can pass it by readonly reference without making a defensive copy (critical for performance with <code>in</code> parameters); communicates immutability intent; enables compiler optimizations.</p><pre><code class=\"language-csharp\">public readonly struct Vector2\n{\n    public float X { get; }\n    public float Y { get; }\n    public Vector2(float x, float y) { X = x; Y = y; }\n}</code></pre><p>C# 8 also added the <code>readonly</code> modifier on individual struct methods to allow partial mutability.</p>",
+        "When would you use const vs static readonly?": "<p><strong>Use <code>const</code> for:</strong> true compile-time constants that are primitive literals and will NEVER change across library versions (mathematical approximations, separator chars, small integers).</p><p><strong>Use <code>static readonly</code> for:</strong></p><ol><li>Values computed at startup (<code>static readonly DateTime AppStart = DateTime.UtcNow</code>).</li><li>Complex objects that can't be const (arrays, class instances).</li><li>Values in a public library that might change between versions — <code>const</code> values are baked into the calling assembly and require recompilation to update.</li><li>When in doubt.</li></ol><p>The version-baking problem with const is a real gotcha: if library v1 has <code>const int MaxSize = 100</code> and v2 changes it to 200, callers still see 100 until they recompile.</p>"
+      },
       "tip": "<strong>Use static readonly instead of const for public API values</strong> that might change between library versions. const is baked into the calling assembly — a version bump without recompile will use the old value. static readonly is evaluated fresh at runtime.",
-      "tags": ["oops", "const", "readonly", "csharp"],
+      "tags": [
+        "oops",
+        "const",
+        "readonly",
+        "csharp"
+      ],
       "sortOrder": 12,
       "isActive": true
     },
@@ -164,9 +317,24 @@
       "frequency": "high",
       "question": "What is the IDisposable pattern and when do you implement it?",
       "answer": "<p><strong>IDisposable</strong> is a contract for releasing unmanaged resources (file handles, database connections, network sockets) deterministically — without waiting for the GC. Implement it when your class holds resources that must be freed promptly.</p><pre><code class=\"language-csharp\">public class ReportGenerator : IDisposable\n{\n    private Stream? _outputStream;\n    private bool _disposed;\n\n    public ReportGenerator(string filePath)\n    {\n        _outputStream = File.Create(filePath);\n    }\n\n    public void GenerateReport() { /* write to stream */ }\n\n    public void Dispose()\n    {\n        Dispose(disposing: true);\n        GC.SuppressFinalize(this); // finalizer not needed\n    }\n\n    protected virtual void Dispose(bool disposing)\n    {\n        if (!_disposed)\n        {\n            if (disposing)\n                _outputStream?.Dispose();\n            _disposed = true;\n        }\n    }\n}\n\n// Usage — C# using statement guarantees Dispose() is called\nusing var generator = new ReportGenerator(\"report.pdf\");\ngenerator.GenerateReport();\n// Dispose() called automatically at end of using block\n\n// C# 8+ using declaration (same behavior, less nesting)\nusing var conn = new SqlConnection(connectionString);</code></pre><p>The <code>using</code> statement is syntactic sugar for a try/finally block that calls <code>Dispose()</code>. In all my projects, any class inheriting from EF Core's DbContext, SqlConnection, or HttpClient flows through <code>using</code> blocks.</p>",
-      "followUps": ["What is the difference between Dispose and Finalize?", "What does GC.SuppressFinalize do?", "What is IAsyncDisposable?"],
+      "followUps": [
+        "What is the difference between Dispose and Finalize?",
+        "What does GC.SuppressFinalize do?",
+        "What is IAsyncDisposable?"
+      ],
+      "followUpAnswers": {
+        "What is the difference between Dispose and Finalize?": "<p><strong><code>Dispose()</code>:</strong> called deterministically by your code (or via <code>using</code>), runs on the calling thread, you control exactly when it happens.</p><p><strong><code>Finalize()</code> (<code>~ClassName()</code>):</strong> called non-deterministically by the GC when collecting the object, runs on the GC finalizer thread, no control over timing.</p><p>The standard <code>IDisposable</code> pattern implements <strong>BOTH</strong>: <code>Dispose()</code> does immediate cleanup and calls <code>GC.SuppressFinalize(this)</code> to skip the finalizer. The finalizer only runs as a safety net if <code>Dispose()</code> was never called.</p><p>Never rely solely on the finalizer for cleanup — it may take seconds or minutes after the object is unreachable.</p>",
+        "What does GC.SuppressFinalize do?": "<p>It removes the object from the GC's finalization queue, telling the runtime: <em>\"this object's finalizer doesn't need to run — cleanup is already done.\"</em></p><p>When <code>Dispose()</code> is called correctly, all resources are released immediately — there's no need to run the finalizer later. Calling <code>GC.SuppressFinalize(this)</code> in <code>Dispose()</code> saves the GC from having to track the object through an extra collection cycle. This improves both throughput and memory efficiency.</p><p><strong>Always call it as the last line of <code>Dispose()</code>.</strong></p>",
+        "What is IAsyncDisposable?": "<p>Introduced in .NET Core 3.0, <code>IAsyncDisposable</code> defines <code>ValueTask DisposeAsync()</code> for async-friendly cleanup. Used when releasing resources requires async operations: gracefully closing a database connection, flushing an async stream buffer, waiting for in-flight work to complete.</p><p>Used with <code>await using</code> syntax:</p><pre><code class=\"language-csharp\">await using var conn = new AsyncDbConnection();</code></pre><p>The compiler generates an async try/finally that calls <code>DisposeAsync()</code>. EF Core's <code>DbContext</code>, <code>IAsyncEnumerator&lt;T&gt;</code>, and many ASP.NET Core components implement <code>IAsyncDisposable</code>. Prefer it over <code>Dispose()</code> in async code paths to avoid blocking.</p>"
+      },
       "tip": "<strong>In ASP.NET Core DI, registered services are automatically disposed</strong> at the end of the request (Scoped) or app shutdown (Singleton). You still need <code>using</code> for objects created manually (new SqlConnection, new StreamReader, etc.).",
-      "tags": ["oops", "idisposable", "memory", "using", "csharp"],
+      "tags": [
+        "oops",
+        "idisposable",
+        "memory",
+        "using",
+        "csharp"
+      ],
       "sortOrder": 13,
       "isActive": true
     },
@@ -177,9 +345,22 @@
       "frequency": "high",
       "question": "What is the difference between string and StringBuilder in C#?",
       "answer": "<p><strong>string</strong> is immutable — every concatenation or modification creates a new string object on the heap. In a loop, this generates enormous GC pressure.</p><p><strong>StringBuilder</strong> is mutable — it maintains an internal buffer and appends without creating new objects each time.</p><pre><code class=\"language-csharp\">// BAD: creates 1000 string objects\nstring result = \"\";\nfor (int i = 0; i &lt; 1000; i++)\n    result += i.ToString();  // each += allocates a new string!\n\n// GOOD: one StringBuilder, minimal allocations\nvar sb = new StringBuilder(capacity: 5000); // pre-size for efficiency\nfor (int i = 0; i &lt; 1000; i++)\n    sb.Append(i);\nstring result = sb.ToString();  // single string created at end\n\n// Real-world example: email body builder in PaymentReminder service\nvar emailBody = new StringBuilder();\nemailBody.AppendLine(\"Dear \").Append(client.Name).AppendLine(\",\");\nemailBody.AppendLine($\"Your invoice #{inv.Id} of {inv.Amount:C} is due.\");\nemailBody.AppendLine(\"Regards, Billing Team\");\nstring body = emailBody.ToString();</code></pre><p><strong>When to use what:</strong></p><ul><li><strong>string</strong> — concatenating 2-3 strings, string literals, simple operations</li><li><strong>StringBuilder</strong> — concatenating in loops, building large strings, HTML/email body generation</li><li><strong>string.Join()</strong> — joining a known collection — fastest option, internally uses efficient buffer</li></ul>",
-      "followUps": ["What is string interning?", "What is Span<char> for string operations?"],
+      "followUps": [
+        "What is string interning?",
+        "What is Span<char> for string operations?"
+      ],
+      "followUpAnswers": {
+        "What is string interning?": "<p>The CLR maintains a pool of unique string literals called the <strong>intern pool</strong>. When two string literals with the same value appear in code, they share the same memory address — reference equality holds.</p><ul><li><code>string.Intern(s)</code> adds a string to the pool and returns the canonical reference.</li><li><code>string.IsInterned(s)</code> returns the interned reference if present, or null.</li></ul><p><strong>Benefits:</strong> memory savings for frequently repeated strings; reference equality checks become pointer comparisons (fast).</p><p><strong>Drawbacks:</strong> interned strings are never garbage collected until the process exits — don't intern large or rarely-repeated strings.</p><p><strong>Practical use:</strong> configuration keys, HTTP header names, frequently compared identifiers. All string literals in your code are automatically interned by the CLR.</p>",
+        "What is Span<char> for string operations?": "<p><code>Span&lt;char&gt;</code> is a stack-allocated view (a slice) over a contiguous memory region — it can view part of a string, array, or stack memory without allocating a copy.</p><p><strong>For string operations:</strong> instead of <code>s.Substring(3, 5)</code> which allocates a new string, use <code>s.AsSpan(3, 5)</code> which is zero-allocation — it's just a pointer + length into the original string.</p><p>Critical for high-performance parsing (HTTP request parsers, CSV readers) where substring creation in hot paths causes GC pressure.</p><p><code>ReadOnlySpan&lt;char&gt;</code> is the immutable version for strings.</p><p><strong>Limitation:</strong> <code>Span&lt;T&gt;</code> is a ref struct — it can only live on the stack, cannot be stored in class fields. For async scenarios or field storage, use <code>Memory&lt;char&gt;</code> instead (heap-compatible view).</p>"
+      },
       "tip": "<strong>string.Join is often faster than StringBuilder for collections:</strong> <code>string.Join(\", \", items)</code> is cleaner and optimized. Use StringBuilder when you're building a string step-by-step with conditional logic.",
-      "tags": ["oops", "string", "stringbuilder", "csharp", "performance"],
+      "tags": [
+        "oops",
+        "string",
+        "stringbuilder",
+        "csharp",
+        "performance"
+      ],
       "sortOrder": 14,
       "isActive": true
     },
@@ -190,9 +371,21 @@
       "frequency": "medium",
       "question": "What is a sealed class and when would you use it?",
       "answer": "<p>A <strong>sealed</strong> class cannot be inherited — it terminates the inheritance chain. A sealed method in an unsealed class prevents further overriding in derived classes.</p><pre><code class=\"language-csharp\">// Sealed class — no further inheritance allowed\npublic sealed class JwtHelper\n{\n    private readonly string _secret;\n    public JwtHelper(string secret) { _secret = secret; }\n\n    public string GenerateToken(int userId, string email)\n    {\n        // JWT generation logic\n    }\n}\n\n// Cannot extend: public class ExtendedJwtHelper : JwtHelper {} // COMPILE ERROR\n\n// Sealed method — prevent overriding in further derived classes\npublic class PaymentBase\n{\n    protected virtual void Validate() { ... }\n}\n\npublic class CreditCardPayment : PaymentBase\n{\n    public sealed override void Validate() { ... } // cannot be overridden further\n}</code></pre><p><strong>When to use sealed:</strong></p><ul><li>Classes designed as utilities with no extension points (<code>JwtHelper</code>, static-like classes)</li><li>Performance-critical classes — JIT can devirtualize calls on sealed classes (inlining opportunity)</li><li>Security — prevent substitution attacks via inheritance</li><li>Value types (structs) are implicitly sealed</li></ul>",
-      "followUps": ["Does sealing a class improve performance?", "Why is string sealed in .NET?"],
+      "followUps": [
+        "Does sealing a class improve performance?",
+        "Why is string sealed in .NET?"
+      ],
+      "followUpAnswers": {
+        "Does sealing a class improve performance?": "<p>Yes, measurably in hot paths. When calling a virtual method on a sealed type, the JIT compiler can <strong>devirtualize</strong> the call — it knows exactly which method implementation will be called, so it can inline it rather than performing an indirect vtable lookup.</p><p>Devirtualization eliminates the branch, enables further inlining optimizations, and improves CPU branch prediction. Benchmarks show 5–15% improvement for tight loops over sealed types with many virtual calls.</p><p>However, for typical application code (controllers, services, repositories), this is negligible — the bottleneck is I/O, not virtual dispatch.</p><p><strong>Seal classes for correctness</strong> (design intent, preventing unsafe subclassing), not as a primary performance optimization. The performance benefit is a welcome side effect.</p>",
+        "Why is string sealed in .NET?": "<p>Multiple reasons:</p><ol><li><strong>Security</strong> — if String were extensible, a malicious subclass could override <code>GetHashCode()</code> or <code>Equals()</code> to break Dictionary lookups, hash collisions, or security equality checks. String comparisons underpin many security-sensitive operations.</li><li><strong>Interning and identity guarantees</strong> — the CLR has special knowledge of String's memory layout for string interning; subclasses would complicate this.</li><li><strong>Runtime optimizations</strong> — the JIT has special fast paths for string operations that rely on knowing the exact layout.</li><li><strong>Immutability guarantee</strong> — if you could subclass string and add mutable state, the immutability contract breaks.</li></ol><p>The <strong>sealed + immutable combination</strong> is what makes strings safe to share across threads and use as dictionary keys.</p>"
+      },
       "tip": "<strong>String is sealed for safety:</strong> If string were extensible, an attacker could create a malicious subclass with a modified <code>GetHashCode()</code> or <code>Equals()</code> — breaking Dictionary lookups and security checks. Many framework types are sealed for the same reason.",
-      "tags": ["oops", "sealed", "inheritance", "csharp"],
+      "tags": [
+        "oops",
+        "sealed",
+        "inheritance",
+        "csharp"
+      ],
       "sortOrder": 15,
       "isActive": true
     },
@@ -203,9 +396,23 @@
       "frequency": "high",
       "question": "What is exception handling in C#? What is the difference between throw and throw ex?",
       "answer": "<p>Exception handling in C# uses <code>try-catch-finally</code> blocks. The <code>try</code> block contains code that might throw. The <code>catch</code> block handles specific exception types. The <code>finally</code> block runs regardless of whether an exception occurred — used for cleanup.</p><pre><code class=\"language-csharp\">// try-catch-finally pattern\npublic async Task&lt;Invoice&gt; GenerateInvoiceAsync(int assignmentId)\n{\n    SqlConnection? conn = null;\n    try\n    {\n        conn = new SqlConnection(_connectionString);\n        await conn.OpenAsync();\n        // ... invoice generation\n        return invoice;\n    }\n    catch (SqlException ex) when (ex.Number == 1205)  // deadlock\n    {\n        _logger.LogWarning(\"Deadlock on invoice {Id}, retrying\", assignmentId);\n        throw;  // rethrow — preserve stack trace\n    }\n    catch (Exception ex)\n    {\n        _logger.LogError(ex, \"Invoice generation failed for {Id}\", assignmentId);\n        throw;  // CORRECT: throw preserves original stack trace\n        // throw ex; // WRONG: resets stack trace to this line\n    }\n    finally\n    {\n        conn?.Dispose(); // always runs\n    }\n}</code></pre><p><strong>throw vs throw ex:</strong></p><ul><li><code>throw</code> — rethrows the exception preserving the original stack trace (where it actually happened)</li><li><code>throw ex</code> — resets the stack trace to the current line — you lose the original call stack, making debugging much harder</li></ul><p><strong>Exception filters</strong> (<code>catch (Exception ex) when (condition)</code>) — the filter runs before the stack unwinds, preserving the full stack trace while allowing conditional handling.</p>",
-      "followUps": ["What is AggregateException?", "What is custom exception creation?", "What is exception filter?"],
+      "followUps": [
+        "What is AggregateException?",
+        "What is custom exception creation?",
+        "What is exception filter?"
+      ],
+      "followUpAnswers": {
+        "What is AggregateException?": "<p><code>AggregateException</code> wraps multiple exceptions into one. It's thrown by the Task Parallel Library (TPL) when multiple parallel operations fail simultaneously — <code>Task.WaitAll(tasks)</code> or <code>Parallel.ForEach()</code> collect all exceptions and wrap them in a single <code>AggregateException</code>.</p><p>Each individual exception is in the <code>InnerExceptions</code> collection.</p><ul><li>When you <code>await</code> a failed task, C# automatically unwraps the first inner exception (you see the original exception, not the aggregate).</li><li>When you use <code>.Wait()</code> or <code>.Result</code> (blocking access), you get the raw <code>AggregateException</code>.</li></ul><pre><code class=\"language-csharp\">catch (AggregateException ae)\n{\n    ae.Handle(ex =&gt;\n    {\n        if (ex is OperationCanceledException) return true;\n        _logger.LogError(ex, \"Task failed\");\n        return false;\n    });\n}</code></pre>",
+        "What is custom exception creation?": "<p>Create a class inheriting from <code>Exception</code> (or a specific subclass matching your scenario). Add properties for domain-specific context. Always provide the standard constructor overloads (message, message+inner).</p><pre><code class=\"language-csharp\">public class InvoiceNotFoundException : Exception\n{\n    public int InvoiceId { get; }\n\n    public InvoiceNotFoundException(int id)\n        : base($\"Invoice {id} not found\")\n    {\n        InvoiceId = id;\n    }\n\n    public InvoiceNotFoundException(int id, Exception inner)\n        : base($\"Invoice {id} not found\", inner)\n    {\n        InvoiceId = id;\n    }\n}</code></pre><p><strong>Benefits:</strong> catch-site can filter by specific exception type (<code>catch (InvoiceNotFoundException ex)</code>), structured logging captures the <code>InvoiceId</code>, meaningful to callers without parsing message strings.</p>",
+        "What is exception filter?": "<p><code>catch (Exception ex) when (condition)</code> — the <code>when</code> clause evaluates <strong>BEFORE</strong> the stack unwinds. If the condition is false, the catch block is bypassed as if it weren't there, and the exception propagates to the next handler up the call stack.</p><p><strong>Key benefits:</strong></p><ol><li>You can inspect the exception and decide conditionally whether to handle it — without losing the original stack trace.</li><li>The debugger stops at the throw site, not the catch site, giving you full context.</li><li>More expressive than catching and re-throwing.</li></ol><p><strong>Example:</strong> <code>catch (SqlException ex) when (ex.Number == 1205)</code> handles only SQL deadlock errors. Compare with catching-and-rethrowing which unwinds the stack first (losing the original frame in debugger).</p>"
+      },
       "tip": "<strong>Always use <code>throw</code> not <code>throw ex</code></strong> when rethrowing. The stack trace is your most valuable debugging tool in production. Losing it with <code>throw ex</code> forces you to reproduce the bug rather than reading the trace.",
-      "tags": ["oops", "exceptions", "try-catch", "csharp"],
+      "tags": [
+        "oops",
+        "exceptions",
+        "try-catch",
+        "csharp"
+      ],
       "sortOrder": 16,
       "isActive": true
     },
@@ -216,9 +423,22 @@
       "frequency": "high",
       "question": "What are lambda expressions and how are they used in C#?",
       "answer": "<p>A <strong>lambda expression</strong> is an anonymous function — a short inline function that can be assigned to a delegate or passed as a method argument. Syntax: <code>parameters =&gt; expression</code>.</p><pre><code class=\"language-csharp\">// Basic lambda\nFunc&lt;int, int&gt; square = x =&gt; x * x;\nConsole.WriteLine(square(5)); // 25\n\n// Multi-parameter\nFunc&lt;int, int, int&gt; add = (a, b) =&gt; a + b;\n\n// Statement lambda (block body)\nFunc&lt;int, bool&gt; isPrime = n =&gt; {\n    if (n &lt; 2) return false;\n    for (int i = 2; i &lt;= Math.Sqrt(n); i++)\n        if (n % i == 0) return false;\n    return true;\n};\n\n// In LINQ (most common usage)\nvar activePortfolios = portfolios\n    .Where(p =&gt; p.IsActive)                     // filter\n    .Select(p =&gt; new { p.Id, p.Name })           // project\n    .OrderByDescending(p =&gt; p.CreatedAt)          // sort\n    .ToList();\n\n// In event handlers\nbtnSave.Click += async (sender, e) =&gt; await SaveAsync();\n\n// Capturing variables (closure)\nstring prefix = \"Hello\";\nAction&lt;string&gt; greet = name =&gt; Console.WriteLine($\"{prefix}, {name}!\"); // captures prefix\ngreet(\"Alice\"); // \"Hello, Alice!\"\n\n// C# 9+ shorter lambda for property access\nvar names = people.Select(p =&gt; p.Name).ToList(); // common pattern</code></pre><p>Lambdas are the backbone of LINQ and make collection operations concise. I use them throughout FolioTrack's service layer for filtering and projecting EF Core queries.</p>",
-      "followUps": ["What is the difference between Func and Action?", "What is a closure and what are the capture gotchas?"],
+      "followUps": [
+        "What is the difference between Func and Action?",
+        "What is a closure and what are the capture gotchas?"
+      ],
+      "followUpAnswers": {
+        "What is the difference between Func and Action?": "<p>Both are built-in generic delegate types.</p><p><strong><code>Action</code>:</strong> represents a method that returns <code>void</code>. <code>Action&lt;T&gt;</code> takes one parameter, up to <code>Action&lt;T1..T16&gt;</code>. Used for side-effecting operations: <code>Action&lt;string&gt; log = Console.WriteLine;</code></p><p><strong><code>Func&lt;TResult&gt;</code>:</strong> represents a method that returns a value. The last type parameter is always the return type. Up to 16 input parameters: <code>Func&lt;T1..T16, TResult&gt;</code>. Used for transformations and predicates: <code>Func&lt;int, bool&gt; isEven = x =&gt; x % 2 == 0;</code></p><p><code>Predicate&lt;T&gt;</code> is shorthand for <code>Func&lt;T, bool&gt;</code> — used in <code>List.FindAll</code>, <code>Array.Exists</code>.</p><p><strong>Rule of thumb:</strong> use <code>Func</code> when you need a return value, <code>Action</code> when you don't.</p>",
+        "What is a closure and what are the capture gotchas?": "<p>A closure is when a lambda captures (closes over) variables from its enclosing scope. The lambda holds a <strong>REFERENCE</strong> to the variable, not a copy of its value at the moment of capture. So if the variable changes later, the lambda sees the new value.</p><p><strong>Classic gotcha in for loops:</strong></p><pre><code class=\"language-csharp\">for (int i = 0; i &lt; 5; i++)\n{\n    list.Add(() =&gt; Console.WriteLine(i));\n}\n// All 5 lambdas print 5 — they all reference the same i variable,\n// which is 5 after the loop ends.</code></pre><p><strong>Fix:</strong> create a local copy inside the loop:</p><pre><code class=\"language-csharp\">var captured = i;\nlist.Add(() =&gt; Console.WriteLine(captured));\n// Each lambda captures a different captured variable.</code></pre><p>C# <code>foreach</code> loops don't have this bug (each iteration creates a new variable). Another gotcha: closures in async lambdas can extend object lifetimes longer than expected, preventing GC.</p>"
+      },
       "tip": "<strong>Closure capture gotcha with loops:</strong> Capturing a loop variable in a lambda captures the variable, not its current value. By the time the lambda executes, the loop may have finished and the variable holds the last value. Fix: <code>var captured = loopVar; var lambda = () =&gt; Use(captured);</code>",
-      "tags": ["oops", "lambda", "delegates", "linq", "csharp"],
+      "tags": [
+        "oops",
+        "lambda",
+        "delegates",
+        "linq",
+        "csharp"
+      ],
       "sortOrder": 17,
       "isActive": true
     }
