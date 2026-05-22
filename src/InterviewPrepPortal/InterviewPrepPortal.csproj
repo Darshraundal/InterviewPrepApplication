@@ -7,9 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- JSON files are auto-included as Content by the SDK; just set copy behavior -->
+    <!-- JSON files: copy to build output AND publish output (needed for cross-compile on Linux CI) -->
     <Content Update="Data\JsonData\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 

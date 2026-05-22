@@ -10,9 +10,25 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DATABASE — SQLite via EF Core (user data only; questions live in JSON files)
+// Use an absolute path rooted at ContentRootPath so it works regardless of
+// the process working directory (Azure App Service, VS, self-contained exe).
 // ─────────────────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    var rawCs = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=interviewprep.db";
+    // If the connection string is already absolute (contains :/ or :\) leave it.
+    // Otherwise resolve it relative to ContentRootPath.
+    if (!rawCs.Contains(":/") && !rawCs.Contains(@":\") && rawCs.StartsWith("Data Source="))
+    {
+        var dbFileName = rawCs["Data Source=".Length..].Trim();
+        if (!Path.IsPathRooted(dbFileName))
+        {
+            var dbPath = Path.Combine(builder.Environment.ContentRootPath, dbFileName);
+            rawCs = $"Data Source={dbPath}";
+        }
+    }
+    options.UseSqlite(rawCs);
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IDENTITY — ASP.NET Core Identity on top of SQLite
