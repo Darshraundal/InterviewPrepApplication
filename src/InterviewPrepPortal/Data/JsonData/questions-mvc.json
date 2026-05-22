@@ -434,6 +434,99 @@
       ],
       "sortOrder": 17,
       "isActive": true
+    },
+    {
+      "id": "mvc-018",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the difference between TempData.Keep() and TempData.Peek() in ASP.NET Core MVC?",
+      "answer": "<p>TempData survives exactly one redirect by default — once you read a key, it's marked for deletion and gone on the next request. <code>Keep()</code> and <code>Peek()</code> are two ways to work around that deletion behaviour.</p><h4>Default TempData behaviour:</h4><pre><code class=\"language-csharp\">// Action 1 — POST, sets TempData\n[HttpPost]\npublic IActionResult Save(OrderDto dto)\n{\n    TempData[\"Message\"] = \"Order saved!\";\n    return RedirectToAction(\"Confirm\");\n}\n\n// Action 2 — Confirm reads it, TempData[\"Message\"] is now MARKED for deletion\npublic IActionResult Confirm()\n{\n    var msg = TempData[\"Message\"]; // reads it -- marked for deletion\n    return View();\n} // TempData[\"Message\"] is gone after this response\n\n// Action 3 — if you redirect again from Confirm, TempData[\"Message\"] is null</code></pre><h4>TempData.Keep() — re-mark for survival</h4><pre><code class=\"language-csharp\">// Keep the value alive for one MORE request after reading\npublic IActionResult Confirm()\n{\n    var msg = TempData[\"Message\"]; // reads it\n    TempData.Keep(\"Message\");      // keeps it alive for next request too\n    // or TempData.Keep() -- keeps ALL tempdata keys\n    return RedirectToAction(\"FinalStep\");\n}\n\npublic IActionResult FinalStep()\n{\n    var msg = TempData[\"Message\"]; // still available because Keep() was called\n    // now it's gone again (unless you call Keep() again)\n}</code></pre><h4>TempData.Peek() — read without marking for deletion</h4><pre><code class=\"language-csharp\">public IActionResult Confirm()\n{\n    // Peek reads the value WITHOUT marking it for deletion\n    // TempData[\"Message\"] stays alive for the next request automatically\n    var msg = TempData.Peek(\"Message\") as string;\n    return View(); // Message still available on next request\n}\n// vs\npublic IActionResult Confirm()\n{\n    var msg = TempData[\"Message\"] as string; // reads + marks for deletion\n    return View(); // Message gone after this\n}</code></pre><h4>In Razor views:</h4><pre><code class=\"language-html\">&lt;!-- Reading TempData in a view also marks it for deletion --&gt;\n@if (TempData[\"Message\"] != null)\n{\n    &lt;div class=\"alert alert-success\"&gt;@TempData[\"Message\"]&lt;/div&gt;\n}\n\n&lt;!-- To keep it alive from the view too --&gt;\n@{ TempData.Keep(\"Message\"); }</code></pre><h4>Quick reference:</h4><ul><li><code>TempData[key]</code> — reads, marks for deletion after current request.</li><li><code>TempData.Peek(key)</code> — reads, does NOT mark for deletion, stays for next request.</li><li><code>TempData.Keep(key)</code> — after reading, re-marks it to survive one more request.</li><li><code>TempData.Keep()</code> — keeps ALL keys alive.</li></ul>",
+      "followUps": [
+        {
+          "question": "How is TempData stored internally? Is it always a cookie?",
+          "answer": "<p>By default in ASP.NET Core, TempData is backed by the <strong>cookie-based provider</strong> — the data is serialised to JSON, Base64-encoded, and stored in a cookie. This means TempData survives even if the user's request hits a different server (unlike session, which is server-side by default). The cookie size limit applies — TempData shouldn't store large objects.</p><p>You can switch to <strong>session-based TempData</strong>:</p><pre><code class=\"language-csharp\">builder.Services.AddControllersWithViews()\n    .AddSessionStateTempDataProvider(); // use session instead of cookie\n\n// Must also configure session\nbuilder.Services.AddSession();\napp.UseSession();</code></pre><p>Session-based TempData is better for larger data, but adds server-side session infrastructure. Cookie-based is simpler and works out of the box for small messages like success/error notifications.</p>"
+        }
+      ],
+      "tip": "<strong>Pattern I use:</strong> Peek() when I need to read TempData in a layout/partial that runs on the same view as the main read. Keep() when I redirect again and need the value for one more hop. For most success/error toast messages, plain TempData[key] is enough.",
+      "tags": [
+        "tempdata",
+        "keep",
+        "peek",
+        "mvc",
+        "razor"
+      ],
+      "sortOrder": 18,
+      "isActive": true
+    },
+    {
+      "id": "mvc-019",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is a strongly typed view in ASP.NET Core MVC? Why is it better than ViewBag?",
+      "answer": "<p>A strongly typed view explicitly declares the model type it expects using <code>@model</code>. The view then gets full IntelliSense, compile-time type checking, and no casting. I learned to always use strongly typed views after spending 30 minutes debugging a typo in a ViewBag key that the compiler could have caught instantly.</p><h4>Weakly typed (ViewBag) — no compile-time safety:</h4><pre><code class=\"language-csharp\">// Controller\npublic IActionResult ProductDetail(int id)\n{\n    ViewBag.ProductName = \"Widget Pro\";\n    ViewBag.Price = 49.99m;\n    ViewBag.CategoryName = \"Electronics\";\n    return View();\n}</code></pre><pre><code class=\"language-html\">&lt;!-- View — no @model declaration, no IntelliSense --&gt;\n&lt;h1&gt;@ViewBag.ProductNmae&lt;/h1&gt; &lt;!-- typo! No compile error. Blank at runtime. --&gt;\n&lt;p&gt;Price: @((decimal)ViewBag.Price):C&lt;/p&gt; &lt;!-- must cast --&gt;</code></pre><h4>Strongly typed view — compile-time safety:</h4><pre><code class=\"language-csharp\">// ViewModel\npublic class ProductDetailViewModel\n{\n    public string Name { get; set; }\n    public decimal Price { get; set; }\n    public string CategoryName { get; set; }\n    public bool InStock { get; set; }\n    public List&lt;string&gt; Tags { get; set; }\n}\n\n// Controller\npublic IActionResult ProductDetail(int id)\n{\n    var product = _db.Products.Find(id);\n    var vm = new ProductDetailViewModel\n    {\n        Name         = product.Name,\n        Price        = product.Price,\n        CategoryName = product.Category.Name,\n        InStock      = product.Stock &gt; 0\n    };\n    return View(vm);\n}</code></pre><pre><code class=\"language-html\">&lt;!-- View — @model declares the expected type --&gt;\n@model ProductDetailViewModel\n\n&lt;h1&gt;@Model.Name&lt;/h1&gt;           &lt;!-- IntelliSense works, typos caught at compile time --&gt;\n&lt;p&gt;@Model.Price.ToString(\"C\")&lt;/p&gt; &lt;!-- no cast needed, it's already decimal --&gt;\n\n@if (Model.InStock)\n{\n    &lt;span class=\"badge-success\"&gt;In Stock&lt;/span&gt;\n}\n@foreach (var tag in Model.Tags)\n{\n    &lt;span class=\"tag\"&gt;@tag&lt;/span&gt;\n}</code></pre><h4>Advantages of strongly typed views:</h4><ul><li><strong>Compile-time errors</strong> — typos in property names fail at build, not at runtime in front of users.</li><li><strong>IntelliSense</strong> — IDE autocompletes <code>@Model.</code> with all available properties.</li><li><strong>Refactoring</strong> — renaming a ViewModel property updates all references. Renaming a ViewBag key doesn't.</li><li><strong>Tag Helpers</strong> — <code>asp-for=\"Name\"</code> only works with strongly typed models, not ViewBag.</li><li><strong>Validation</strong> — <code>asp-validation-for=\"Email\"</code> reads Data Annotations from the model.</li></ul>",
+      "followUps": [
+        {
+          "question": "How do you pass a strongly typed model to a partial view?",
+          "answer": "<pre><code class=\"language-html\">&lt;!-- Pass explicit model to partial --&gt;\n@await Html.PartialAsync(\"_ProductCard\", Model.FeaturedProduct)\n\n&lt;!-- Tag helper approach (preferred) --&gt;\n&lt;partial name=\"_ProductCard\" model=\"Model.FeaturedProduct\" /&gt;\n\n&lt;!-- Partial view declares its own model type --&gt;\n&lt;!-- _ProductCard.cshtml --&gt;\n@model ProductCardViewModel\n&lt;div class=\"card\"&gt;\n    &lt;h3&gt;@Model.Name&lt;/h3&gt;\n    &lt;p&gt;@Model.Price.ToString(\"C\")&lt;/p&gt;\n&lt;/div&gt;</code></pre><p>Each partial view can declare its own model type independently. If you don't pass a model, the partial inherits the parent view's model.</p>"
+        }
+      ],
+      "tip": "<strong>Golden rule:</strong> If a view needs more than 1-2 pieces of data, create a ViewModel. ViewModel naming convention: ViewName + 'ViewModel' (e.g., ProductDetailViewModel for the Detail view). Never expose your EF Core entities directly to views.",
+      "tags": [
+        "strongly-typed-view",
+        "viewmodel",
+        "razor",
+        "mvc"
+      ],
+      "sortOrder": 19,
+      "isActive": true
+    },
+    {
+      "id": "mvc-020",
+      "category": "mvc",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What are Razor Pages in ASP.NET Core? How are they different from MVC?",
+      "answer": "<p>Razor Pages is an alternative to MVC for building page-focused web UIs in ASP.NET Core. Instead of splitting concerns across a Controller, Action, and View, Razor Pages co-locates the page's UI (the .cshtml file) and its handler code (the .cshtml.cs PageModel file) together. I find it cleaner for CRUD-style pages where you don't need the full Controller abstraction.</p><h4>MVC structure:</h4><pre><code class=\"language-csharp\">// Separate files in separate folders\n// Controllers/ProductsController.cs\npublic class ProductsController : Controller\n{\n    public IActionResult Index() =&gt; View(_db.Products.ToList());\n\n    [HttpPost]\n    public IActionResult Create(ProductDto dto) { ... }\n}\n// Views/Products/Index.cshtml  &lt;-- separate folder structure</code></pre><h4>Razor Pages structure — one page, one folder:</h4><pre><code class=\"language-csharp\">// Pages/Products/Index.cshtml.cs  &lt;-- PageModel (handler)\npublic class IndexModel : PageModel\n{\n    private readonly AppDbContext _db;\n    public List&lt;Product&gt; Products { get; set; }\n\n    [BindProperty]                     // auto-binds on POST\n    public ProductDto NewProduct { get; set; }\n\n    public IndexModel(AppDbContext db) =&gt; _db = db;\n\n    // Handles GET /Products\n    public void OnGet()\n    {\n        Products = _db.Products.ToList();\n    }\n\n    // Handles POST /Products\n    public IActionResult OnPost()\n    {\n        if (!ModelState.IsValid) return Page();\n        _db.Products.Add(new Product { Name = NewProduct.Name });\n        _db.SaveChanges();\n        return RedirectToPage();\n    }\n\n    // Named handler -- called by asp-page-handler=\"Delete\"\n    public IActionResult OnPostDelete(int id)\n    {\n        var p = _db.Products.Find(id);\n        if (p != null) { _db.Products.Remove(p); _db.SaveChanges(); }\n        return RedirectToPage();\n    }\n}</code></pre><pre><code class=\"language-html\">&lt;!-- Pages/Products/Index.cshtml --&gt;\n@page\n@model IndexModel\n\n&lt;form method=\"post\"&gt;\n    &lt;input asp-for=\"NewProduct.Name\" /&gt;\n    &lt;button type=\"submit\"&gt;Add&lt;/button&gt;\n&lt;/form&gt;\n\n@foreach (var p in Model.Products)\n{\n    &lt;form method=\"post\" asp-page-handler=\"Delete\"&gt;\n        &lt;span&gt;@p.Name&lt;/span&gt;\n        &lt;input type=\"hidden\" name=\"id\" value=\"@p.Id\" /&gt;\n        &lt;button&gt;Delete&lt;/button&gt;\n    &lt;/form&gt;\n}</code></pre><h4>MVC vs Razor Pages — when to use each:</h4><ul><li><strong>Razor Pages</strong> — page-centric CRUD, admin panels, forms, simple websites. Less ceremony, file-per-page organization feels natural. The default Microsoft template for new web apps is Razor Pages.</li><li><strong>MVC</strong> — complex routing logic, multiple views sharing one controller, API + view hybrid, when you need full controller flexibility, team familiar with MVC.</li></ul><p>Both can coexist in the same app. I've run projects with Razor Pages for admin UI and MVC (or minimal API) for the API layer.</p>",
+      "followUps": [
+        {
+          "question": "What is the @page directive in Razor Pages?",
+          "answer": "<p>The <code>@page</code> directive at the top of a .cshtml file is what makes it a Razor Page rather than a regular MVC view. It tells ASP.NET Core to route directly to this file and handle GET/POST via the OnGet/OnPost handlers in the PageModel. Without <code>@page</code>, it's just a regular view that needs a controller to render it.</p><p><code>@page \"{id:int}\"</code> adds a route template — <code>/Products/Detail/5</code> maps to <code>Detail.cshtml</code> and the <code>id</code> is bound to the handler parameter.</p>"
+        }
+      ],
+      "tip": "<strong>Razor Pages is the Microsoft recommendation for new server-rendered apps.</strong> The ASP.NET Core team uses it for the Identity UI scaffolding. If you're building an API, use minimal APIs or controllers. If you're building pages, Razor Pages is often cleaner than MVC.",
+      "tags": [
+        "razor-pages",
+        "mvc",
+        "pagemodel",
+        "aspnetcore"
+      ],
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "id": "mvc-021",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is the folder structure of an ASP.NET Core MVC project?",
+      "answer": "<p>Understanding the folder structure is often the first question in a junior-to-mid interview — it shows you understand how the framework is organized before diving into code.</p><pre><code class=\"language-bash\">MyMvcApp/\n├── Controllers/              # Controller classes\n│   ├── HomeController.cs     # Default controller\n│   └── ProductsController.cs\n│\n├── Models/                   # Domain/entity models (EF Core entities)\n│   └── Product.cs\n│\n├── ViewModels/               # View-specific models (not in default template but best practice)\n│   └── ProductDetailViewModel.cs\n│\n├── Views/                    # Razor view files (.cshtml)\n│   ├── Home/\n│   │   ├── Index.cshtml\n│   │   └── Privacy.cshtml\n│   ├── Products/\n│   │   ├── Index.cshtml\n│   │   └── Detail.cshtml\n│   └── Shared/\n│       ├── _Layout.cshtml        # Master layout\n│       ├── _ValidationScripts.cshtml\n│       └── Error.cshtml\n│\n├── wwwroot/                  # Static files (CSS, JS, images) — served as-is\n│   ├── css/\n│   │   └── site.css\n│   ├── js/\n│   │   └── site.js\n│   └── lib/                  # Client libraries (Bootstrap, jQuery)\n│\n├── Data/                     # EF Core DbContext, migrations\n│   ├── AppDbContext.cs\n│   └── Migrations/\n│\n├── Services/                 # Business logic services (not in default template)\n│   └── IProductService.cs\n│\n├── Properties/\n│   └── launchSettings.json   # Dev launch profiles (ports, env vars)\n│\n├── appsettings.json          # App configuration (connection strings etc.)\n├── appsettings.Development.json  # Dev-specific overrides\n└── Program.cs                # Entry point (replaces Startup.cs in .NET 6+)</code></pre><h4>Key files explained:</h4><ul><li><strong>Program.cs</strong> — app entry point, service registration, middleware pipeline.</li><li><strong>appsettings.json</strong> — configuration (DB connections, API keys, feature flags). Never commit secrets here.</li><li><strong>Views/Shared/_Layout.cshtml</strong> — the HTML shell that wraps every page (nav, footer, CSS/JS imports).</li><li><strong>Views/_ViewStart.cshtml</strong> — sets default layout for all views.</li><li><strong>Views/_ViewImports.cshtml</strong> — global <code>@using</code> and <code>@addTagHelper</code> for all views.</li><li><strong>wwwroot/</strong> — the only folder directly accessible from the browser. Everything else is server-side only.</li></ul><h4>Convention over configuration:</h4><p>MVC finds views by convention: <code>ProductsController.Index()</code> looks for <code>Views/Products/Index.cshtml</code> by default. You never configure this mapping — it's automatic.</p>",
+      "followUps": [
+        {
+          "question": "Why is wwwroot separate from other folders?",
+          "answer": "<p>ASP.NET Core's static files middleware only serves content from <code>wwwroot/</code>. Files outside <code>wwwroot/</code> are never directly accessible from a browser — you can't visit <code>/Controllers/HomeController.cs</code> or <code>/appsettings.json</code>. This is a deliberate security boundary. Without <code>app.UseStaticFiles()</code>, even wwwroot files won't be served. In production, you can point your CDN or reverse proxy (Nginx, IIS) directly to the wwwroot folder for maximum performance, bypassing the ASP.NET Core process entirely for static assets.</p>"
+        }
+      ],
+      "tip": "<strong>Add a ViewModels/ folder immediately.</strong> The default template doesn't create one, but you should. Putting ViewModels directly in Models/ mixes domain models and view-specific models. A separate folder makes the distinction clear and helps new team members navigate the project.",
+      "tags": [
+        "mvc",
+        "folder-structure",
+        "project-structure",
+        "aspnetcore"
+      ],
+      "sortOrder": 21,
+      "isActive": true
     }
   ]
 }

@@ -736,6 +736,102 @@
       ],
       "sortOrder": 27,
       "isActive": true
+    },
+    {
+      "id": "webapi-028",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "How do you store and read configuration in ASP.NET Core? Where should DB connection strings live?",
+      "answer": "<p>This comes up in almost every interview and in every project — where to put config and how to read it safely. I've learned the hard way that putting connection strings in source code or even in appsettings.json committed to a repo is a mistake you only make once.</p><h4>Configuration sources — read in priority order (each overrides the previous):</h4><ol><li><code>appsettings.json</code> — base config, safe for non-sensitive defaults.</li><li><code>appsettings.{Environment}.json</code> — environment-specific overrides (Development, Staging, Production).</li><li>Environment variables — great for containers and CI/CD.</li><li>User Secrets (dev only) — local machine secrets, never committed.</li><li>Azure Key Vault / AWS Secrets Manager — production secrets.</li><li>Command-line arguments — highest priority, useful for deployment overrides.</li></ol><h4>appsettings.json (non-sensitive config):</h4><pre><code class=\"language-json\">{\n  \"ConnectionStrings\": {\n    \"Default\": \"Server=(localdb)\\\\mssqllocaldb;Database=MyApp;Trusted_Connection=true\"\n  },\n  \"Jwt\": {\n    \"Issuer\": \"https://myapp.com\",\n    \"Audience\": \"https://myapp.com\"\n  },\n  \"FeatureFlags\": {\n    \"EnableNewCheckout\": true\n  },\n  \"Logging\": {\n    \"LogLevel\": {\n      \"Default\": \"Information\",\n      \"Microsoft.AspNetCore\": \"Warning\"\n    }\n  }\n}</code></pre><h4>User Secrets — dev machine only, never in git:</h4><pre><code class=\"language-bash\"># One-time setup per project\ndotnet user-secrets init\n\n# Store a secret\ndotnet user-secrets set \"ConnectionStrings:Default\" \"Server=dev-server;Password=real-password\"\ndotnet user-secrets set \"Jwt:Secret\" \"my-super-secret-key\"\n\n# Stored in %APPDATA%/Microsoft/UserSecrets/{project-id}/secrets.json\n# Never in the project folder, never in git</code></pre><h4>Reading configuration in code:</h4><pre><code class=\"language-csharp\">// Option 1: IConfiguration (direct key access)\npublic class SomeService\n{\n    public SomeService(IConfiguration config)\n    {\n        var connStr = config.GetConnectionString(\"Default\");\n        var issuer  = config[\"Jwt:Issuer\"];               // nested with :\n        var enabled = config.GetValue&lt;bool&gt;(\"FeatureFlags:EnableNewCheckout\");\n    }\n}\n\n// Option 2: IOptions&lt;T&gt; (strongly typed, preferred for complex settings)\npublic class JwtSettings\n{\n    public string Issuer   { get; set; }\n    public string Audience { get; set; }\n    public string Secret   { get; set; }\n}\n\n// Program.cs -- bind config section to a class\nbuilder.Services.Configure&lt;JwtSettings&gt;(builder.Configuration.GetSection(\"Jwt\"));\n\n// Inject and use\npublic class TokenService\n{\n    private readonly JwtSettings _settings;\n    public TokenService(IOptions&lt;JwtSettings&gt; opts) =&gt; _settings = opts.Value;\n}</code></pre><h4>Production — Azure Key Vault:</h4><pre><code class=\"language-csharp\">// Install: Azure.Extensions.AspNetCore.Configuration.Secrets\n// Uses Managed Identity -- no password stored anywhere\nif (builder.Environment.IsProduction())\n{\n    builder.Configuration.AddAzureKeyVault(\n        new Uri($\"https://my-vault.vault.azure.net/\"),\n        new DefaultAzureCredential()); // uses Managed Identity\n}\n// Secrets in Key Vault override appsettings.json values</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between IConfiguration, IOptions<T>, IOptionsSnapshot<T>, and IOptionsMonitor<T>?",
+          "answer": "<p><ul><li><strong>IConfiguration</strong> — raw config access by key string. No type safety. Good for one-off reads.</li><li><strong>IOptions&lt;T&gt;</strong> — singleton lifetime, reads config once at startup. Use for settings that don't change while the app runs.</li><li><strong>IOptionsSnapshot&lt;T&gt;</strong> — scoped lifetime, re-reads config per request. Use when config might change (e.g., appsettings.json updated) and you want the new value on the next request. Only available in scoped/transient services.</li><li><strong>IOptionsMonitor&lt;T&gt;</strong> — singleton, notifies you when config changes via <code>OnChange()</code> callback. Use in background services or any singleton that needs to react to live config changes.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Never commit secrets to git.</strong> Rotate them immediately if you do. Use User Secrets for dev, environment variables for CI/CD and containers, Azure Key Vault for production. The 'Jwt:Secret' key should never appear in any committed file.",
+      "tags": [
+        "configuration",
+        "appsettings",
+        "user-secrets",
+        "keyvault",
+        "ioptions"
+      ],
+      "sortOrder": 28,
+      "isActive": true
+    },
+    {
+      "id": "webapi-029",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Why do we use Kestrel if IIS already exists? What is a reverse proxy?",
+      "answer": "<p>This is a question that trips up a lot of people — they assume Kestrel replaces IIS, but in production they often work together. Let me explain both.</p><h4>Kestrel vs IIS — not a competition:</h4><p><strong>Kestrel</strong> is ASP.NET Core's built-in, cross-platform web server. It runs your .NET app directly, handles HTTP connections, and is the default server for all .NET environments (Windows, Linux, macOS, Docker). It's fast, lightweight, and maintained by the ASP.NET Core team.</p><p><strong>IIS (Internet Information Services)</strong> is Windows-only and has been the traditional Microsoft web server for decades. It handles SSL termination, Windows Auth, request queueing, process management, and serves as a robust reverse proxy.</p><h4>Reverse Proxy concept:</h4><p>In production, you typically put a battle-hardened server like IIS, Nginx, or Azure Application Gateway in <em>front</em> of Kestrel. This is the reverse proxy pattern:</p><pre><code class=\"language-text\">Internet → [IIS / Nginx / Azure App Gateway] → [Kestrel (your .NET app)]\n            (reverse proxy)                       (app server)\n\nReverse proxy handles:\n• SSL termination (HTTPS → HTTP to Kestrel)\n• Port 80/443 binding\n• Static file serving\n• Load balancing across multiple Kestrel instances\n• DDoS protection, rate limiting at network level\n• Compression, caching headers\n• Multiple apps on same server (different paths/domains)\n• Process management (restart Kestrel if it crashes)</code></pre><h4>Why not expose Kestrel directly to the internet?</h4><ul><li>Kestrel is optimised for ASP.NET Core — it's not a general-purpose hardened web server.</li><li>It lacks Windows Auth, kernel-mode request handling, and decades of security hardening that IIS has.</li><li>Reverse proxy adds a security layer — the internet never directly reaches your app server.</li><li>With Nginx on Linux: one Nginx instance can reverse-proxy 10 different .NET microservices on different ports.</li></ul><h4>In-process vs out-of-process hosting with IIS:</h4><pre><code class=\"language-xml\">&lt;!-- web.config --&gt;\n&lt;aspNetCore processPath=\"dotnet\" arguments=\"MyApp.dll\"\n    hostingModel=\"inprocess\" /&gt;\n&lt;!--\n  inprocess (default): IIS worker process hosts the .NET app directly.\n  Fastest option, one process.\n\n  outofprocess: IIS reverse-proxies to a separate Kestrel process.\n  More isolated, better for legacy/migration scenarios.\n--&gt;</code></pre><h4>On Linux (typical production):</h4><pre><code class=\"language-nginx\"># Nginx config -- reverse proxy to Kestrel on port 5000\nserver {\n    listen 80;\n    server_name myapp.com;\n\n    location / {\n        proxy_pass         http://localhost:5000;\n        proxy_http_version 1.1;\n        proxy_set_header   Upgrade $http_upgrade;\n        proxy_set_header   Connection keep-alive;\n        proxy_set_header   Host $host;\n        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is UseForwardedHeaders() and why do you need it with a reverse proxy?",
+          "answer": "<p>When Kestrel sits behind a reverse proxy, the original client IP and HTTPS scheme are lost — Kestrel only sees the proxy's local IP and HTTP (because SSL is terminated at the proxy). This breaks things like <code>Request.IsHttps</code>, redirect URLs, and IP-based logging.</p><p><code>UseForwardedHeaders()</code> reads the <code>X-Forwarded-For</code> and <code>X-Forwarded-Proto</code> headers that the proxy sets, and uses them to populate <code>HttpContext.Connection.RemoteIpAddress</code> and <code>Request.Scheme</code> correctly.</p><pre><code class=\"language-csharp\">app.UseForwardedHeaders(new ForwardedHeadersOptions\n{\n    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto\n});\n// Must be FIRST middleware — before any code that reads Request.Scheme or IP</code></pre><p>Without this, your HTTPS redirects might loop, generated URLs might use HTTP, and audit logs will show the proxy IP instead of the real client IP.</p>"
+        }
+      ],
+      "tip": "<strong>Docker containers usually skip the reverse proxy</strong> — instead, Azure App Gateway, an Ingress controller (in Kubernetes), or Azure Front Door sits in front of the container. The container runs Kestrel directly. Same architecture, different components.",
+      "tags": [
+        "kestrel",
+        "iis",
+        "reverse-proxy",
+        "nginx",
+        "deployment"
+      ],
+      "sortOrder": 29,
+      "isActive": true
+    },
+    {
+      "id": "webapi-030",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the difference between Web API and WCF? When would you still use WCF?",
+      "answer": "<p>WCF (Windows Communication Foundation) was Microsoft's pre-Web-API framework for building services. In any interview at a company with legacy .NET Framework code, this question will come up. My honest answer: WCF is a legacy technology. New projects should use Web API or gRPC. But I need to understand WCF to maintain existing systems.</p><h4>Web API vs WCF — side by side:</h4><table><tr><th>Aspect</th><th>Web API</th><th>WCF</th></tr><tr><td>Protocol</td><td>HTTP only (REST)</td><td>HTTP, TCP, Named Pipes, MSMQ</td></tr><tr><td>Message format</td><td>JSON, XML</td><td>XML/SOAP (primary), can do REST</td></tr><tr><td>Platform</td><td>Cross-platform (.NET, Node, mobile)</td><td>Windows-heavy, some Linux via CoreWCF</td></tr><tr><td>Contract</td><td>URL + HTTP verb</td><td>Explicit contracts via [ServiceContract], [OperationContract]</td></tr><tr><td>Config</td><td>Code-first, minimal</td><td>Complex XML config (app.config)</td></tr><tr><td>Modern?</td><td>Current standard ✅</td><td>Legacy, Microsoft deprecated ❌</td></tr></table><h4>WCF architecture (for legacy understanding):</h4><pre><code class=\"language-csharp\">// WCF Service Contract\n[ServiceContract]\npublic interface IOrderService\n{\n    [OperationContract]\n    Order GetOrder(int id);\n\n    [OperationContract]\n    void CreateOrder(Order order);\n}\n\n// WCF Service Implementation\npublic class OrderService : IOrderService\n{\n    public Order GetOrder(int id) { ... }\n    public void CreateOrder(Order order) { ... }\n}\n\n// WCF uses SOAP envelope -- XML heavy\n// POST /OrderService.svc\n// Content-Type: text/xml\n// &lt;s:Envelope&gt;&lt;s:Body&gt;&lt;GetOrder&gt;&lt;id&gt;1&lt;/id&gt;&lt;/GetOrder&gt;&lt;/s:Body&gt;&lt;/s:Envelope&gt;\n\n// Web API equivalent -- clean and simple\n// GET /api/orders/1\n// Returns: { \"id\": 1, \"status\": \"Pending\" }</code></pre><h4>When you'd still encounter WCF:</h4><ul><li>Maintaining legacy .NET Framework enterprise applications (banking, insurance).</li><li>When the client system expects SOAP/WSDL contracts and can't be changed.</li><li>TCP binding for high-performance internal services (though gRPC has superseded this).</li><li>Named Pipes for inter-process communication on the same machine.</li><li>Message queue integration with MSMQ (though modern apps use Azure Service Bus/RabbitMQ instead).</li></ul><h4>Migration path:</h4><p>If you're maintaining a WCF service and need to modernise: <strong>CoreWCF</strong> is an open-source port of WCF to .NET Core/5+ for running legacy WCF services without rewriting them. For new features, write them as Web API or gRPC endpoints alongside the existing WCF service.</p>",
+      "followUps": [
+        {
+          "question": "What is SOAP and how is it different from REST?",
+          "answer": "<p><strong>SOAP (Simple Object Access Protocol)</strong> is a protocol with strict XML-based message format, mandatory envelope structure, and WSDL contract definition. It supports built-in error handling (SOAP faults), transactions, and security (WS-Security). Heavy, verbose, but formally specified.</p><p><strong>REST</strong> is an architectural style (not a protocol) that uses HTTP verbs and URLs to represent resources. Messages are typically JSON (lightweight). No formal contract required (though OpenAPI/Swagger documents it). Stateless by design.</p><p>SOAP example message: 150+ bytes of XML for 'give me user with id 1'. REST: GET /api/users/1. The difference in payload size and simplicity is why REST won the web. SOAP remains in B2B integrations (banking, government) where formal contracts and guaranteed delivery matter.</p>"
+        }
+      ],
+      "tip": "<strong>You'll encounter WCF in interviews at companies with 10+ year old .NET systems.</strong> Know the conceptual difference (SOAP vs REST, contract-first vs URL-based) but don't deep-dive into WCF config — interviewers mostly want to know you understand WHY Web API replaced it.",
+      "tags": [
+        "wcf",
+        "webapi",
+        "soap",
+        "rest",
+        "legacy"
+      ],
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "id": "webapi-031",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is HTTP stateless protocol? Why does that mean we need session management?",
+      "answer": "<p>Understanding why HTTP is stateless is the foundation of understanding why cookies, sessions, and tokens exist at all. This question sounds basic but the interviewer wants to see that you understand the WHY behind session management, not just the HOW.</p><h4>What stateless means:</h4><p>Every HTTP request is completely independent. The server treats each request as if it came from a stranger — it has no memory of previous requests. When you make Request 1 (login) and then Request 2 (view your profile), the server doesn't automatically know that Request 2 is from the same user who just logged in.</p><pre><code class=\"language-text\">Request 1: POST /login  { username: \"darshan\", password: \"xxxx\" }\nServer processes it, authenticates the user... but then forgets.\n\nRequest 2: GET /dashboard\nServer has NO IDEA this is the same Darshan who just logged in.\nWithout state management, every request needs re-authentication.</code></pre><h4>Why this is by design (not a flaw):</h4><ul><li><strong>Scalability</strong> — any server in a load-balanced cluster can handle any request. No need to route Darshan's requests to the same server every time.</li><li><strong>Simplicity</strong> — the server doesn't need to track millions of ongoing conversations. Each request is self-contained.</li><li><strong>Reliability</strong> — if one server dies, the next server can serve the next request with no disruption.</li></ul><h4>Solutions for managing state over stateless HTTP:</h4><pre><code class=\"language-csharp\">// 1. SESSIONS -- server-side state identified by a cookie\n// Server stores user data, client holds a session ID cookie\n// Session cookie: { .ASPXSESSION: \"abc123\" }\n// Server looks up \"abc123\" in session store, finds Darshan's data\nHttpContext.Session.SetString(\"UserId\", \"42\");\nvar userId = HttpContext.Session.GetString(\"UserId\");\n\n// 2. COOKIES -- client-side state\n// Server sends a Set-Cookie header, browser sends it back on every request\nResponse.Cookies.Append(\"Preference\", \"dark-mode\",\n    new CookieOptions { Expires = DateTimeOffset.UtcNow.AddDays(30) });\nvar pref = Request.Cookies[\"Preference\"];\n\n// 3. JWT TOKENS -- stateless authentication (my preferred approach for APIs)\n// Token contains the user's identity, signed by the server\n// Client sends it in Authorization header on every request\n// No server-side storage needed -- token is self-describing\n// Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\n\n// 4. HIDDEN FORM FIELDS -- state passed in forms\n&lt;input type=\"hidden\" name=\"orderId\" value=\"99\" /&gt;\n\n// 5. URL QUERY STRINGS -- state in the URL (for non-sensitive, shareable state)\n// GET /orders?status=pending&amp;page=2</code></pre><h4>The key trade-off: server-side vs client-side state:</h4><ul><li><strong>Server-side (Session)</strong> — more secure (data on server, not exposed), harder to scale (need shared session store like Redis), works with any client.</li><li><strong>Client-side (JWT/Cookie)</strong> — scales perfectly (server is stateless, any instance handles any request), but data is visible to the client (JWT is Base64-encoded, not encrypted), and can't be invalidated without extra infrastructure.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between HTTP/1.1, HTTP/2, and HTTP/3?",
+          "answer": "<p><strong>HTTP/1.1</strong> — text-based, one request per TCP connection at a time (sequential). Head-of-line blocking: a slow response blocks all others on the same connection. Fixed with multiple connections per domain (browsers open 6-8 in parallel).</p><p><strong>HTTP/2</strong> — binary protocol, multiplexing (multiple requests/responses over one connection simultaneously), header compression (HPACK), server push. Significantly faster for page loads. Required for gRPC. Most web traffic is HTTP/2 today.</p><p><strong>HTTP/3</strong> — runs over QUIC (UDP-based) instead of TCP. Eliminates TCP head-of-line blocking at the transport layer. Even better for unreliable networks (mobile, lossy connections). Still rolling out — supported by major browsers and CDNs.</p><p>In ASP.NET Core: HTTP/2 and HTTP/3 are supported by Kestrel natively. Enable HTTP/3 with <code>builder.WebHost.ConfigureKestrel(opts =&gt; opts.ListenAnyIP(5001, lo =&gt; lo.UseHttps().Protocols = HttpProtocols.Http1AndHttp2AndHttp3))</code>.</p>"
+        }
+      ],
+      "tip": "<strong>For APIs — use JWT, not sessions.</strong> Sessions require server-side storage and don't scale horizontally without Redis. JWT is self-contained and stateless, matching HTTP's stateless nature. Use sessions for web apps where cookie-based auth makes sense.",
+      "tags": [
+        "http",
+        "stateless",
+        "session",
+        "cookie",
+        "jwt"
+      ],
+      "sortOrder": 31,
+      "isActive": true
     }
   ]
 }

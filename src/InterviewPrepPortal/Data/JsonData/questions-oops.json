@@ -994,6 +994,53 @@
       ],
       "sortOrder": 37,
       "isActive": true
+    },
+    {
+      "id": "oops-038",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the difference between method overloading and method overriding in C#?",
+      "answer": "<p>This is one of the most frequently asked OOP questions in .NET interviews. Both involve having methods with the same name, but they work at completely different levels.</p><h4>Method Overloading — compile-time polymorphism (same class, different signatures)</h4><p>Multiple methods in the <strong>same class</strong> with the <strong>same name</strong> but different parameter lists (different number, type, or order of parameters). The compiler decides which one to call at compile time based on the arguments you pass.</p><pre><code class=\"language-csharp\">public class Calculator\n{\n    // Same method name, different parameter signatures\n    public int Add(int a, int b)          =&gt; a + b;\n    public double Add(double a, double b)  =&gt; a + b;\n    public int Add(int a, int b, int c)   =&gt; a + b + c;\n    public string Add(string a, string b) =&gt; a + b; // concatenate\n\n    // NOT valid overloading -- return type alone doesn't count\n    // public double Add(int a, int b) -- compile error!\n}\n\n// Compiler resolves at compile time based on argument types\nvar calc = new Calculator();\ncalc.Add(1, 2);          // int overload\ncalc.Add(1.5, 2.5);      // double overload\ncalc.Add(\"Hello\", \"!\");  // string overload</code></pre><h4>Method Overriding — runtime polymorphism (parent-child, same signature)</h4><p>A derived class provides a <strong>new implementation</strong> of a method that exists in the base class, with the <strong>same name and same signature</strong>. The base method must be <code>virtual</code> or <code>abstract</code>. The call is resolved at <strong>runtime</strong> based on the actual object type.</p><pre><code class=\"language-csharp\">public class Shape\n{\n    public virtual double Area()   // virtual = can be overridden\n        =&gt; throw new NotImplementedException();\n\n    public virtual string Describe()\n        =&gt; $\"I am a shape with area {Area():F2}\";\n}\n\npublic class Circle : Shape\n{\n    public double Radius { get; set; }\n    public override double Area() =&gt; Math.PI * Radius * Radius; // overriding\n}\n\npublic class Rectangle : Shape\n{\n    public double Width, Height;\n    public override double Area() =&gt; Width * Height; // overriding\n}\n\n// Runtime polymorphism -- which Area() runs depends on actual object type\nShape s1 = new Circle    { Radius = 5 };\nShape s2 = new Rectangle { Width = 4, Height = 6 };\n\nConsole.WriteLine(s1.Area()); // 78.54 -- Circle.Area() called at runtime\nConsole.WriteLine(s2.Area()); // 24    -- Rectangle.Area() called at runtime\n\n// The key interview question:\nShape s = new Circle { Radius = 3 };\nConsole.WriteLine(s.Describe());\n// Calls Shape.Describe() -- but inside it calls Area()\n// Area() dispatches to Circle.Area() via virtual dispatch\n// Output: \"I am a shape with area 28.27\"</code></pre><h4>Key differences table:</h4><ul><li><strong>Overloading:</strong> Same class, different parameter list, resolved at compile time, no inheritance needed.</li><li><strong>Overriding:</strong> Parent-child classes, same signature, resolved at runtime, requires virtual/override.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the classic polymorphism interview question: A a = new B(); which method runs?",
+          "answer": "<pre><code class=\"language-csharp\">public class A\n{\n    public virtual void Coding() =&gt; Console.WriteLine(\"A.Coding\");\n}\n\npublic class B : A\n{\n    public override void Coding() =&gt; Console.WriteLine(\"B.Coding\");\n}\n\n// Question: which Coding() runs for each?\nB b1 = new B();\nb1.Coding();       // \"B.Coding\" -- obvious\n\nA a  = new B();    // reference type = A, object type = B\na.Coding();        // \"B.Coding\" -- virtual dispatch, actual type wins!\n\n// B b2 = new A();  -- COMPILE ERROR -- can't assign parent to child reference\n</code></pre><p>The key insight: with <code>virtual/override</code>, the <strong>runtime type of the object</strong> determines which method runs, not the reference variable's declared type. <code>A a = new B()</code> — the variable is type A but the object is type B, so <code>B.Coding()</code> runs. This is runtime polymorphism. If the method used <code>new</code> instead of <code>override</code>, <code>A.Coding()</code> would run (method hiding, not overriding).</p>"
+        }
+      ],
+      "tip": "<strong>Memory aid:</strong> Overloading = 'many methods with same name in same class' (compile time). Overriding = 'child replaces parent's behaviour' (runtime). The 'virtual' keyword on base and 'override' on derived is what enables runtime polymorphism.",
+      "tags": [
+        "overloading",
+        "overriding",
+        "polymorphism",
+        "virtual",
+        "csharp"
+      ],
+      "sortOrder": 38,
+      "isActive": true
+    },
+    {
+      "id": "oops-039",
+      "category": "oops",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are the most commonly used String methods in C#? Give practical examples.",
+      "answer": "<p>String manipulation questions are almost guaranteed in junior-to-mid .NET interviews. Here are the methods that come up most often, with the kind of real use I'd mention in an interview.</p><pre><code class=\"language-csharp\">string s = \"  Hello, World!  \";\n\n// ===== WHITESPACE =====\nstring trimmed = s.Trim();                  // \"Hello, World!\"\nstring trimStart = s.TrimStart();           // \"Hello, World!  \"\nstring trimEnd = s.TrimEnd();              // \"  Hello, World!\"\n\n// ===== CASE =====\nstring upper = trimmed.ToUpper();           // \"HELLO, WORLD!\"\nstring lower = trimmed.ToLower();           // \"hello, world!\"\n\n// ===== SEARCH =====\nbool contains = trimmed.Contains(\"World\");  // true\nbool starts   = trimmed.StartsWith(\"Hello\"); // true\nbool ends     = trimmed.EndsWith(\"!\");      // true\nint  index    = trimmed.IndexOf(\"World\");   // 7 (first occurrence)\nint  last     = trimmed.LastIndexOf('l');   // 10 (last occurrence)\n\n// ===== EXTRACT =====\nstring sub1  = trimmed.Substring(7);        // \"World!\"\nstring sub2  = trimmed.Substring(7, 5);     // \"World\"\nstring slice = trimmed[7..12];              // \"World\" (C# 8 range syntax)\nchar   ch    = trimmed[0];                  // 'H'\n\n// ===== MODIFY =====\nstring replaced  = trimmed.Replace(\"World\", \"C#\");  // \"Hello, C#!\"\nstring removed   = trimmed.Remove(5, 7);             // \"Hello!\" (remove 7 chars at index 5)\n\n// ===== SPLIT and JOIN =====\nstring csv = \"apple,banana,cherry\";\nstring[] fruits = csv.Split(',');  // [\"apple\", \"banana\", \"cherry\"]\nstring joined   = string.Join(\" | \", fruits);  // \"apple | banana | cherry\"\n\n// Split with options\nstring spacey = \"one   two   three\";\nstring[] words = spacey.Split(' ', StringSplitOptions.RemoveEmptyEntries);\n// [\"one\", \"two\", \"three\"] -- removes empty entries from double spaces\n\n// ===== NULL/EMPTY CHECKS =====\nbool empty1 = string.IsNullOrEmpty(null);        // true\nbool empty2 = string.IsNullOrEmpty(\"\");           // true\nbool empty3 = string.IsNullOrEmpty(\"  \");         // false -- whitespace is not empty!\nbool blank  = string.IsNullOrWhiteSpace(\"  \");    // true -- use this for user input\n\n// ===== FORMATTING =====\nstring formatted = string.Format(\"Hello, {0}! You have {1} messages.\", \"Darshan\", 5);\nstring interp    = $\"Hello, {\"Darshan\"}! You have {5} messages.\"; // preferred\nstring padded    = \"42\".PadLeft(5, '0');  // \"00042\" -- useful for IDs\n\n// ===== COMPARISON =====\n// NEVER compare strings with == for culture-sensitive scenarios\nbool eq1 = string.Equals(\"hello\", \"HELLO\", StringComparison.OrdinalIgnoreCase); // true\nbool eq2 = \"hello\".Equals(\"HELLO\", StringComparison.OrdinalIgnoreCase);         // true\nint  cmp  = string.Compare(\"apple\", \"banana\", StringComparison.Ordinal);       // negative (a &lt; b)\n\n// ===== STRING BUILDER for concatenation in loops =====\nvar sb = new StringBuilder();\nfor (int i = 0; i &lt; 1000; i++)\n    sb.Append($\"Item {i}, \"); // No new string object each iteration\nstring result = sb.ToString();</code></pre>",
+      "followUps": [
+        {
+          "question": "Why is string immutable in C# and what are the performance implications?",
+          "answer": "<p>Strings in C# are <strong>immutable</strong> — every 'modification' creates a new string object. <code>s.ToUpper()</code> doesn't change <code>s</code>, it returns a new string. This has three implications:</p><ul><li><strong>Safety</strong> — strings can be safely shared between threads and cached without locking. A string passed to a method can't be modified by that method.</li><li><strong>String interning</strong> — the CLR caches string literals in a pool. Two string literals with the same value are the same object in memory.</li><li><strong>Performance</strong> — string concatenation in a loop creates N intermediate string objects. For 1000 concatenations you create 999 throwaway objects. Fix: use <code>StringBuilder</code>, <code>string.Join()</code>, or <code>string.Concat()</code> for multi-string operations.</li></ul><p>Modern improvement: <code>Span&lt;char&gt;</code> and <code>StringComparison</code> let you operate on substrings without allocating new strings at all — useful in hot parsing paths.</p>"
+        }
+      ],
+      "tip": "<strong>Interview trap:</strong> Always use <code>string.IsNullOrWhiteSpace()</code> for validating user input — not <code>IsNullOrEmpty()</code>. A string of spaces passes IsNullOrEmpty but IsNullOrWhiteSpace catches it. Real user input often has accidental spaces.",
+      "tags": [
+        "string",
+        "string-methods",
+        "csharp",
+        "stringbuilder"
+      ],
+      "sortOrder": 39,
+      "isActive": true
     }
   ]
 }

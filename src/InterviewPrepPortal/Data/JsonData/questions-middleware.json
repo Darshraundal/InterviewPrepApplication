@@ -19,7 +19,11 @@
         }
       ],
       "tip": "<strong>Order matters critically.</strong> CORS before Auth (CORS preflight must not require authentication). ExceptionHandler first (wraps everything). Routing before Auth (auth needs to know which endpoint was matched for endpoint-level authorization policies).",
-      "tags": ["middleware", "pipeline", "aspnetcore"],
+      "tags": [
+        "middleware",
+        "pipeline",
+        "aspnetcore"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -41,7 +45,11 @@
         }
       ],
       "tip": "<strong>Short-circuit = don't call _next.</strong> If you return early without calling <code>await _next(context)</code>, no downstream middleware executes. This is how <code>UseStaticFiles</code> works — if a file is found, it responds directly and never reaches your controllers.",
-      "tags": ["middleware", "aspnetcore", "pipeline"],
+      "tags": [
+        "middleware",
+        "aspnetcore",
+        "pipeline"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -63,7 +71,11 @@
         }
       ],
       "tip": "<strong>MapWhen vs UseWhen:</strong> <code>MapWhen</code> branches permanently (matched requests never return to the main pipeline). <code>UseWhen</code> conditionally adds middleware but rejoins the main pipeline after. Use MapWhen for separate sub-pipelines, UseWhen for conditional middleware injection.",
-      "tags": ["middleware", "pipeline", "aspnetcore"],
+      "tags": [
+        "middleware",
+        "pipeline",
+        "aspnetcore"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -85,7 +97,12 @@
         }
       ],
       "tip": "<strong>Use filters over middleware when you need MVC context</strong> (ModelState, controller/action names, route data). Use middleware for cross-cutting concerns that operate on raw HTTP (request logging, CORS, rate limiting).",
-      "tags": ["middleware", "filters", "aspnetcore", "mvc"],
+      "tags": [
+        "middleware",
+        "filters",
+        "aspnetcore",
+        "mvc"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -107,7 +124,11 @@
         }
       ],
       "tip": "<strong>Don't return stack traces in production.</strong> Log the full exception server-side (Serilog → Azure Application Insights), return only a generic ProblemDetails to the client. Returning stack traces is a security vulnerability — attackers use them to learn your server internals.",
-      "tags": ["middleware", "exception-handling", "aspnetcore"],
+      "tags": [
+        "middleware",
+        "exception-handling",
+        "aspnetcore"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -129,8 +150,38 @@
         }
       ],
       "tip": "<strong>Key difference:</strong> <code>ConfigureServices</code> / <code>builder.Services</code> = <em>register</em> services (DI container setup). <code>Configure</code> / <code>app.Use*()</code> = <em>configure</em> the middleware pipeline. For .NET 6+: everything in one <code>Program.cs</code>, no Startup class. The split into <code>builder.Services.*</code> (before <code>Build()</code>) and <code>app.*</code> (after <code>Build()</code>) preserves the same logical separation.",
-      "tags": ["middleware", "startup", "program-cs", "di", "configure-services", "dotnet6"],
+      "tags": [
+        "middleware",
+        "startup",
+        "program-cs",
+        "di",
+        "configure-services",
+        "dotnet6"
+      ],
       "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "middleware-007",
+      "category": "middleware",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is short-circuiting in the ASP.NET Core middleware pipeline? When and why do you use it?",
+      "answer": "<p>Short-circuiting means a middleware stops the pipeline and returns a response immediately — it does NOT call <code>next()</code>, so no further middleware or the endpoint executes. It's a deliberate decision to terminate the request early.</p><h4>Why it matters:</h4><p>Every middleware has the choice to call <code>next()</code> (pass the request forward) or not (short-circuit). Authentication middleware short-circuits when a token is invalid — no point letting the request reach your controller if auth failed. Static files middleware short-circuits when it finds a matching file — no need to hit routing and controllers for a CSS file.</p><h4>How it works:</h4><pre><code class=\"language-csharp\">// Short-circuit example — custom API key middleware\napp.Use(async (context, next) =&gt;\n{\n    // Validate API key\n    if (!context.Request.Headers.TryGetValue(\"X-Api-Key\", out var key)\n        || key != \"my-secret-key\")\n    {\n        // SHORT CIRCUIT — write response and return, next() never called\n        context.Response.StatusCode = 401;\n        await context.Response.WriteAsync(\"Invalid API key\");\n        return; // pipeline stops here\n    }\n\n    // Key valid — pass to next middleware\n    await next(context);\n});\n\n// UseStaticFiles() internally short-circuits for matching files\n// UseAuthentication() short-circuits with 401 for invalid tokens\n// UseAuthorization() short-circuits with 403 for insufficient permissions</code></pre><h4>app.Run() is always a short-circuit:</h4><pre><code class=\"language-csharp\">// Run() is a terminal middleware — it NEVER calls next()\n// Used for the very end of the pipeline\napp.Run(async context =&gt;\n{\n    await context.Response.WriteAsync(\"This always terminates the pipeline\");\n});\n\n// Everything registered after Run() is DEAD CODE — never executes\napp.Use(async (ctx, next) =&gt; { /* never reached */ });</code></pre><h4>Map() also short-circuits by branching:</h4><pre><code class=\"language-csharp\">// Requests to /api branch into a separate pipeline\n// Requests NOT matching /api continue on the main pipeline\napp.Map(\"/api\", apiApp =&gt;\n{\n    apiApp.Run(async ctx =&gt;\n        await ctx.Response.WriteAsync(\"API branch — main pipeline not reached\"));\n});\n\n// This only runs for non-/api requests\napp.Run(async ctx =&gt; await ctx.Response.WriteAsync(\"Main pipeline\"));</code></pre><h4>Real-world scenario I've used it:</h4><p>In one project we had a maintenance mode flag in the DB. I added a middleware early in the pipeline that checked a cache key — if maintenance mode was on, it immediately returned a 503 with a maintenance page for all requests except the admin panel path. No controllers, no auth, no other middleware ran during maintenance. Clean and zero performance cost.</p>",
+      "followUps": [
+        {
+          "question": "What is the order of middleware registration and why does it matter?",
+          "answer": "<p>Middleware executes in registration order on the way in, and reverse order on the way out. The order is critical — getting it wrong causes subtle security holes or broken functionality.</p><p><strong>Correct order in ASP.NET Core:</strong></p><pre><code class=\"language-csharp\">app.UseExceptionHandler();   // 1st — must catch errors from everything below\napp.UseHsts();               // security headers\napp.UseHttpsRedirection();   // before static files\napp.UseStaticFiles();        // short-circuits here for static files\napp.UseRouting();            // MUST be before auth\napp.UseCors();               // after routing, before auth\napp.UseAuthentication();     // who are you?\napp.UseAuthorization();      // what can you do? MUST be after authentication\napp.UseSession();            // after auth\napp.MapControllers();        // endpoint execution</code></pre><p><strong>Common mistake:</strong> Putting <code>UseAuthentication</code> after <code>UseAuthorization</code> — requests reach authorization checks without an identity, causing everything to return 401 even for public endpoints.</p>"
+        }
+      ],
+      "tip": "<strong>Short-circuit early for security.</strong> Authentication and authorisation checks should come early in the pipeline. If auth fails, don't let the request travel any further — you avoid unnecessary work and potential information leakage from later middleware.",
+      "tags": [
+        "middleware",
+        "short-circuit",
+        "pipeline",
+        "aspnetcore"
+      ],
+      "sortOrder": 7,
       "isActive": true
     }
   ]

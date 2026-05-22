@@ -1275,6 +1275,55 @@
       ],
       "sortOrder": 46,
       "isActive": true
+    },
+    {
+      "id": "db-047",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are subqueries in SQL? What is the difference between a correlated and non-correlated subquery?",
+      "answer": "<p>A subquery is a query nested inside another query. I use them regularly, but I also know when they're a performance trap — and when to replace them with a JOIN or CTE.</p><h4>Non-correlated subquery — runs once, independent of outer query:</h4><pre><code class=\"language-sql\">-- Find employees who earn more than the average salary\nSELECT Name, Salary\nFROM Employees\nWHERE Salary > (SELECT AVG(Salary) FROM Employees); -- runs ONCE, result reused\n\n-- Using IN with a subquery\nSELECT Name\nFROM Employees\nWHERE DepartmentId IN (\n    SELECT Id FROM Departments WHERE Name = 'Engineering'\n);\n-- Non-correlated -- inner query runs once, returns a list, outer filters by it\n\n-- Subquery in FROM clause (derived table)\nSELECT DeptName, AvgSalary\nFROM (\n    SELECT d.Name AS DeptName, AVG(e.Salary) AS AvgSalary\n    FROM Departments d\n    JOIN Employees e ON e.DepartmentId = d.Id\n    GROUP BY d.Name\n) AS DeptStats\nWHERE AvgSalary > 60000;</code></pre><h4>Correlated subquery — runs once PER ROW of the outer query:</h4><pre><code class=\"language-sql\">-- Find employees who earn more than the average for THEIR department\n-- The subquery references e.DepartmentId from the OUTER query\nSELECT e.Name, e.Salary, e.DepartmentId\nFROM Employees e\nWHERE e.Salary > (\n    SELECT AVG(e2.Salary)\n    FROM Employees e2\n    WHERE e2.DepartmentId = e.DepartmentId -- references outer query's row\n);\n-- This runs the subquery ONCE PER EMPLOYEE ROW -- can be slow on large tables\n\n-- EXISTS with correlated subquery (very common pattern)\nSELECT c.Name\nFROM Customers c\nWHERE EXISTS (\n    SELECT 1 FROM Orders o\n    WHERE o.CustomerId = c.Id  -- correlated -- checks per customer\n    AND o.OrderDate >= '2024-01-01'\n);\n-- Returns customers who have placed an order since Jan 2024\n-- EXISTS stops at the first match -- faster than IN for large sets</code></pre><h4>EXISTS vs IN — important distinction:</h4><pre><code class=\"language-sql\">-- IN -- problematic with NULLs and large subquery results\nSELECT * FROM Employees\nWHERE DepartmentId IN (SELECT Id FROM Departments WHERE IsActive = 1);\n-- If any Id in the subquery is NULL, IN returns empty result (NULL logic)\n\n-- EXISTS -- preferred for correlated checks, handles NULLs correctly\nSELECT * FROM Employees e\nWHERE EXISTS (\n    SELECT 1 FROM Departments d\n    WHERE d.Id = e.DepartmentId AND d.IsActive = 1\n);\n-- Short-circuits at first match, no NULL issues</code></pre><h4>When to use subquery vs JOIN vs CTE:</h4><ul><li><strong>Subquery</strong> — good for scalar values (single result), EXISTS checks, derived tables used once.</li><li><strong>JOIN</strong> — better performance than correlated subqueries for most cases, especially when you need columns from both tables.</li><li><strong>CTE</strong> — best for readability when subquery would be nested 2+ levels deep, or when the same subquery is referenced multiple times.</li></ul>",
+      "followUps": [
+        {
+          "question": "Why can correlated subqueries be a performance problem?",
+          "answer": "<p>A correlated subquery executes once for every row in the outer query. If the outer query returns 10,000 rows, the subquery runs 10,000 times. For large tables, this can turn a 1-second query into a 100-second one.</p><p><strong>Fix — rewrite as a JOIN:</strong></p><pre><code class=\"language-sql\">-- Slow correlated subquery (runs once per employee)\nSELECT Name, Salary\nFROM Employees e\nWHERE Salary > (SELECT AVG(Salary) FROM Employees e2 WHERE e2.DeptId = e.DeptId);\n\n-- Fast equivalent using CTE + JOIN\nWITH DeptAvg AS (\n    SELECT DeptId, AVG(Salary) AS AvgSalary\n    FROM Employees\n    GROUP BY DeptId  -- runs ONCE\n)\nSELECT e.Name, e.Salary\nFROM Employees e\nJOIN DeptAvg d ON e.DeptId = d.DeptId\nWHERE e.Salary > d.AvgSalary;</code></pre><p>Always check the execution plan when you have correlated subqueries in production queries — look for loops/nested loops with high estimated rows.</p>"
+        }
+      ],
+      "tip": "<strong>EXISTS over IN for safety.</strong> IN with a subquery that can return NULLs will silently return zero rows — a hard bug to track down. EXISTS never has this issue. Also, EXISTS short-circuits at the first match, making it faster for large sets.",
+      "tags": [
+        "subqueries",
+        "sql",
+        "correlated",
+        "exists",
+        "in"
+      ],
+      "sortOrder": 47,
+      "isActive": true
+    },
+    {
+      "id": "db-048",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are constraints in SQL? Explain all types with examples.",
+      "answer": "<p>Constraints are rules enforced at the database level to ensure data integrity. They're your last line of defence — even if application code has a bug, constraints prevent bad data from entering the database. I always define constraints in migrations or schema scripts, not just in application validation.</p><h4>1. PRIMARY KEY</h4><pre><code class=\"language-sql\">-- Uniquely identifies each row, NOT NULL, one per table\nCREATE TABLE Orders (\n    Id INT PRIMARY KEY IDENTITY(1,1), -- auto-increment\n    CustomerId INT NOT NULL\n);\n\n-- Composite primary key\nCREATE TABLE OrderItems (\n    OrderId   INT,\n    ProductId INT,\n    Quantity  INT,\n    PRIMARY KEY (OrderId, ProductId) -- combination must be unique\n);</code></pre><h4>2. FOREIGN KEY</h4><pre><code class=\"language-sql\">-- Enforces referential integrity between tables\nCREATE TABLE Orders (\n    Id         INT PRIMARY KEY,\n    CustomerId INT NOT NULL,\n    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)\n        ON DELETE CASCADE    -- delete order when customer deleted\n        ON UPDATE CASCADE    -- update FK when PK changes\n);\n-- Can't insert an Order with a CustomerId that doesn't exist in Customers\n-- Can't delete a Customer who has Orders (without CASCADE)</code></pre><h4>3. UNIQUE</h4><pre><code class=\"language-sql\">-- Column value must be unique across the table (NULLs allowed)\nCREATE TABLE Users (\n    Id    INT PRIMARY KEY,\n    Email NVARCHAR(200) UNIQUE,  -- no two users with same email\n    Phone NVARCHAR(20)  UNIQUE   -- no two users with same phone\n);\n\n-- Composite unique constraint\nALTER TABLE Products\nADD CONSTRAINT UQ_Products_NameCategory UNIQUE (Name, CategoryId);\n-- Same product name allowed in different categories, not in the same category</code></pre><h4>4. NOT NULL</h4><pre><code class=\"language-sql\">CREATE TABLE Employees (\n    Id        INT PRIMARY KEY,\n    FirstName NVARCHAR(50) NOT NULL,  -- must always have a value\n    LastName  NVARCHAR(50) NOT NULL,\n    MiddleName NVARCHAR(50) NULL      -- optional (NULL = 'no value')\n);</code></pre><h4>5. CHECK</h4><pre><code class=\"language-sql\">-- Validates values against a condition\nCREATE TABLE Products (\n    Id       INT PRIMARY KEY,\n    Name     NVARCHAR(100) NOT NULL,\n    Price    DECIMAL(10,2) CHECK (Price >= 0),           -- no negative prices\n    Stock    INT           CHECK (Stock >= 0),           -- no negative stock\n    Rating   DECIMAL(2,1)  CHECK (Rating BETWEEN 0 AND 5),\n    Status   NVARCHAR(20)  CHECK (Status IN ('Active', 'Inactive', 'Discontinued'))\n);</code></pre><h4>6. DEFAULT</h4><pre><code class=\"language-sql\">-- Provides a default value when no value is specified\nCREATE TABLE Orders (\n    Id         INT PRIMARY KEY,\n    Status     NVARCHAR(20)   DEFAULT 'Pending',\n    CreatedAt  DATETIME2      DEFAULT GETUTCDATE(),\n    IsDeleted  BIT            DEFAULT 0\n);\n\n-- Using default\nINSERT INTO Orders (Id) VALUES (1);\n-- Status = 'Pending', CreatedAt = current UTC time, IsDeleted = 0</code></pre><h4>Adding constraints to existing tables:</h4><pre><code class=\"language-sql\">-- Named constraint (better -- you can reference it later to drop)\nALTER TABLE Employees\nADD CONSTRAINT CHK_Salary CHECK (Salary > 0),\nADD CONSTRAINT UQ_Employees_Email UNIQUE (Email);\n\n-- Drop a named constraint\nALTER TABLE Employees DROP CONSTRAINT CHK_Salary;</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between PRIMARY KEY and UNIQUE constraint?",
+          "answer": "<p>Both enforce uniqueness, but with important differences:</p><ul><li><strong>PRIMARY KEY</strong> — one per table, no NULLs allowed, always creates a clustered index (by default in SQL Server).</li><li><strong>UNIQUE</strong> — multiple per table, allows one NULL (in SQL Server — multiple NULLs in PostgreSQL), creates a non-clustered index by default.</li></ul><p>Example: <code>Employee</code> table — <code>Id</code> is PRIMARY KEY (identity, never null). <code>Email</code> is UNIQUE (must be distinct, but an unregistered user might not have one yet — though I'd argue email should be NOT NULL too). <code>NationalInsuranceNumber</code> is UNIQUE NOT NULL (every employee has one, each is unique, but it's not the system identifier).</p>"
+        }
+      ],
+      "tip": "<strong>Name all your constraints.</strong> AUTO-named constraints (SQL Server generates names like 'DF__Orders__Status__3B75D760') are hard to drop and manage in migrations. Always give them explicit names: CHK_Price, UQ_Email, FK_Orders_Customers. Your future self will thank you.",
+      "tags": [
+        "constraints",
+        "sql",
+        "primary-key",
+        "foreign-key",
+        "unique",
+        "check"
+      ],
+      "sortOrder": 48,
+      "isActive": true
     }
   ]
 }
