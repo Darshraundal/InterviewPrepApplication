@@ -15,7 +15,9 @@
       "Bash(Write-Host \"Done\")",
       "PowerShell(New-Item *)",
       "PowerShell(dotnet run *)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "PowerShell($content = Get-Content 'D:\\\\Project\\\\InterviewPrep\\\\src\\\\InterviewPrepPortal\\\\Data\\\\JsonData\\\\questions-database.json' -Raw | ConvertFrom-Json; $content.questions | ForEach-Object { $q = $_; $q.followUps | ForEach-Object { Write-Host \"$\\($q.id\\): $_\" } })",
+      "PowerShell(git *)"
     ]
   }
 }

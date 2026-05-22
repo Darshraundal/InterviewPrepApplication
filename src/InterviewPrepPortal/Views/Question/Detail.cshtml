@@ -92,31 +92,18 @@
             {
                 <div class="ip-card" style="margin-bottom:16px;">
                     <div class="section-label" style="margin-top:0;">🔗 Follow-up Questions</div>
-                    <ul class="followups-list" style="list-style:none;padding:0;margin:0;">
+                    <div class="followups-accordion">
                         @foreach (var fu in q.FollowUps)
                         {
-                            var fuId = $"fuq-{q.Id}-{fu.GetHashCode():x}";
-                            var hasAnswer = q.FollowUpAnswers.ContainsKey(fu);
-                            <li style="margin-bottom:10px;">
-                                @if (hasAnswer)
+                            <details class="followup-item">
+                                <summary class="followup-question">@fu.Question</summary>
+                                @if (!string.IsNullOrWhiteSpace(fu.Answer))
                                 {
-                                    <button class="fu-toggle-btn"
-                                            onclick="toggleFollowUp('@fuId')"
-                                            style="background:none;border:none;cursor:pointer;text-align:left;width:100%;padding:0;display:flex;align-items:center;gap:6px;color:var(--ip-text-2);font-size:.875rem;">
-                                        <span class="fu-chevron" id="chev-@fuId" style="font-size:.7rem;transition:transform .2s;">▶</span>
-                                        <span>@fu</span>
-                                    </button>
-                                    <div id="@fuId" class="fu-answer-panel" style="display:none;margin-top:10px;padding:14px;background:var(--ip-surface-2,rgba(30,41,59,.6));border-left:3px solid var(--ip-accent,#6366f1);border-radius:0 6px 6px 0;font-size:.855rem;line-height:1.7;">
-                                        @Html.Raw(q.FollowUpAnswers[fu])
-                                    </div>
+                                    <div class="followup-answer">@Html.Raw(fu.Answer)</div>
                                 }
-                                else
-                                {
-                                    <span style="font-size:.875rem;color:var(--ip-text-2);">@fu</span>
-                                }
-                            </li>
+                            </details>
                         }
-                    </ul>
+                    </div>
                 </div>
             }
 
@@ -192,15 +179,59 @@
         @@media (max-width: 900px) {
             .detail-grid { grid-template-columns: 1fr !important; }
         }
-    </style>
-    <script>
-        function toggleFollowUp(id) {
-            const panel = document.getElementById(id);
-            const chev  = document.getElementById('chev-' + id);
-            if (!panel) return;
-            const isOpen = panel.style.display !== 'none';
-            panel.style.display = isOpen ? 'none' : 'block';
-            if (chev) chev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(90deg)';
+
+        /* Follow-up accordion */
+        .followups-accordion { display: flex; flex-direction: column; gap: 6px; }
+
+        .followup-item {
+            border: 1px solid var(--ip-border);
+            border-radius: 6px;
+            overflow: hidden;
         }
-    </script>
+
+        .followup-question {
+            list-style: none;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: .875rem;
+            font-weight: 500;
+            color: var(--ip-accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            transition: background .15s;
+        }
+        .followup-question::-webkit-details-marker { display: none; }
+        .followup-question::before {
+            content: "▶";
+            font-size: .65rem;
+            transition: transform .2s;
+            color: var(--ip-text-3);
+            flex-shrink: 0;
+        }
+        .followup-item[open] .followup-question::before { transform: rotate(90deg); }
+        .followup-question:hover { background: rgba(99,102,241,.06); }
+
+        .followup-answer {
+            padding: 10px 14px 12px 34px;
+            font-size: .85rem;
+            color: var(--ip-text-2);
+            line-height: 1.65;
+            border-top: 1px solid var(--ip-border);
+            background: var(--ip-bg-2);
+        }
+        .followup-answer p { margin: 0 0 8px; }
+        .followup-answer p:last-child { margin-bottom: 0; }
+        .followup-answer ul, .followup-answer ol { margin: 6px 0; padding-left: 20px; }
+        .followup-answer li { margin-bottom: 4px; }
+        .followup-answer code {
+            background: rgba(99,102,241,.12);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'Fira Code', monospace;
+            font-size: .8rem;
+        }
+        .followup-answer strong { color: var(--ip-text); }
+    </style>
 }

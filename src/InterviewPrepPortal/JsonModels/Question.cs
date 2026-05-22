@@ -26,7 +26,7 @@ public class Question
     public ProjectExample? ProjectExample { get; set; }
 
     [JsonPropertyName("followUps")]
-    public List<string> FollowUps { get; set; } = [];
+    public List<FollowUp> FollowUps { get; set; } = [];
 
     [JsonPropertyName("followUpAnswers")]
     public Dictionary<string, string> FollowUpAnswers { get; set; } = [];
@@ -66,6 +66,15 @@ public class ProjectExample
 
     [JsonPropertyName("explanation")]
     public string? Explanation { get; set; }
+}
+
+public class FollowUp
+{
+    [JsonPropertyName("question")]
+    public string Question { get; set; } = string.Empty;
+
+    [JsonPropertyName("answer")]
+    public string Answer { get; set; } = string.Empty;
 }
 
 public class QuestionsFile
