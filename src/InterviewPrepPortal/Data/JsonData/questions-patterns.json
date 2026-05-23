@@ -19,7 +19,12 @@
         }
       ],
       "tip": "<strong>Generic repository anti-pattern:</strong> <code>IRepository&lt;T&gt;</code> with just CRUD methods encourages leaking data access logic into the service layer (callers end up building queries themselves). Prefer entity-specific repositories (<code>IPortfolioRepository</code>) with meaningful methods.",
-      "tags": ["patterns", "repository", "efcore", "design"],
+      "tags": [
+        "patterns",
+        "repository",
+        "efcore",
+        "design"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -41,7 +46,12 @@
         }
       ],
       "tip": "<strong>Strategy + DI = powerful combo.</strong> Register all strategies as <code>IEnumerable&lt;IStrategy&gt;</code> and inject — the container provides all implementations. Select by a discriminator property (Name, Type, etc.). Adding a new strategy is just a new class + DI registration.",
-      "tags": ["patterns", "strategy", "design", "solid"],
+      "tags": [
+        "patterns",
+        "strategy",
+        "design",
+        "solid"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -63,7 +73,11 @@
         }
       ],
       "tip": "<strong>Factory vs Strategy:</strong> Factory is about creation (what to instantiate). Strategy is about behavior (how to do something). If you're choosing an algorithm to run, use Strategy. If you're choosing an object to create, use Factory.",
-      "tags": ["patterns", "factory", "design"],
+      "tags": [
+        "patterns",
+        "factory",
+        "design"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -85,7 +99,12 @@
         }
       ],
       "tip": "<strong>Scrutor's Decorate&lt;T&gt;()</strong> is the cleanest way to register decorators in .NET DI. Without it, you have to manually resolve the inner service and wrap it — messy. Install <code>Scrutor</code> NuGet and use <code>services.Decorate&lt;IService, DecoratorService&gt;()</code>.",
-      "tags": ["patterns", "decorator", "design", "solid"],
+      "tags": [
+        "patterns",
+        "decorator",
+        "design",
+        "solid"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -107,7 +126,12 @@
         }
       ],
       "tip": "<strong>MediatR Publish is synchronous by default</strong> — all handlers run in sequence. For truly async fan-out (fire-and-forget to multiple handlers), use a message bus (Azure Service Bus, RabbitMQ) instead. MediatR is for in-process notifications.",
-      "tags": ["patterns", "observer", "mediatr", "events"],
+      "tags": [
+        "patterns",
+        "observer",
+        "mediatr",
+        "events"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -129,7 +153,12 @@
         }
       ],
       "tip": "<strong>CQRS doesn't require separate databases or microservices.</strong> Even in a monolith, separating command handlers (EF Core with full tracking) from query handlers (Dapper or AsNoTracking) is valuable. Start simple — you can add separate read stores later if needed.",
-      "tags": ["patterns", "cqrs", "mediatr", "architecture"],
+      "tags": [
+        "patterns",
+        "cqrs",
+        "mediatr",
+        "architecture"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -151,8 +180,37 @@
         }
       ],
       "tip": "<strong>Singleton services must be thread-safe</strong> in ASP.NET Core — multiple requests run concurrently and share the same instance. Avoid mutable state in singletons. If you need per-request state, use Scoped services.",
-      "tags": ["patterns", "singleton", "design", "di"],
+      "tags": [
+        "patterns",
+        "singleton",
+        "design",
+        "di"
+      ],
       "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "patterns-008",
+      "category": "patterns",
+      "difficulty": "Hard",
+      "frequency": "Medium",
+      "question": "What is Clean Architecture? How do you structure a .NET project using it?",
+      "answer": "<p>Clean Architecture (by Robert Martin) is a layered approach where <strong>outer layers depend on inner layers, never the reverse</strong>. The inner layers (Domain, Application) know nothing about frameworks, databases, or UI — they're pure business logic.</p><p><strong>The four layers (inside out):</strong></p><ol><li><strong>Domain</strong> — entities, value objects, domain events, interfaces. Zero external dependencies.</li><li><strong>Application</strong> — use cases/services, DTOs, command/query handlers (CQRS), validation. Depends only on Domain.</li><li><strong>Infrastructure</strong> — EF Core DbContext, file system, email services, external APIs. Depends on Application interfaces.</li><li><strong>Presentation</strong> — ASP.NET Core controllers, Razor views, API endpoints. Depends on Application.</li></ol><pre><code class=\"language-text\">Solution structure:\nMyApp.Domain/          — Entities, Interfaces, ValueObjects\nMyApp.Application/     — Services, DTOs, Validators, Handlers\nMyApp.Infrastructure/  — EF Core, Repositories, Email, Azure\nMyApp.Web/             — Controllers, Views, Program.cs\nMyApp.Tests/           — Unit + Integration tests</code></pre><pre><code class=\"language-csharp\">// Domain layer — no framework deps\npublic class Order\n{\n    public int Id { get; private set; }\n    public decimal Total { get; private set; }\n    public void ApplyDiscount(decimal percent) { ... } // domain logic\n}\n\n// Application layer — defines the contract\npublic interface IOrderRepository\n{\n    Task&lt;Order?&gt; GetByIdAsync(int id);\n    Task SaveAsync(Order order);\n}\n\n// Application service — use case\npublic class PlaceOrderService\n{\n    private readonly IOrderRepository _repo;\n    private readonly IEmailService _email;\n\n    public PlaceOrderService(IOrderRepository repo, IEmailService email)\n    {\n        _repo = repo; _email = email;\n    }\n\n    public async Task PlaceAsync(PlaceOrderDto dto)\n    {\n        var order = new Order(dto.Items);\n        await _repo.SaveAsync(order);\n        await _email.SendConfirmationAsync(order.Id);\n    }\n}\n\n// Infrastructure — implements the interface with EF Core\npublic class EfOrderRepository : IOrderRepository\n{\n    private readonly AppDbContext _ctx;\n    public EfOrderRepository(AppDbContext ctx) =&gt; _ctx = ctx;\n    public async Task&lt;Order?&gt; GetByIdAsync(int id) =&gt; await _ctx.Orders.FindAsync(id);\n    public async Task SaveAsync(Order order)\n    {\n        _ctx.Orders.Add(order);\n        await _ctx.SaveChangesAsync();\n    }\n}\n\n// Web/Program.cs — wires everything up\nbuilder.Services.AddScoped&lt;IOrderRepository, EfOrderRepository&gt;();\nbuilder.Services.AddScoped&lt;PlaceOrderService&gt;();</code></pre><p><strong>Key benefits I've seen:</strong> Application services are testable in isolation (mock IOrderRepository), you can swap EF Core for Dapper without touching business logic, and UI changes don't cascade into domain code.</p><p><strong>Common tool stack:</strong> MediatR for CQRS in Application layer, FluentValidation for input validation, AutoMapper for DTO mapping.</p>",
+      "followUps": [
+        "How does Clean Architecture differ from just MVC with a service layer?",
+        "Where does MediatR fit in Clean Architecture?",
+        "What is the Dependency Inversion Principle and how does Clean Architecture enforce it?"
+      ],
+      "tip": "The Dependency Rule: source code dependencies point inward only. Domain has zero external dependencies. Infrastructure implements interfaces defined in Application. This makes domain and application logic testable without touching a database or HTTP.",
+      "tags": [
+        "Clean Architecture",
+        "CQRS",
+        "MediatR",
+        "DIP",
+        "repository pattern",
+        "layered architecture"
+      ],
+      "sortOrder": 8,
       "isActive": true
     }
   ]

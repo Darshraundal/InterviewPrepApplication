@@ -23,7 +23,11 @@
         }
       ],
       "tip": "<strong>EF Core vs Dapper isn't religious — it's contextual.</strong> EF Core productivity wins for simple CRUD. Dapper wins for complex queries. Use both in the same project without guilt.",
-      "tags": ["efcore", "dapper", "orm"],
+      "tags": [
+        "efcore",
+        "dapper",
+        "orm"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -45,7 +49,11 @@
         }
       ],
       "tip": "<strong>DbContext is NOT thread-safe.</strong> Never share one instance across async operations that may run in parallel. Each scope gets its own instance. This is why it must be Scoped, not Singleton.",
-      "tags": ["efcore", "dbcontext", "lifetime"],
+      "tags": [
+        "efcore",
+        "dbcontext",
+        "lifetime"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -67,7 +75,12 @@
         }
       ],
       "tip": "<strong>AsSplitQuery()</strong> tells EF Core to issue separate SQL queries per Include instead of one large JOIN. Avoids Cartesian explosion for multiple collection Includes (joining Portfolios→Holdings→Transactions produces millions of rows if each has many).",
-      "tags": ["efcore", "loading", "n+1", "performance"],
+      "tags": [
+        "efcore",
+        "loading",
+        "n+1",
+        "performance"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -89,7 +102,11 @@
         }
       ],
       "tip": "<strong>EnsureCreated() vs Migrate():</strong> <code>EnsureCreated()</code> creates the schema from the current model snapshot but doesn't track migration history — you can never add migrations to a DB created this way. Always use <code>Migrate()</code> in real applications.",
-      "tags": ["efcore", "migrations", "database"],
+      "tags": [
+        "efcore",
+        "migrations",
+        "database"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -111,7 +128,12 @@
         }
       ],
       "tip": "<strong>EF Core InMemory or SQLite in-memory</strong> lets you test without mocking the repository at all. This is often simpler than setting up mocks. Only use repository mocks when you specifically want to test business logic in isolation from all data access.",
-      "tags": ["efcore", "repository", "patterns", "design"],
+      "tags": [
+        "efcore",
+        "repository",
+        "patterns",
+        "design"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -133,7 +155,11 @@
         }
       ],
       "tip": "<strong>Configure AsNoTracking globally for read-heavy apps:</strong> <code>optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)</code> in OnConfiguring, then use <code>AsTracking()</code> only for the write operations. Flips the default.",
-      "tags": ["efcore", "performance", "tracking"],
+      "tags": [
+        "efcore",
+        "performance",
+        "tracking"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -160,7 +186,12 @@
         }
       ],
       "tip": "<strong>Pessimistic locking with EF Core:</strong> Use raw SQL with <code>WITH (UPDLOCK, ROWLOCK)</code> hint inside a transaction: <code>_db.Database.ExecuteSqlRawAsync(\"SELECT... WITH (UPDLOCK)\")</code>. EF Core has no built-in API for lock hints — you have to drop down to raw SQL.",
-      "tags": ["efcore", "concurrency", "rowversion", "database"],
+      "tags": [
+        "efcore",
+        "concurrency",
+        "rowversion",
+        "database"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -182,7 +213,12 @@
         }
       ],
       "tip": "<strong>FromSqlInterpolated is NOT the same as $\"...\" string interpolation.</strong> EF Core intercepts the FormattableString and converts <code>{clientId}</code> into a parameterized <code>@p0</code> — the value is never concatenated into the SQL string. This is safe from injection.",
-      "tags": ["efcore", "raw-sql", "security", "dapper"],
+      "tags": [
+        "efcore",
+        "raw-sql",
+        "security",
+        "dapper"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -204,7 +240,11 @@
         }
       ],
       "tip": "<strong>EF Core 7's ExecuteUpdateAsync</strong>: <code>_db.Portfolios.Where(p => p.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false))</code> — bulk update without loading entities. Much more efficient than load-modify-save for batch operations.",
-      "tags": ["efcore", "change-tracker", "entity-state"],
+      "tags": [
+        "efcore",
+        "change-tracker",
+        "entity-state"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -226,7 +266,12 @@
         }
       ],
       "tip": "<strong>Global query filters</strong> are powerful for soft delete and multi-tenancy: <code>e.HasQueryFilter(p => p.TenantId == _tenantId && !p.IsDeleted)</code>. Every query on that entity automatically includes the filter. Override with <code>.IgnoreQueryFilters()</code> when needed.",
-      "tags": ["efcore", "fluent-api", "data-annotations", "configuration"],
+      "tags": [
+        "efcore",
+        "fluent-api",
+        "data-annotations",
+        "configuration"
+      ],
       "sortOrder": 10,
       "isActive": true
     },
@@ -248,8 +293,37 @@
         }
       ],
       "tip": "<strong>Default choice:</strong> Code First for any greenfield project. Migrations in version control mean database changes go through code review. Auto-migrate on startup (<code>db.Database.Migrate()</code>) is fine for small apps; for production scale use a dedicated migration step in CI/CD. Database First when you inherit a legacy schema you can't own.",
-      "tags": ["efcore", "code-first", "database-first", "migrations", "orm"],
+      "tags": [
+        "efcore",
+        "code-first",
+        "database-first",
+        "migrations",
+        "orm"
+      ],
       "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "efcore-012",
+      "category": "efcore",
+      "difficulty": "Medium",
+      "frequency": "Low",
+      "question": "What are shadow properties in EF Core? When would you use them?",
+      "answer": "<p>Shadow properties are properties that exist in the EF Core model and database schema but are <strong>not</strong> defined as a C# property on the entity class. EF tracks them internally via <code>ChangeTracker</code> — you can query and set them using the <code>EF.Property&lt;T&gt;</code> method.</p><pre><code class=\"language-csharp\">// Entity without shadow property defined on it\npublic class Product\n{\n    public int Id { get; set; }\n    public string Name { get; set; }\n    // No 'CreatedAt' property here!\n}\n\n// Configure shadow property in OnModelCreating\nprotected override void OnModelCreating(ModelBuilder modelBuilder)\n{\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;DateTime&gt;(\"CreatedAt\") // shadow property\n        .HasDefaultValueSql(\"GETUTCDATE()\");\n\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;string&gt;(\"LastModifiedBy\"); // another shadow property\n}\n\n// Querying with shadow property\nvar recentProducts = context.Products\n    .Where(p => EF.Property&lt;DateTime&gt;(p, \"CreatedAt\") > DateTime.UtcNow.AddDays(-7))\n    .ToList();\n\n// Setting a shadow property before SaveChanges\nvar product = new Product { Name = \"Widget\" };\ncontext.Products.Add(product);\ncontext.Entry(product).Property(\"LastModifiedBy\").CurrentValue = \"darshan@company.com\";\nawait context.SaveChangesAsync();\n\n// Useful pattern: set audit fields globally via SaveChanges override\npublic override Task&lt;int&gt; SaveChangesAsync(CancellationToken ct = default)\n{\n    var entries = ChangeTracker.Entries&lt;Product&gt;()\n        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);\n    foreach (var entry in entries)\n    {\n        entry.Property(\"UpdatedAt\").CurrentValue = DateTime.UtcNow;\n    }\n    return base.SaveChangesAsync(ct);\n}</code></pre><p><strong>When I actually use shadow properties:</strong></p><ul><li><strong>Audit columns</strong> (CreatedAt, UpdatedAt, CreatedBy) that I want in the DB but not cluttering every entity class</li><li><strong>Foreign key columns</strong> that EF creates automatically for navigation properties without a corresponding FK property on the class</li><li><strong>Soft-delete flags</strong> on a base class without exposing them to all consumers</li></ul>",
+      "followUps": [
+        "How do shadow properties differ from owned entity types?",
+        "Can you index a shadow property?",
+        "How do you access shadow properties outside of a LINQ query?"
+      ],
+      "tip": "Shadow properties = DB columns tracked by EF but not on the C# class. Best use: audit columns (CreatedAt, UpdatedBy) that you want in every table without polluting your domain model. Access via EF.Property<T>() or ChangeTracker.",
+      "tags": [
+        "shadow property",
+        "EF Core",
+        "ChangeTracker",
+        "audit",
+        "Fluent API"
+      ],
+      "sortOrder": 12,
       "isActive": true
     }
   ]
