@@ -349,6 +349,29 @@
       ],
       "sortOrder": 13,
       "isActive": true
+    },
+    {
+      "id": "coding-014",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Find the first non-repeating character in a string.",
+      "answer": "<p>Classic string question. The goal is to find the first character that appears exactly once in the string. I'll walk through my thinking:</p>\n\n<h4>Approach 1: Dictionary (O(n) time, O(1) space — 26 chars max)</h4>\n<pre><code>public static char? FirstNonRepeating(string s)\n{\n    if (string.IsNullOrEmpty(s)) return null;\n\n    var freq = new Dictionary<char, int>();\n\n    // First pass: count frequencies\n    foreach (char c in s)\n        freq[c] = freq.GetValueOrDefault(c, 0) + 1;\n\n    // Second pass: find first with count == 1\n    foreach (char c in s)\n        if (freq[c] == 1) return c;\n\n    return null; // all characters repeat\n}\n\n// Usage:\nConsole.WriteLine(FirstNonRepeating(\"aabbcde\"));  // 'c'\nConsole.WriteLine(FirstNonRepeating(\"aabb\"));     // null\nConsole.WriteLine(FirstNonRepeating(\"swiss\"));    // 'w'</code></pre>\n\n<h4>Approach 2: LINQ one-liner (readable but slower)</h4>\n<pre><code>public static char? FirstNonRepeatingLinq(string s)\n{\n    return s.GroupBy(c => c)\n            .FirstOrDefault(g => g.Count() == 1)\n            ?.Key;\n}</code></pre>\n\n<h4>Approach 3: Array instead of Dictionary (slightly faster)</h4>\n<pre><code>public static char? FirstNonRepeatingArray(string s)\n{\n    int[] count = new int[256]; // ASCII\n    foreach (char c in s) count[c]++;\n    foreach (char c in s) if (count[c] == 1) return c;\n    return null;\n}</code></pre>\n\n<h4>Complexity:</h4>\n<ul>\n<li>Time: O(n) — two passes through the string</li>\n<li>Space: O(1) — the dictionary/array size is bounded by the character set (26 or 256), not the input length</li>\n</ul>\n\n<p>In an interview I'd start with the Dictionary approach and mention that for ASCII-only strings, an int array is faster due to no hashing overhead. If the interviewer asks about Unicode, the Dictionary handles it naturally while the fixed array doesn't.</p>",
+      "followUps": [
+        "What if the string contains Unicode characters?",
+        "How would you find the first repeating character instead?",
+        "Can you do it in a single pass?"
+      ],
+      "tip": "Mention that array[256] is O(1) space because it's bounded by character set size, not input size.",
+      "tags": [
+        "coding",
+        "string",
+        "dictionary",
+        "frequency",
+        "hash-map"
+      ],
+      "sortOrder": 14,
+      "isActive": true
     }
   ]
 }

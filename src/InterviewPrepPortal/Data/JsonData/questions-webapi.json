@@ -832,6 +832,53 @@
       ],
       "sortOrder": 31,
       "isActive": true
+    },
+    {
+      "id": "webapi-032",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What is the difference between .NET SDK and .NET Runtime?",
+      "answer": "<p>This trips up a lot of people. Here's how I think about it:</p>\n\n<h4>.NET Runtime</h4>\n<p>The minimum required to <em>run</em> a .NET application. It includes:</p>\n<ul>\n<li>The CLR (Common Language Runtime) — manages memory, garbage collection, JIT compilation</li>\n<li>The base class libraries (BCL) needed at runtime</li>\n</ul>\n<p>When you deploy a .NET app to a production server, you only need the runtime — not the SDK.</p>\n\n<h4>.NET SDK (Software Development Kit)</h4>\n<p>Everything in the Runtime <em>plus</em> everything you need to <em>build and develop</em>:</p>\n<ul>\n<li>The <code>dotnet</code> CLI (<code>dotnet build</code>, <code>dotnet run</code>, <code>dotnet publish</code>)</li>\n<li>The Roslyn compiler (C# compiler)</li>\n<li>NuGet package manager</li>\n<li>Project templates</li>\n<li>MSBuild</li>\n</ul>\n\n<h4>Practical implications:</h4>\n<pre><code>// Developer machine: install SDK\ndotnet new webapi -n MyApi      // needs SDK\ndotnet build                    // needs SDK\ndotnet publish -c Release       // needs SDK\n\n// Production server: only runtime needed\n// The published output is self-contained or framework-dependent</code></pre>\n\n<h4>Self-contained vs framework-dependent deployments:</h4>\n<pre><code># Framework-dependent: smaller output, needs runtime installed on server\ndotnet publish -c Release --runtime win-x64\n\n# Self-contained: larger but no runtime needed on server\ndotnet publish -c Release --runtime win-x64 --self-contained true</code></pre>\n\n<p>In CI/CD pipelines I use the SDK image for build stages and the runtime image for deployment stages — e.g., <code>mcr.microsoft.com/dotnet/sdk:8.0</code> for build and <code>mcr.microsoft.com/dotnet/aspnet:8.0</code> for the final Docker image. This keeps production images lean.</p>",
+      "followUps": [
+        "What is self-contained deployment vs framework-dependent?",
+        "What is the difference between .NET 8 LTS and STS versions?",
+        "What is AOT (Ahead-of-Time) compilation in .NET?"
+      ],
+      "tip": "SDK = build tools + runtime. Runtime only = run, not build. Production servers only need the runtime.",
+      "tags": [
+        "dotnet",
+        "sdk",
+        "runtime",
+        "deployment",
+        "dotnet-cli"
+      ],
+      "sortOrder": 32,
+      "isActive": true
+    },
+    {
+      "id": "webapi-033",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is the difference between a DLL and an EXE in .NET? What are the types of assemblies?",
+      "answer": "<p>Both DLL and EXE are <strong>assemblies</strong> in .NET — PE (Portable Executable) files containing IL (Intermediate Language) code. The difference is in how they're used:</p>\n\n<h4>EXE (Executable Assembly)</h4>\n<ul>\n<li>Has an entry point (<code>Main</code> method / top-level statements)</li>\n<li>Can be run directly by the OS</li>\n<li>In .NET, a console app or a host process is an EXE</li>\n</ul>\n\n<h4>DLL (Dynamic Link Library)</h4>\n<ul>\n<li>No entry point — cannot be run directly</li>\n<li>Loaded by an EXE (or another DLL) at runtime</li>\n<li>Class libraries, NuGet packages, ASP.NET Core apps published as DLLs</li>\n</ul>\n\n<h4>Types of .NET Assemblies</h4>\n\n<p><strong>1. Private Assembly</strong><br/>\nInstalled in the application's own folder. No registration needed. Most assemblies in modern .NET are private.</p>\n<pre><code>// Your project references — output to bin/ folder\nMyApp.dll         // your app\nMyApp.Services.dll  // your class library\n</code></pre>\n\n<p><strong>2. Shared Assembly (Strong-Named)</strong><br/>\nInstalled in the GAC (Global Assembly Cache) so multiple apps can share it. Requires a strong name (public/private key pair). Common in .NET Framework — less relevant in .NET Core/5+ which moved away from the GAC.</p>\n<pre><code>// Strong-naming with sn.exe\n[assembly: AssemblyKeyFile(\"mykey.snk\")]</code></pre>\n\n<p><strong>3. Satellite Assembly</strong><br/>\nContains only resources (strings, images) for localization. Named with culture code: <code>MyApp.resources.dll</code> in <code>en-US/</code> folders.</p>\n\n<p>In modern .NET (Core/5+), the GAC is gone. All assemblies are effectively private, versioned via NuGet, and isolated per application. Strong naming is still supported but mainly for backward compatibility and security signing scenarios.</p>",
+      "followUps": [
+        "What is the GAC and is it still used in .NET Core?",
+        "What is a strong-named assembly?",
+        "What is the difference between static and dynamic linking?"
+      ],
+      "tip": "GAC is .NET Framework legacy. In .NET 5+ everything is private/NuGet-based — mention this distinction.",
+      "tags": [
+        "dotnet",
+        "assembly",
+        "dll",
+        "exe",
+        "gac",
+        "strong-name"
+      ],
+      "sortOrder": 33,
+      "isActive": true
     }
   ]
 }

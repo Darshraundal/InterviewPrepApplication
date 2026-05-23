@@ -1324,6 +1324,77 @@
       ],
       "sortOrder": 48,
       "isActive": true
+    },
+    {
+      "id": "db-049",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of database relationships? Explain one-to-one, one-to-many, and many-to-many.",
+      "answer": "<p>Database relationships define how tables relate to each other. There are three fundamental types:</p>\n\n<h4>1. One-to-One (1:1)</h4>\n<p>Each row in Table A maps to exactly one row in Table B. Used when you want to split a large table or store optional data separately.</p>\n<pre><code>-- Person and Passport (a person has at most one passport)\nCREATE TABLE Person (\n    PersonId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Passport (\n    PassportId INT PRIMARY KEY,\n    PersonId INT UNIQUE,  -- UNIQUE enforces 1:1\n    PassportNumber NVARCHAR(50),\n    FOREIGN KEY (PersonId) REFERENCES Person(PersonId)\n);</code></pre>\n\n<h4>2. One-to-Many (1:N)</h4>\n<p>The most common relationship. One row in Table A can have many rows in Table B. The foreign key goes on the \"many\" side.</p>\n<pre><code>-- Customer and Orders (one customer, many orders)\nCREATE TABLE Customer (\n    CustomerId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Orders (\n    OrderId INT PRIMARY KEY,\n    CustomerId INT,  -- FK on the many side\n    OrderDate DATE,\n    FOREIGN KEY (CustomerId) REFERENCES Customer(CustomerId)\n);</code></pre>\n\n<h4>3. Many-to-Many (M:N)</h4>\n<p>Requires a <strong>junction table</strong> (also called bridge or associative table) to break it into two 1:N relationships. A student can enroll in many courses; a course can have many students.</p>\n<pre><code>CREATE TABLE Student (StudentId INT PRIMARY KEY, Name NVARCHAR(100));\nCREATE TABLE Course  (CourseId  INT PRIMARY KEY, Title NVARCHAR(100));\n\n-- Junction table\nCREATE TABLE StudentCourse (\n    StudentId INT,\n    CourseId  INT,\n    EnrolledOn DATE,\n    PRIMARY KEY (StudentId, CourseId),  -- composite PK prevents duplicates\n    FOREIGN KEY (StudentId) REFERENCES Student(StudentId),\n    FOREIGN KEY (CourseId)  REFERENCES Course(CourseId)\n);</code></pre>\n\n<p>In EF Core, many-to-many is handled automatically with a skip navigation (<code>student.Courses</code> ↔ <code>course.Students</code>). EF Core 5+ creates the junction table implicitly, but I often define it explicitly if I need to store extra columns on the relationship (like <code>EnrolledOn</code>).</p>",
+      "followUps": [
+        "How do you implement many-to-many in EF Core?",
+        "What is a composite primary key?",
+        "When would you use a one-to-one relationship instead of putting everything in one table?"
+      ],
+      "tip": "For many-to-many, always create a named junction entity in EF Core if the relationship has extra data.",
+      "tags": [
+        "database",
+        "relationships",
+        "one-to-many",
+        "many-to-many",
+        "foreign-key",
+        "junction-table"
+      ],
+      "sortOrder": 49,
+      "isActive": true
+    },
+    {
+      "id": "db-050",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is SET NOCOUNT ON/OFF in SQL Server? When should you use it?",
+      "answer": "<p><code>SET NOCOUNT ON</code> suppresses the \"X rows affected\" messages that SQL Server sends back to the client after every INSERT, UPDATE, DELETE, or SELECT statement.</p>\n\n<h4>Why it matters in stored procedures:</h4>\n<pre><code>CREATE PROCEDURE uspGetOrderSummary\nAS\nBEGIN\n    SET NOCOUNT ON;  -- suppress row-count messages\n\n    SELECT o.OrderId, o.CustomerName, SUM(oi.Amount) AS Total\n    FROM Orders o\n    JOIN OrderItems oi ON o.OrderId = oi.OrderId\n    GROUP BY o.OrderId, o.CustomerName;\nEND</code></pre>\n\n<h4>Benefits of SET NOCOUNT ON:</h4>\n<ol>\n<li><strong>Performance</strong> — reduces network traffic, especially in loops or stored procs that execute many DML statements</li>\n<li><strong>ORM compatibility</strong> — ORMs like EF Core use row counts to validate updates. If a stored proc doesn't use <code>SET NOCOUNT ON</code> and returns extra result sets, it can confuse EF's optimistic concurrency check</li>\n<li><strong>Cleaner output</strong> — when calling from application code via ADO.NET or Dapper, you don't get spurious \"1 row(s) affected\" messages mixed in</li>\n</ol>\n\n<h4>When NOT to use it:</h4>\n<p>If you're calling a stored proc from legacy code that checks <code>@@ROWCOUNT</code> or relies on the row-count messages for logic — but honestly, in modern code you'd use <code>OUTPUT</code> params or return values instead.</p>\n\n<p>I make it a habit to always put <code>SET NOCOUNT ON</code> at the top of every stored procedure I write. It's a minor thing but it's considered best practice and interviewers notice it.</p>",
+      "followUps": [
+        "How is @@ROWCOUNT affected by SET NOCOUNT ON?",
+        "What is SET XACT_ABORT ON and when do you use it?",
+        "Does SET NOCOUNT ON improve performance significantly?"
+      ],
+      "tip": "Always add SET NOCOUNT ON at the top of stored procedures — it's a best practice question.",
+      "tags": [
+        "database",
+        "sql-server",
+        "stored-procedure",
+        "set-nocount",
+        "performance"
+      ],
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "id": "db-051",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is RAISERROR in SQL Server? How does it differ from THROW?",
+      "answer": "<p>Both <code>RAISERROR</code> and <code>THROW</code> raise errors in T-SQL, but <code>THROW</code> (introduced in SQL Server 2012) is the modern approach and I always use it in new code.</p>\n\n<h4>RAISERROR (legacy)</h4>\n<pre><code>-- Old way\nIF @UserId IS NULL\nBEGIN\n    RAISERROR('UserId cannot be null', 16, 1);\n    -- Severity 16 = user error, State 1 = arbitrary\n    RETURN;\nEND\n\n-- With formatting\nRAISERROR('Order %d not found for user %s', 16, 1, @OrderId, @UserName);</code></pre>\n\n<h4>THROW (modern — SQL Server 2012+)</h4>\n<pre><code>-- New way\nIF @UserId IS NULL\nBEGIN\n    THROW 50001, 'UserId cannot be null', 1;\n    -- Error number, message, state\nEND\n\n-- Re-throw inside CATCH (preserves original error)\nBEGIN TRY\n    -- risky operation\nEND CATCH\n    THROW;  -- re-throws with original error number/message/line\nEND CATCH</code></pre>\n\n<h4>Key differences:</h4>\n<table>\n<tr><th>Feature</th><th>RAISERROR</th><th>THROW</th></tr>\n<tr><td>Syntax</td><td>Complex with severity/state</td><td>Simpler</td></tr>\n<tr><td>Re-throw original</td><td>Cannot easily</td><td>THROW; (no args) re-throws exactly</td></tr>\n<tr><td>Aborts batch</td><td>Depends on severity</td><td>Always aborts after THROW</td></tr>\n<tr><td>SET XACT_ABORT</td><td>Doesn't auto-rollback</td><td>Respects XACT_ABORT</td></tr>\n</table>\n\n<p>In practice: I use <code>THROW</code> in all new stored procedures and wrap risky code in <code>TRY...CATCH</code>. I use <code>THROW;</code> (bare, no arguments) in CATCH blocks to re-raise the original exception back to the application layer where the actual error handling and logging happens.</p>",
+      "followUps": [
+        "What is TRY...CATCH in T-SQL?",
+        "What does SET XACT_ABORT ON do with THROW?",
+        "What are user-defined error numbers (50001+) in SQL Server?"
+      ],
+      "tip": "THROW re-raises the original error cleanly — RAISERROR can't do that. Use THROW in new code.",
+      "tags": [
+        "database",
+        "sql-server",
+        "raiserror",
+        "throw",
+        "error-handling",
+        "stored-procedure"
+      ],
+      "sortOrder": 51,
+      "isActive": true
     }
   ]
 }

@@ -1041,6 +1041,97 @@
       ],
       "sortOrder": 39,
       "isActive": true
+    },
+    {
+      "id": "oops-040",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of inheritance in C#? Give examples.",
+      "answer": "<p>Inheritance lets a class acquire members of another class. In C# there are <strong>five types</strong> conceptually, though the language enforces single-class inheritance:</p>\n\n<h4>1. Single Inheritance</h4>\n<p>A child class inherits from exactly one parent. This is the most common case.</p>\n<pre><code>class Animal { public void Breathe() { } }\nclass Dog : Animal { public void Bark() { } }</code></pre>\n\n<h4>2. Multilevel Inheritance</h4>\n<p>A chain — C inherits B which inherits A.</p>\n<pre><code>class Animal { }\nclass Dog : Animal { }\nclass GoldenRetriever : Dog { }</code></pre>\n\n<h4>3. Hierarchical Inheritance</h4>\n<p>Multiple children inherit from the same parent.</p>\n<pre><code>class Animal { }\nclass Dog : Animal { }\nclass Cat : Animal { }</code></pre>\n\n<h4>4. Multiple Inheritance (via interfaces)</h4>\n<p>C# doesn't allow inheriting from multiple classes — that avoids the diamond problem. But a class can implement multiple interfaces.</p>\n<pre><code>interface IFlyable { void Fly(); }\ninterface ISwimmable { void Swim(); }\n\nclass Duck : Animal, IFlyable, ISwimmable\n{\n    public void Fly() { }\n    public void Swim() { }\n}</code></pre>\n\n<h4>5. Hybrid Inheritance</h4>\n<p>A mix of the above types — typically multilevel + hierarchical. Also achieved through interface combinations in C#.</p>\n\n<p>One thing I always mention in interviews: C# chose <em>single class inheritance</em> intentionally to keep the type system simple. Multiple interface implementation gives you the flexibility without the ambiguity of multiple base classes.</p>",
+      "followUps": [
+        "Why doesn't C# support multiple class inheritance?",
+        "What is the diamond problem?",
+        "Can a sealed class be inherited?"
+      ],
+      "tip": "Always tie your answer to WHY C# made these design choices, not just list them.",
+      "tags": [
+        "oops",
+        "inheritance",
+        "interfaces",
+        "diamond-problem"
+      ],
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "id": "oops-041",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of errors in C#? How does exception handling work?",
+      "answer": "<p>I categorize errors in C# into three buckets:</p>\n\n<h4>1. Compile-Time Errors (Syntax / Type Errors)</h4>\n<p>Caught by the compiler before the program runs — missing semicolons, wrong types, undefined variables. These are the easiest because the IDE highlights them immediately.</p>\n\n<h4>2. Runtime Errors (Exceptions)</h4>\n<p>Occur during execution — null reference, index out of range, divide by zero. These are what exception handling is designed for.</p>\n\n<h4>3. Logical Errors</h4>\n<p>The code compiles and runs but produces wrong results. Hardest to catch — only unit tests and code reviews find these.</p>\n\n<h4>Exception Handling in C#</h4>\n<pre><code>try\n{\n    var result = int.Parse(userInput); // could throw FormatException\n    var data = list[result];           // could throw IndexOutOfRangeException\n}\ncatch (FormatException ex)\n{\n    _logger.LogWarning(\"Invalid input: {Input}\", userInput);\n    // handle gracefully\n}\ncatch (IndexOutOfRangeException ex)\n{\n    _logger.LogError(ex, \"Index out of range\");\n    throw; // re-throw preserving stack trace\n}\ncatch (Exception ex)\n{\n    // catch-all — I always put this last\n    _logger.LogError(ex, \"Unexpected error\");\n    throw new ApplicationException(\"Something went wrong\", ex);\n}\nfinally\n{\n    // always runs — good for cleanup like closing streams\n    // though I prefer 'using' statements for IDisposable resources\n}</code></pre>\n\n<p>Key rules I follow: catch the most specific exception first, never swallow exceptions silently, use <code>throw;</code> (not <code>throw ex;</code>) to preserve the original stack trace, and log with context before re-throwing.</p>",
+      "followUps": [
+        "Difference between throw and throw ex?",
+        "What is the finally block used for?",
+        "What are custom exceptions and when to create them?"
+      ],
+      "tip": "Use 'throw;' not 'throw ex;' — the latter resets the stack trace.",
+      "tags": [
+        "oops",
+        "exceptions",
+        "error-handling",
+        "try-catch",
+        "finally"
+      ],
+      "sortOrder": 41,
+      "isActive": true
+    },
+    {
+      "id": "oops-042",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Why would you use multiple catch blocks? When is it useful?",
+      "answer": "<p>Multiple catch blocks let you handle different exception types in different ways — which is almost always the right approach in production code.</p>\n\n<pre><code>public async Task<UserDto> GetUserAsync(int userId)\n{\n    try\n    {\n        var user = await _dbContext.Users.FindAsync(userId);\n        return _mapper.Map<UserDto>(user);\n    }\n    catch (InvalidOperationException ex) when (ex.Message.Contains(\"connection\"))\n    {\n        // DB connection issue — return cached data or retry\n        _logger.LogWarning(\"DB unavailable, falling back to cache\");\n        return await _cache.GetAsync<UserDto>($\"user:{userId}\");\n    }\n    catch (ArgumentNullException ex)\n    {\n        // Bad input — caller's fault\n        _logger.LogWarning(\"Null userId passed: {Ex}\", ex.Message);\n        throw new BadRequestException(\"User ID cannot be null\");\n    }\n    catch (NotFoundException)\n    {\n        // Known business case — just re-throw\n        throw;\n    }\n    catch (Exception ex)\n    {\n        // Unexpected — log fully and wrap\n        _logger.LogError(ex, \"Unexpected error fetching user {UserId}\", userId);\n        throw new InternalServerException(\"Failed to retrieve user\", ex);\n    }\n}</code></pre>\n\n<p>Notice I also used <strong>exception filters</strong> (<code>when</code> keyword) — that's a C# 6+ feature that lets you narrow down the catch without actually catching the exception if the condition is false. Very handy for differentiating cases within the same exception type.</p>\n\n<p>Rule of thumb: the most specific exceptions go first, the generic <code>Exception</code> catch always goes last. The compiler enforces this — a broader catch before a specific one won't compile.</p>",
+      "followUps": [
+        "What is the 'when' keyword in catch blocks?",
+        "Can you have a catch without an exception variable?",
+        "What happens if an exception is thrown inside a catch block?"
+      ],
+      "tip": "Exception filters (when clause) are powerful — they don't unwind the stack if the condition is false.",
+      "tags": [
+        "oops",
+        "exceptions",
+        "multiple-catch",
+        "exception-filter"
+      ],
+      "sortOrder": 42,
+      "isActive": true
+    },
+    {
+      "id": "oops-043",
+      "category": "oops",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of collections in C#? Generic vs non-generic.",
+      "answer": "<p>C# has two generations of collections — I mostly use the <strong>generic</strong> ones from <code>System.Collections.Generic</code> in every project. The non-generic ones in <code>System.Collections</code> are largely legacy.</p>\n\n<h4>Generic Collections (everyday use)</h4>\n<table>\n<tr><th>Type</th><th>Use case</th></tr>\n<tr><td><code>List&lt;T&gt;</code></td><td>Ordered, resizable array. My go-to for most collections.</td></tr>\n<tr><td><code>Dictionary&lt;K,V&gt;</code></td><td>Key-value lookup. O(1) average. Use when you need fast lookups by key.</td></tr>\n<tr><td><code>HashSet&lt;T&gt;</code></td><td>Unique values, fast membership check. Great for deduplication.</td></tr>\n<tr><td><code>Queue&lt;T&gt;</code></td><td>FIFO — background job queues, BFS algorithms.</td></tr>\n<tr><td><code>Stack&lt;T&gt;</code></td><td>LIFO — undo/redo, DFS algorithms, parsing expressions.</td></tr>\n<tr><td><code>LinkedList&lt;T&gt;</code></td><td>Cheap inserts/removes in the middle. Rarely needed in web apps.</td></tr>\n<tr><td><code>SortedDictionary&lt;K,V&gt;</code></td><td>Sorted by key automatically. Slower inserts than Dictionary.</td></tr>\n</table>\n\n<h4>Concurrent Collections (multi-threaded)</h4>\n<pre><code>// Thread-safe without explicit locking:\nvar bag = new ConcurrentBag<int>();\nvar dict = new ConcurrentDictionary<string, int>();\nvar queue = new ConcurrentQueue<WorkItem>();</code></pre>\n\n<h4>Non-Generic (legacy — avoid in new code)</h4>\n<p><code>ArrayList</code>, <code>Hashtable</code>, <code>Queue</code>, <code>Stack</code> — these store <code>object</code>, so you get boxing/unboxing overhead and no compile-time type safety. Only reason to touch them is maintaining old .NET Framework code.</p>\n\n<h4>Practical example — choosing the right one:</h4>\n<pre><code>// Deduplicate incoming user IDs\nvar uniqueIds = new HashSet<int>(incomingIds);\n\n// Fast lookup: user by ID\nvar userMap = users.ToDictionary(u => u.Id);\n\n// Process in order received\nvar pendingEmails = new Queue<EmailMessage>();</code></pre>\n\n<p>One interview tip: interviewers love asking about <code>IEnumerable</code> vs <code>ICollection</code> vs <code>IList</code>. <code>IEnumerable</code> is read-only iteration, <code>ICollection</code> adds Count/Add/Remove, <code>IList</code> adds index access.</p>",
+      "followUps": [
+        "What is the difference between List<T> and LinkedList<T>?",
+        "When would you use ConcurrentDictionary over Dictionary?",
+        "What is the difference between IEnumerable, ICollection, and IList?"
+      ],
+      "tip": "Know IEnumerable vs ICollection vs IList hierarchy — very common follow-up.",
+      "tags": [
+        "oops",
+        "collections",
+        "generics",
+        "list",
+        "dictionary",
+        "hashset"
+      ],
+      "sortOrder": 43,
+      "isActive": true
     }
   ]
 }
