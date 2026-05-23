@@ -536,9 +536,18 @@
       "question": "What are filters in ASP.NET Core MVC? Explain the different types.",
       "answer": "<p>Filters are attributes or middleware-like components that run at specific points in the MVC request pipeline — before or after controller actions, results, or exception handling. They're perfect for cross-cutting concerns like logging, authorization, validation, and caching.</p><p><strong>Five filter types, in execution order:</strong></p><ol><li><strong>Authorization Filters</strong> — run first. Decide if the request is allowed. <code>[Authorize]</code> is built-in. Short-circuit before anything else runs.</li><li><strong>Resource Filters</strong> — run after auth, before model binding. Good for caching the entire response.</li><li><strong>Action Filters</strong> — run before and after the action method executes. Most commonly used: logging, validation, modifying action arguments.</li><li><strong>Exception Filters</strong> — handle unhandled exceptions thrown by actions or other filters. Good for formatting error responses.</li><li><strong>Result Filters</strong> — run before and after the <code>IActionResult</code> executes (after action, before response writes). Good for response transformation.</li></ol><pre><code class=\"language-csharp\">// Custom Action Filter — logs timing for every action\npublic class TimingFilter : IActionFilter\n{\n    private readonly ILogger&lt;TimingFilter&gt; _logger;\n    private Stopwatch _sw;\n\n    public TimingFilter(ILogger&lt;TimingFilter&gt; logger) =&gt; _logger = logger;\n\n    public void OnActionExecuting(ActionExecutingContext context)\n    {\n        _sw = Stopwatch.StartNew();\n    }\n\n    public void OnActionExecuted(ActionExecutedContext context)\n    {\n        _sw.Stop();\n        _logger.LogInformation(\"{Action} took {Ms}ms\",\n            context.ActionDescriptor.DisplayName, _sw.ElapsedMilliseconds);\n    }\n}\n\n// Custom Exception Filter — returns JSON error for API controllers\npublic class ApiExceptionFilter : IExceptionFilter\n{\n    public void OnException(ExceptionContext context)\n    {\n        context.Result = new ObjectResult(new { error = context.Exception.Message })\n        {\n            StatusCode = 500\n        };\n        context.ExceptionHandled = true;\n    }\n}\n\n// Register globally in Program.cs\nbuilder.Services.AddControllersWithViews(options =>\n{\n    options.Filters.Add&lt;TimingFilter&gt;();\n});\n\n// Or per-controller/action using attribute\n[ServiceFilter(typeof(TimingFilter))]\npublic class ProductsController : Controller { }\n\n// Built-in examples\n[Authorize(Roles = \"Admin\")]   // Authorization filter\n[ValidateAntiForgeryToken]      // Action filter\n[ResponseCache(Duration = 60)] // Result filter</code></pre><p><strong>Filters vs Middleware:</strong> Middleware runs for ALL requests (including static files). Filters only run within the MVC pipeline and have access to MVC context (action name, controller, model state). Use middleware for app-wide concerns, filters for MVC-specific ones.</p>",
       "followUps": [
-        "What is the difference between an Exception Filter and UseExceptionHandler middleware?",
-        "How do you pass dependencies into filters (ServiceFilter vs TypeFilter)?",
-        "What is IAsyncActionFilter and when do you use it over IActionFilter?"
+        {
+          "question": "What is the difference between an Exception Filter and UseExceptionHandler middleware?",
+          "answer": ""
+        },
+        {
+          "question": "How do you pass dependencies into filters (ServiceFilter vs TypeFilter)?",
+          "answer": ""
+        },
+        {
+          "question": "What is IAsyncActionFilter and when do you use it over IActionFilter?",
+          "answer": ""
+        }
       ],
       "tip": "Execution order: Authorization → Resource → Action (before) → Action runs → Action (after) → Exception → Result. Filters have MVC context; middleware doesn't. Use ServiceFilter<T> to inject dependencies into attribute-based filters.",
       "tags": [
@@ -559,9 +568,18 @@
       "question": "How do you handle exceptions globally in ASP.NET Core?",
       "answer": "<p>Global exception handling means you catch unhandled exceptions in one place rather than wrapping every action in try/catch. ASP.NET Core gives you several options depending on whether you need JSON responses (API) or redirect to error pages (MVC).</p><p><strong>Option 1: UseExceptionHandler middleware</strong> — the built-in approach for most apps:</p><pre><code class=\"language-csharp\">// Program.cs — different behavior per environment\nif (app.Environment.IsDevelopment())\n{\n    app.UseDeveloperExceptionPage(); // detailed stack trace\n}\nelse\n{\n    // MVC apps: redirect to /Home/Error\n    app.UseExceptionHandler(\"/Home/Error\");\n    app.UseHsts();\n}\n\n// For APIs: return RFC 7807 ProblemDetails JSON\napp.UseExceptionHandler(errApp =&gt;\n{\n    errApp.Run(async context =&gt;\n    {\n        var ex = context.Features.Get&lt;IExceptionHandlerFeature&gt;()?.Error;\n        context.Response.StatusCode = ex is NotFoundException ? 404 : 500;\n        context.Response.ContentType = \"application/problem+json\";\n\n        var problem = new ProblemDetails\n        {\n            Title = \"An error occurred\",\n            Status = context.Response.StatusCode,\n            Detail = ex?.Message\n        };\n        await context.Response.WriteAsJsonAsync(problem);\n    });\n});</code></pre><p><strong>Option 2: IExceptionHandler interface (.NET 8+)</strong> — clean, injectable, supports DI:</p><pre><code class=\"language-csharp\">public class GlobalExceptionHandler : IExceptionHandler\n{\n    private readonly ILogger&lt;GlobalExceptionHandler&gt; _logger;\n    public GlobalExceptionHandler(ILogger&lt;GlobalExceptionHandler&gt; logger) =&gt; _logger = logger;\n\n    public async ValueTask&lt;bool&gt; TryHandleAsync(\n        HttpContext context, Exception ex, CancellationToken ct)\n    {\n        _logger.LogError(ex, \"Unhandled exception: {Message}\", ex.Message);\n\n        var statusCode = ex switch\n        {\n            NotFoundException =&gt; StatusCodes.Status404NotFound,\n            UnauthorizedAccessException =&gt; StatusCodes.Status403Forbidden,\n            _ =&gt; StatusCodes.Status500InternalServerError\n        };\n\n        context.Response.StatusCode = statusCode;\n        await context.Response.WriteAsJsonAsync(new\n        {\n            error = ex.Message,\n            traceId = Activity.Current?.Id ?? context.TraceIdentifier\n        }, ct);\n\n        return true; // true = handled, don't propagate\n    }\n}\n\n// Register in Program.cs\nbuilder.Services.AddExceptionHandler&lt;GlobalExceptionHandler&gt;();\nbuilder.Services.AddProblemDetails();\napp.UseExceptionHandler(); // no path needed with IExceptionHandler</code></pre><p><strong>Option 3: Exception Filter</strong> — for MVC/API action-level. Doesn't catch middleware exceptions or background tasks. Good for API-specific error formatting in a controller context.</p><p>In production I use the <code>IExceptionHandler</code> (.NET 8) approach — it's DI-friendly, keeps exception handling logic organized, and pairs nicely with Serilog for structured logging including the TraceId.</p>",
       "followUps": [
-        "What is ProblemDetails and why should you return it from API error responses?",
-        "How do you handle exceptions in background services or IHostedService?",
-        "What is the difference between UseExceptionHandler and exception filters in MVC?"
+        {
+          "question": "What is ProblemDetails and why should you return it from API error responses?",
+          "answer": ""
+        },
+        {
+          "question": "How do you handle exceptions in background services or IHostedService?",
+          "answer": ""
+        },
+        {
+          "question": "What is the difference between UseExceptionHandler and exception filters in MVC?",
+          "answer": ""
+        }
       ],
       "tip": ".NET 8+: use IExceptionHandler for DI-friendly global handling. Before .NET 8: UseExceptionHandler(path) for MVC, inline lambda for APIs. Always include TraceId in error responses so you can correlate logs.",
       "tags": [

@@ -1050,9 +1050,18 @@
       "question": "What are the types of inheritance in C#? Give examples.",
       "answer": "<p>Inheritance lets a class acquire members of another class. In C# there are <strong>five types</strong> conceptually, though the language enforces single-class inheritance:</p>\n\n<h4>1. Single Inheritance</h4>\n<p>A child class inherits from exactly one parent. This is the most common case.</p>\n<pre><code>class Animal { public void Breathe() { } }\nclass Dog : Animal { public void Bark() { } }</code></pre>\n\n<h4>2. Multilevel Inheritance</h4>\n<p>A chain — C inherits B which inherits A.</p>\n<pre><code>class Animal { }\nclass Dog : Animal { }\nclass GoldenRetriever : Dog { }</code></pre>\n\n<h4>3. Hierarchical Inheritance</h4>\n<p>Multiple children inherit from the same parent.</p>\n<pre><code>class Animal { }\nclass Dog : Animal { }\nclass Cat : Animal { }</code></pre>\n\n<h4>4. Multiple Inheritance (via interfaces)</h4>\n<p>C# doesn't allow inheriting from multiple classes — that avoids the diamond problem. But a class can implement multiple interfaces.</p>\n<pre><code>interface IFlyable { void Fly(); }\ninterface ISwimmable { void Swim(); }\n\nclass Duck : Animal, IFlyable, ISwimmable\n{\n    public void Fly() { }\n    public void Swim() { }\n}</code></pre>\n\n<h4>5. Hybrid Inheritance</h4>\n<p>A mix of the above types — typically multilevel + hierarchical. Also achieved through interface combinations in C#.</p>\n\n<p>One thing I always mention in interviews: C# chose <em>single class inheritance</em> intentionally to keep the type system simple. Multiple interface implementation gives you the flexibility without the ambiguity of multiple base classes.</p>",
       "followUps": [
-        "Why doesn't C# support multiple class inheritance?",
-        "What is the diamond problem?",
-        "Can a sealed class be inherited?"
+        {
+          "question": "Why doesn't C# support multiple class inheritance?",
+          "answer": ""
+        },
+        {
+          "question": "What is the diamond problem?",
+          "answer": ""
+        },
+        {
+          "question": "Can a sealed class be inherited?",
+          "answer": ""
+        }
       ],
       "tip": "Always tie your answer to WHY C# made these design choices, not just list them.",
       "tags": [
@@ -1072,9 +1081,18 @@
       "question": "What are the types of errors in C#? How does exception handling work?",
       "answer": "<p>I categorize errors in C# into three buckets:</p>\n\n<h4>1. Compile-Time Errors (Syntax / Type Errors)</h4>\n<p>Caught by the compiler before the program runs — missing semicolons, wrong types, undefined variables. These are the easiest because the IDE highlights them immediately.</p>\n\n<h4>2. Runtime Errors (Exceptions)</h4>\n<p>Occur during execution — null reference, index out of range, divide by zero. These are what exception handling is designed for.</p>\n\n<h4>3. Logical Errors</h4>\n<p>The code compiles and runs but produces wrong results. Hardest to catch — only unit tests and code reviews find these.</p>\n\n<h4>Exception Handling in C#</h4>\n<pre><code>try\n{\n    var result = int.Parse(userInput); // could throw FormatException\n    var data = list[result];           // could throw IndexOutOfRangeException\n}\ncatch (FormatException ex)\n{\n    _logger.LogWarning(\"Invalid input: {Input}\", userInput);\n    // handle gracefully\n}\ncatch (IndexOutOfRangeException ex)\n{\n    _logger.LogError(ex, \"Index out of range\");\n    throw; // re-throw preserving stack trace\n}\ncatch (Exception ex)\n{\n    // catch-all — I always put this last\n    _logger.LogError(ex, \"Unexpected error\");\n    throw new ApplicationException(\"Something went wrong\", ex);\n}\nfinally\n{\n    // always runs — good for cleanup like closing streams\n    // though I prefer 'using' statements for IDisposable resources\n}</code></pre>\n\n<p>Key rules I follow: catch the most specific exception first, never swallow exceptions silently, use <code>throw;</code> (not <code>throw ex;</code>) to preserve the original stack trace, and log with context before re-throwing.</p>",
       "followUps": [
-        "Difference between throw and throw ex?",
-        "What is the finally block used for?",
-        "What are custom exceptions and when to create them?"
+        {
+          "question": "Difference between throw and throw ex?",
+          "answer": ""
+        },
+        {
+          "question": "What is the finally block used for?",
+          "answer": ""
+        },
+        {
+          "question": "What are custom exceptions and when to create them?",
+          "answer": ""
+        }
       ],
       "tip": "Use 'throw;' not 'throw ex;' — the latter resets the stack trace.",
       "tags": [
@@ -1095,9 +1113,18 @@
       "question": "Why would you use multiple catch blocks? When is it useful?",
       "answer": "<p>Multiple catch blocks let you handle different exception types in different ways — which is almost always the right approach in production code.</p>\n\n<pre><code>public async Task<UserDto> GetUserAsync(int userId)\n{\n    try\n    {\n        var user = await _dbContext.Users.FindAsync(userId);\n        return _mapper.Map<UserDto>(user);\n    }\n    catch (InvalidOperationException ex) when (ex.Message.Contains(\"connection\"))\n    {\n        // DB connection issue — return cached data or retry\n        _logger.LogWarning(\"DB unavailable, falling back to cache\");\n        return await _cache.GetAsync<UserDto>($\"user:{userId}\");\n    }\n    catch (ArgumentNullException ex)\n    {\n        // Bad input — caller's fault\n        _logger.LogWarning(\"Null userId passed: {Ex}\", ex.Message);\n        throw new BadRequestException(\"User ID cannot be null\");\n    }\n    catch (NotFoundException)\n    {\n        // Known business case — just re-throw\n        throw;\n    }\n    catch (Exception ex)\n    {\n        // Unexpected — log fully and wrap\n        _logger.LogError(ex, \"Unexpected error fetching user {UserId}\", userId);\n        throw new InternalServerException(\"Failed to retrieve user\", ex);\n    }\n}</code></pre>\n\n<p>Notice I also used <strong>exception filters</strong> (<code>when</code> keyword) — that's a C# 6+ feature that lets you narrow down the catch without actually catching the exception if the condition is false. Very handy for differentiating cases within the same exception type.</p>\n\n<p>Rule of thumb: the most specific exceptions go first, the generic <code>Exception</code> catch always goes last. The compiler enforces this — a broader catch before a specific one won't compile.</p>",
       "followUps": [
-        "What is the 'when' keyword in catch blocks?",
-        "Can you have a catch without an exception variable?",
-        "What happens if an exception is thrown inside a catch block?"
+        {
+          "question": "What is the 'when' keyword in catch blocks?",
+          "answer": ""
+        },
+        {
+          "question": "Can you have a catch without an exception variable?",
+          "answer": ""
+        },
+        {
+          "question": "What happens if an exception is thrown inside a catch block?",
+          "answer": ""
+        }
       ],
       "tip": "Exception filters (when clause) are powerful — they don't unwind the stack if the condition is false.",
       "tags": [
@@ -1117,9 +1144,18 @@
       "question": "What are the types of collections in C#? Generic vs non-generic.",
       "answer": "<p>C# has two generations of collections — I mostly use the <strong>generic</strong> ones from <code>System.Collections.Generic</code> in every project. The non-generic ones in <code>System.Collections</code> are largely legacy.</p>\n\n<h4>Generic Collections (everyday use)</h4>\n<table>\n<tr><th>Type</th><th>Use case</th></tr>\n<tr><td><code>List&lt;T&gt;</code></td><td>Ordered, resizable array. My go-to for most collections.</td></tr>\n<tr><td><code>Dictionary&lt;K,V&gt;</code></td><td>Key-value lookup. O(1) average. Use when you need fast lookups by key.</td></tr>\n<tr><td><code>HashSet&lt;T&gt;</code></td><td>Unique values, fast membership check. Great for deduplication.</td></tr>\n<tr><td><code>Queue&lt;T&gt;</code></td><td>FIFO — background job queues, BFS algorithms.</td></tr>\n<tr><td><code>Stack&lt;T&gt;</code></td><td>LIFO — undo/redo, DFS algorithms, parsing expressions.</td></tr>\n<tr><td><code>LinkedList&lt;T&gt;</code></td><td>Cheap inserts/removes in the middle. Rarely needed in web apps.</td></tr>\n<tr><td><code>SortedDictionary&lt;K,V&gt;</code></td><td>Sorted by key automatically. Slower inserts than Dictionary.</td></tr>\n</table>\n\n<h4>Concurrent Collections (multi-threaded)</h4>\n<pre><code>// Thread-safe without explicit locking:\nvar bag = new ConcurrentBag<int>();\nvar dict = new ConcurrentDictionary<string, int>();\nvar queue = new ConcurrentQueue<WorkItem>();</code></pre>\n\n<h4>Non-Generic (legacy — avoid in new code)</h4>\n<p><code>ArrayList</code>, <code>Hashtable</code>, <code>Queue</code>, <code>Stack</code> — these store <code>object</code>, so you get boxing/unboxing overhead and no compile-time type safety. Only reason to touch them is maintaining old .NET Framework code.</p>\n\n<h4>Practical example — choosing the right one:</h4>\n<pre><code>// Deduplicate incoming user IDs\nvar uniqueIds = new HashSet<int>(incomingIds);\n\n// Fast lookup: user by ID\nvar userMap = users.ToDictionary(u => u.Id);\n\n// Process in order received\nvar pendingEmails = new Queue<EmailMessage>();</code></pre>\n\n<p>One interview tip: interviewers love asking about <code>IEnumerable</code> vs <code>ICollection</code> vs <code>IList</code>. <code>IEnumerable</code> is read-only iteration, <code>ICollection</code> adds Count/Add/Remove, <code>IList</code> adds index access.</p>",
       "followUps": [
-        "What is the difference between List<T> and LinkedList<T>?",
-        "When would you use ConcurrentDictionary over Dictionary?",
-        "What is the difference between IEnumerable, ICollection, and IList?"
+        {
+          "question": "What is the difference between List<T> and LinkedList<T>?",
+          "answer": ""
+        },
+        {
+          "question": "When would you use ConcurrentDictionary over Dictionary?",
+          "answer": ""
+        },
+        {
+          "question": "What is the difference between IEnumerable, ICollection, and IList?",
+          "answer": ""
+        }
       ],
       "tip": "Know IEnumerable vs ICollection vs IList hierarchy — very common follow-up.",
       "tags": [
@@ -1141,9 +1177,18 @@
       "question": "What is the difference between Dispose() and Finalize() in C#?",
       "answer": "<p>This comes up in any mid-level interview, and getting it wrong signals a misunderstanding of .NET memory management. Here's how I explain it:</p><p><strong>Dispose()</strong> is deterministic cleanup — you call it explicitly (or via <code>using</code>), and it runs immediately. It's part of the <code>IDisposable</code> interface. Use it for unmanaged resources like file handles, DB connections, HTTP clients.</p><p><strong>Finalize()</strong> (the <code>~ClassName()</code> destructor syntax) is non-deterministic — the GC calls it at some unknown future point. It's a last-resort safety net when someone forgets to call Dispose(). The problem: objects with finalizers get promoted to Gen1/Gen2 instead of being collected immediately, hurting performance.</p><p>In practice I always implement the full dispose pattern — implement IDisposable, call <code>GC.SuppressFinalize(this)</code> from Dispose() so the GC skips the finalizer when it's already cleaned up:</p><pre><code class=\"language-csharp\">public class FileHandler : IDisposable\n{\n    private FileStream _fs;\n    private bool _disposed = false;\n\n    public FileHandler(string path)\n    {\n        _fs = File.OpenRead(path);\n    }\n\n    public void Dispose()\n    {\n        Dispose(true);\n        GC.SuppressFinalize(this); // skip finalizer — already cleaned up\n    }\n\n    protected virtual void Dispose(bool disposing)\n    {\n        if (_disposed) return;\n        if (disposing)\n        {\n            _fs?.Dispose(); // managed cleanup\n        }\n        // unmanaged cleanup here if any\n        _disposed = true;\n    }\n\n    ~FileHandler() // finalizer — safety net only\n    {\n        Dispose(false);\n    }\n}\n\n// Usage — 'using' guarantees Dispose() is called\nusing (var fh = new FileHandler(\"data.txt\"))\n{\n    // work with file\n} // Dispose() called here even if exception thrown</code></pre><p><strong>Rule of thumb:</strong> If you're wrapping anything disposable, implement <code>IDisposable</code>. Only add a finalizer if you're wrapping raw unmanaged handles. Prefer <code>SafeHandle</code> over raw finalizers in modern .NET.</p>",
       "followUps": [
-        "When do you actually need a finalizer vs just IDisposable?",
-        "What is SafeHandle and how does it simplify finalization?",
-        "What is the cost of finalizers on GC performance?"
+        {
+          "question": "When do you actually need a finalizer vs just IDisposable?",
+          "answer": ""
+        },
+        {
+          "question": "What is SafeHandle and how does it simplify finalization?",
+          "answer": ""
+        },
+        {
+          "question": "What is the cost of finalizers on GC performance?",
+          "answer": ""
+        }
       ],
       "tip": "Key interview point: Dispose() is deterministic and explicit; Finalize() is non-deterministic and GC-driven. Always call GC.SuppressFinalize(this) inside Dispose() to avoid double-cleanup.",
       "tags": [
@@ -1164,9 +1209,18 @@
       "question": "What is yield return in C#? When do you use it?",
       "answer": "<p><code>yield return</code> is one of those C# features that looks magical until you understand what the compiler does behind the scenes. It turns a method into a lazy iterator — the method produces values one at a time on demand instead of building a full collection first.</p><p>When you use <code>yield return</code>, the compiler generates a state machine class. Each time the caller asks for the next element (via <code>foreach</code> or <code>MoveNext()</code>), execution resumes from exactly where it left off.</p><pre><code class=\"language-csharp\">// Without yield — builds entire list in memory first\npublic List&lt;int&gt; GetEvenNumbers(int max)\n{\n    var result = new List&lt;int&gt;();\n    for (int i = 0; i &lt;= max; i++)\n        if (i % 2 == 0) result.Add(i);\n    return result; // all 1 million items before caller gets any\n}\n\n// With yield — lazy, streams one at a time\npublic IEnumerable&lt;int&gt; GetEvenNumbersLazy(int max)\n{\n    for (int i = 0; i &lt;= max; i++)\n        if (i % 2 == 0)\n            yield return i; // pauses here, resumes next iteration\n}\n\n// Works great for large datasets\nforeach (var n in GetEvenNumbersLazy(1_000_000))\n{\n    if (n > 100) break; // stops iteration early — no wasted work\n}\n\n// yield break — exit the iterator early\npublic IEnumerable&lt;string&gt; ReadLines(string path)\n{\n    if (!File.Exists(path)) yield break; // exits without error\n    foreach (var line in File.ReadLines(path))\n        yield return line;\n}</code></pre><p>I use <code>yield return</code> when building custom enumerators, processing large files line-by-line, or implementing pagination helpers. It's also the foundation for LINQ's deferred execution — that's why <code>Where()</code> and <code>Select()</code> don't execute until you iterate.</p><p><strong>Watch out:</strong> the state machine means exceptions thrown inside a <code>yield</code> method behave differently in try/catch blocks — you can't yield inside a <code>catch</code> block.</p>",
       "followUps": [
-        "What happens to the state machine the compiler generates for yield?",
-        "Can you use yield return inside a try/catch block?",
-        "How is yield return different from returning a List<T>?"
+        {
+          "question": "What happens to the state machine the compiler generates for yield?",
+          "answer": ""
+        },
+        {
+          "question": "Can you use yield return inside a try/catch block?",
+          "answer": ""
+        },
+        {
+          "question": "How is yield return different from returning a List<T>?",
+          "answer": ""
+        }
       ],
       "tip": "yield return = lazy iteration via compiler-generated state machine. Best for large data streams where you don't need all results at once. The method pauses and resumes on each MoveNext() call.",
       "tags": [
@@ -1187,9 +1241,18 @@
       "question": "What are anonymous types in C#? When would you use them?",
       "answer": "<p>Anonymous types are compiler-generated classes with read-only properties that you create inline without naming the type. You use them when you need a temporary shape to hold data — especially in LINQ projections — without creating a named class.</p><pre><code class=\"language-csharp\">// Anonymous type — compiler generates a class with Name and Age properties\nvar person = new { Name = \"Darshan\", Age = 30, City = \"Mumbai\" };\nConsole.WriteLine(person.Name); // \"Darshan\"\n// person.Name = \"other\"; // ERROR — properties are read-only\n\n// Most common use: LINQ Select() projections\nvar employees = dbContext.Employees\n    .Where(e => e.IsActive)\n    .Select(e => new { e.Name, e.Department, e.Salary })\n    .OrderBy(e => e.Name)\n    .ToList();\n\nforeach (var emp in employees)\n    Console.WriteLine($\"{emp.Name} - {emp.Department}\");\n\n// The compiler infers type: anonymous { string Name, string Department, decimal Salary }\n// Two anonymous types with same property names/types/order are the same type\nvar a = new { X = 1, Y = 2 };\nvar b = new { X = 3, Y = 4 };\n// a.GetType() == b.GetType() — true! Same compiler-generated class</code></pre><p>The limitations: anonymous types are local to the method — you can't return them from a public method (the return type would be <code>object</code>) and you can't pass them across API boundaries. For anything that needs to cross method boundaries or be reused, I create a proper DTO class or use a C# record.</p><p>In modern C# (9+), I prefer <code>record</code> types for immutable data shapes since they're named and can be returned from methods:</p><pre><code class=\"language-csharp\">record EmployeeSummary(string Name, string Department, decimal Salary);\n\npublic IEnumerable&lt;EmployeeSummary&gt; GetSummaries() =&gt;\n    employees.Select(e =&gt; new EmployeeSummary(e.Name, e.Department, e.Salary));</code></pre>",
       "followUps": [
-        "Why can't you return an anonymous type from a public method?",
-        "How do anonymous types differ from C# records?",
-        "When would you use dynamic vs anonymous type for holding ad-hoc data?"
+        {
+          "question": "Why can't you return an anonymous type from a public method?",
+          "answer": ""
+        },
+        {
+          "question": "How do anonymous types differ from C# records?",
+          "answer": ""
+        },
+        {
+          "question": "When would you use dynamic vs anonymous type for holding ad-hoc data?",
+          "answer": ""
+        }
       ],
       "tip": "Anonymous types = read-only, compiler-generated, scope-limited. Great for LINQ projections. For anything leaving a method, use a named DTO or record instead.",
       "tags": [
@@ -1210,9 +1273,18 @@
       "question": "What causes memory leaks in C#? How do you detect and fix them?",
       "answer": "<p>The GC handles most memory for you in .NET, but memory leaks still happen. The key is understanding: <strong>the GC can only collect objects with no live references</strong>. A leak means some root is holding a reference longer than needed.</p><p><strong>Most common causes in .NET applications:</strong></p><p><strong>1. Event handler subscriptions not unsubscribed</strong> — the most common leak I've seen in production:</p><pre><code class=\"language-csharp\">// LEAK: publisher holds reference to subscriber via event\npublic class Publisher\n{\n    public event EventHandler DataReceived;\n}\n\npublic class Subscriber\n{\n    public Subscriber(Publisher pub)\n    {\n        pub.DataReceived += OnData; // subscriber can't be GC'd as long as pub lives\n    }\n    private void OnData(object sender, EventArgs e) { }\n}\n\n// FIX: unsubscribe when done\npublic class Subscriber : IDisposable\n{\n    private Publisher _pub;\n    public Subscriber(Publisher pub)\n    {\n        _pub = pub;\n        _pub.DataReceived += OnData;\n    }\n    public void Dispose() =&gt; _pub.DataReceived -= OnData; // critical\n}</code></pre><p><strong>2. Static collections that grow forever</strong> — caches with no eviction policy:</p><pre><code class=\"language-csharp\">// LEAK: static dictionary never cleaned up\nprivate static Dictionary&lt;string, byte[]&gt; _cache = new();\n// FIX: use IMemoryCache with expiration instead\nservices.AddMemoryCache();\n// _cache.Set(key, value, TimeSpan.FromMinutes(30));</code></pre><p><strong>3. Not disposing IDisposable objects</strong> — HttpClient, DbContext, FileStream, etc.:</p><pre><code class=\"language-csharp\">// LEAK: connection never closed\nvar conn = new SqlConnection(connectionString); \nconn.Open();\n// ... forgot to close\n\n// FIX: always use 'using'\nusing var conn = new SqlConnection(connectionString);\nconn.Open();</code></pre><p><strong>Detection:</strong> I use dotMemory, PerfView, or the VS Diagnostic Tools memory profiler to take heap snapshots and look for objects that grow over time. In production I rely on Application Insights metrics for memory trends.</p>",
       "followUps": [
-        "How do you use dotMemory or PerfView to find a memory leak?",
-        "What is a WeakReference and when does it help with caching?",
-        "Can async methods cause memory leaks? How?"
+        {
+          "question": "How do you use dotMemory or PerfView to find a memory leak?",
+          "answer": ""
+        },
+        {
+          "question": "What is a WeakReference and when does it help with caching?",
+          "answer": ""
+        },
+        {
+          "question": "Can async methods cause memory leaks? How?",
+          "answer": ""
+        }
       ],
       "tip": "The #1 memory leak in C# is unsubscribed event handlers. Always implement IDisposable if your class subscribes to events, and unsubscribe in Dispose(). Use using statements for everything IDisposable.",
       "tags": [

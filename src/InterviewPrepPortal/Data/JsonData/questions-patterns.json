@@ -197,9 +197,18 @@
       "question": "What is Clean Architecture? How do you structure a .NET project using it?",
       "answer": "<p>Clean Architecture (by Robert Martin) is a layered approach where <strong>outer layers depend on inner layers, never the reverse</strong>. The inner layers (Domain, Application) know nothing about frameworks, databases, or UI — they're pure business logic.</p><p><strong>The four layers (inside out):</strong></p><ol><li><strong>Domain</strong> — entities, value objects, domain events, interfaces. Zero external dependencies.</li><li><strong>Application</strong> — use cases/services, DTOs, command/query handlers (CQRS), validation. Depends only on Domain.</li><li><strong>Infrastructure</strong> — EF Core DbContext, file system, email services, external APIs. Depends on Application interfaces.</li><li><strong>Presentation</strong> — ASP.NET Core controllers, Razor views, API endpoints. Depends on Application.</li></ol><pre><code class=\"language-text\">Solution structure:\nMyApp.Domain/          — Entities, Interfaces, ValueObjects\nMyApp.Application/     — Services, DTOs, Validators, Handlers\nMyApp.Infrastructure/  — EF Core, Repositories, Email, Azure\nMyApp.Web/             — Controllers, Views, Program.cs\nMyApp.Tests/           — Unit + Integration tests</code></pre><pre><code class=\"language-csharp\">// Domain layer — no framework deps\npublic class Order\n{\n    public int Id { get; private set; }\n    public decimal Total { get; private set; }\n    public void ApplyDiscount(decimal percent) { ... } // domain logic\n}\n\n// Application layer — defines the contract\npublic interface IOrderRepository\n{\n    Task&lt;Order?&gt; GetByIdAsync(int id);\n    Task SaveAsync(Order order);\n}\n\n// Application service — use case\npublic class PlaceOrderService\n{\n    private readonly IOrderRepository _repo;\n    private readonly IEmailService _email;\n\n    public PlaceOrderService(IOrderRepository repo, IEmailService email)\n    {\n        _repo = repo; _email = email;\n    }\n\n    public async Task PlaceAsync(PlaceOrderDto dto)\n    {\n        var order = new Order(dto.Items);\n        await _repo.SaveAsync(order);\n        await _email.SendConfirmationAsync(order.Id);\n    }\n}\n\n// Infrastructure — implements the interface with EF Core\npublic class EfOrderRepository : IOrderRepository\n{\n    private readonly AppDbContext _ctx;\n    public EfOrderRepository(AppDbContext ctx) =&gt; _ctx = ctx;\n    public async Task&lt;Order?&gt; GetByIdAsync(int id) =&gt; await _ctx.Orders.FindAsync(id);\n    public async Task SaveAsync(Order order)\n    {\n        _ctx.Orders.Add(order);\n        await _ctx.SaveChangesAsync();\n    }\n}\n\n// Web/Program.cs — wires everything up\nbuilder.Services.AddScoped&lt;IOrderRepository, EfOrderRepository&gt;();\nbuilder.Services.AddScoped&lt;PlaceOrderService&gt;();</code></pre><p><strong>Key benefits I've seen:</strong> Application services are testable in isolation (mock IOrderRepository), you can swap EF Core for Dapper without touching business logic, and UI changes don't cascade into domain code.</p><p><strong>Common tool stack:</strong> MediatR for CQRS in Application layer, FluentValidation for input validation, AutoMapper for DTO mapping.</p>",
       "followUps": [
-        "How does Clean Architecture differ from just MVC with a service layer?",
-        "Where does MediatR fit in Clean Architecture?",
-        "What is the Dependency Inversion Principle and how does Clean Architecture enforce it?"
+        {
+          "question": "How does Clean Architecture differ from just MVC with a service layer?",
+          "answer": ""
+        },
+        {
+          "question": "Where does MediatR fit in Clean Architecture?",
+          "answer": ""
+        },
+        {
+          "question": "What is the Dependency Inversion Principle and how does Clean Architecture enforce it?",
+          "answer": ""
+        }
       ],
       "tip": "The Dependency Rule: source code dependencies point inward only. Domain has zero external dependencies. Infrastructure implements interfaces defined in Application. This makes domain and application logic testable without touching a database or HTTP.",
       "tags": [
