@@ -879,6 +879,29 @@
       ],
       "sortOrder": 33,
       "isActive": true
+    },
+    {
+      "id": "webapi-034",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is DelegatingHandler in ASP.NET Web API? How does it differ from ASP.NET Core Middleware?",
+      "answer": "<p><code>DelegatingHandler</code> is a message handler in the classic <strong>ASP.NET Web API 2</strong> (not Core) pipeline. It sits in the HTTP message pipeline and can inspect/modify requests and responses — similar in concept to middleware, but different API.</p>\n\n<h4>DelegatingHandler in Web API 2 (legacy):</h4>\n<pre><code>public class LoggingHandler : DelegatingHandler\n{\n    protected override async Task&lt;HttpResponseMessage&gt; SendAsync(\n        HttpRequestMessage request, \n        CancellationToken cancellationToken)\n    {\n        // Before the request\n        Console.WriteLine($\"Request: {request.Method} {request.RequestUri}\");\n        \n        // Call the next handler in the chain\n        HttpResponseMessage response = await base.SendAsync(request, cancellationToken);\n        \n        // After the response\n        Console.WriteLine($\"Response: {response.StatusCode}\");\n        \n        return response;\n    }\n}\n\n// Registration in WebApiConfig.cs\nconfig.MessageHandlers.Add(new LoggingHandler());</code></pre>\n\n<h4>Equivalent in ASP.NET Core — Middleware (modern approach):</h4>\n<pre><code>public class LoggingMiddleware\n{\n    private readonly RequestDelegate _next;\n    private readonly ILogger&lt;LoggingMiddleware&gt; _logger;\n\n    public LoggingMiddleware(RequestDelegate next, ILogger&lt;LoggingMiddleware&gt; logger)\n    {\n        _next = next;\n        _logger = logger;\n    }\n\n    public async Task InvokeAsync(HttpContext context)\n    {\n        _logger.LogInformation(\"Request: {Method} {Path}\", \n            context.Request.Method, context.Request.Path);\n        \n        await _next(context);  // call next middleware\n        \n        _logger.LogInformation(\"Response: {StatusCode}\", \n            context.Response.StatusCode);\n    }\n}\n\n// Registration in Program.cs\napp.UseMiddleware&lt;LoggingMiddleware&gt;();</code></pre>\n\n<h4>Key differences:</h4>\n<table>\n<tr><th></th><th>DelegatingHandler (Web API 2)</th><th>Middleware (ASP.NET Core)</th></tr>\n<tr><td>Framework</td><td>.NET Framework / Web API 2</td><td>ASP.NET Core</td></tr>\n<tr><td>Works with</td><td>HttpRequestMessage / HttpResponseMessage</td><td>HttpContext</td></tr>\n<tr><td>Registration</td><td>config.MessageHandlers.Add()</td><td>app.UseMiddleware&lt;&gt;()</td></tr>\n<tr><td>DI support</td><td>Limited</td><td>Full DI via constructor</td></tr>\n<tr><td>Status</td><td>Legacy</td><td>Current standard</td></tr>\n</table>\n\n<p>In any new .NET project (Core/5/6/7/8), you use <strong>middleware</strong>. DelegatingHandler is only relevant if you're maintaining a legacy .NET Framework Web API 2 application. If someone asks this in a .NET Core context, I'd mention that middleware is the ASP.NET Core equivalent and explain how it differs.</p>",
+      "followUps": [
+        "What is the difference between middleware and action filters in ASP.NET Core?",
+        "How do you create a typed HttpClient with DelegatingHandler in ASP.NET Core?",
+        "What are the use cases for HTTP message handlers?"
+      ],
+      "tip": "In ASP.NET Core, DelegatingHandler still exists but for HttpClient pipelines (typed clients), not the server pipeline. Server-side uses middleware.",
+      "tags": [
+        "webapi",
+        "delegatinghandler",
+        "middleware",
+        "http-pipeline",
+        "web-api-2"
+      ],
+      "sortOrder": 34,
+      "isActive": true
     }
   ]
 }

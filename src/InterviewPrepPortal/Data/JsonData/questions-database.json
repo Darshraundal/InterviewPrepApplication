@@ -1395,6 +1395,176 @@
       ],
       "sortOrder": 51,
       "isActive": true
+    },
+    {
+      "id": "db-052",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between a Table Scan, Index Scan, and Index Seek in SQL Server?",
+      "answer": "<p>These three terms come up constantly when you're reading execution plans, and understanding the difference directly impacts how you optimize queries.</p>\n\n<h4>Table Scan</h4>\n<p>SQL Server reads every single row in the table from beginning to end. This happens when:</p>\n<ul>\n<li>There's no useful index on the filtered columns</li>\n<li>The optimizer estimates it's cheaper than an index (e.g., returning &gt;30% of rows)</li>\n<li>The table is very small (heap scan is fast on small tables)</li>\n</ul>\n<pre><code>-- This will likely cause a Table Scan if no index on LastName\nSELECT * FROM Employees WHERE LastName LIKE '%smith%'\n-- LIKE with leading wildcard can't use index efficiently</code></pre>\n\n<h4>Index Scan</h4>\n<p>SQL Server reads all (or most) leaf-level pages of an index rather than the whole table. Still sequential, but faster than a table scan if the index is narrower than the table. It happens when:</p>\n<ul>\n<li>An index exists but the query doesn't filter enough (returns many rows)</li>\n<li>Covering index present but predicate isn't highly selective</li>\n</ul>\n\n<h4>Index Seek ✅ (What you want)</h4>\n<p>SQL Server goes directly to the specific rows matching the predicate via the B-tree. This is the most efficient operation — O(log n) instead of O(n).</p>\n<pre><code>-- Index Seek if there's an index on EmployeeId\nSELECT * FROM Employees WHERE EmployeeId = 12345\n\n-- Force seek hint if optimizer chooses wrong plan:\nSELECT * FROM Employees WITH (INDEX(IX_EmployeeId))\nWHERE EmployeeId = 12345</code></pre>\n\n<h4>How to check in execution plan:</h4>\n<pre><code>SET STATISTICS IO ON;\nSELECT * FROM Orders WHERE CustomerId = 100;\n-- Look at \"logical reads\" — high count = scan, low count = seek</code></pre>\n\n<p>In practice: if I see a Table Scan or Index Scan on a large table in an execution plan, my first move is to check if an index exists on the WHERE/JOIN columns. If not, I add one. If yes, I check if the data type matches (implicit conversions kill seeks) or if a function is wrapped around the indexed column (also kills seeks).</p>\n\n<h4>Golden rule that kills Index Seeks:</h4>\n<pre><code>-- BAD: function on indexed column prevents seek\nWHERE YEAR(OrderDate) = 2024\n\n-- GOOD: use range instead\nWHERE OrderDate >= '2024-01-01' AND OrderDate < '2025-01-01'</code></pre>",
+      "followUps": [
+        "What causes a Table Scan even when an index exists?",
+        "What is a key lookup and when does it happen?",
+        "How do you read a SQL Server execution plan?"
+      ],
+      "tip": "Functions on indexed columns prevent seeks. LIKE with leading wildcard prevents seeks. Check logical reads with SET STATISTICS IO ON.",
+      "tags": [
+        "database",
+        "index",
+        "table-scan",
+        "index-seek",
+        "performance",
+        "execution-plan"
+      ],
+      "sortOrder": 52,
+      "isActive": true
+    },
+    {
+      "id": "db-053",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "How do you reseed an identity column in SQL Server? What is DBCC CHECKIDENT?",
+      "answer": "<p><code>DBCC CHECKIDENT</code> is the T-SQL command to check or reset (reseed) the current identity value of a table.</p>\n\n<h4>Check current identity value:</h4>\n<pre><code>DBCC CHECKIDENT ('Orders', NORESEED);\n-- Output: Checking identity information: current identity value '150', current column value '150'.</code></pre>\n\n<h4>Reseed to a specific value:</h4>\n<pre><code>-- Next insert will use 101 (seed + 1)\nDBCC CHECKIDENT ('Orders', RESEED, 100);\n\n-- Reset to 0 (next insert gets ID = 1)\nDBCC CHECKIDENT ('Orders', RESEED, 0);\n\n-- After TRUNCATE, identity is automatically reset — but after DELETE it's not\nTRUNCATE TABLE Orders;  -- resets identity to seed value\nDELETE FROM Orders;     -- does NOT reset identity\nDBCC CHECKIDENT ('Orders', RESEED, 0);  -- manually reset after DELETE</code></pre>\n\n<h4>Real scenario where I've used this:</h4>\n<p>In staging/test environments, after clearing test data with DELETE (not TRUNCATE, because of FK constraints), the identity values kept climbing — IDs like 50000 in a test table with 10 rows. I use DBCC CHECKIDENT to reset it to something sensible.</p>\n\n<pre><code>-- Safe pattern for test data cleanup:\nDELETE FROM OrderItems;  -- child first (FK constraint)\nDELETE FROM Orders;      -- parent\nDBCC CHECKIDENT ('OrderItems', RESEED, 0);\nDBCC CHECKIDENT ('Orders', RESEED, 0);</code></pre>\n\n<h4>RESEED with value vs without:</h4>\n<pre><code>-- RESEED with no value: resets to max existing value in the table\n-- Useful if you manually inserted rows with SET IDENTITY_INSERT ON\nDBCC CHECKIDENT ('Orders', RESEED);  -- no value = sync to max row</code></pre>\n\n<p>One gotcha: if you reseed to a value lower than existing rows, the next INSERT will skip to one above the current max (SQL Server 2014+ behavior) — so always RESEED to at least max existing ID to avoid PK violations.</p>",
+      "followUps": [
+        "What is the difference between TRUNCATE and DELETE regarding identity reset?",
+        "What is SET IDENTITY_INSERT ON and when do you use it?",
+        "Can you have a non-integer identity column?"
+      ],
+      "tip": "TRUNCATE resets identity automatically. DELETE does not — use DBCC CHECKIDENT to reset manually.",
+      "tags": [
+        "database",
+        "identity",
+        "dbcc-checkident",
+        "reseed",
+        "sql-server"
+      ],
+      "sortOrder": 53,
+      "isActive": true
+    },
+    {
+      "id": "db-054",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are the types of SQL Server backups? Explain Full, Differential, and Transaction Log backups.",
+      "answer": "<p>SQL Server has three core backup types, and they work together in a strategy — you typically don't use just one.</p>\n\n<h4>1. Full Backup</h4>\n<p>A complete snapshot of the entire database — all data and enough of the transaction log to bring the database to a consistent state at the point in time of the backup.</p>\n<pre><code>BACKUP DATABASE InterviewPrep \nTO DISK = 'D:\\Backups\\InterviewPrep_Full_20240523.bak'\nWITH COMPRESSION, STATS = 10;</code></pre>\n<ul>\n<li>Largest in size, slowest</li>\n<li>Self-contained — can restore from just this file</li>\n<li>Typically done weekly (or daily for critical DBs)</li>\n</ul>\n\n<h4>2. Differential Backup</h4>\n<p>Captures only the pages changed since the <em>last Full backup</em>. Much faster and smaller than another full backup.</p>\n<pre><code>BACKUP DATABASE InterviewPrep\nTO DISK = 'D:\\Backups\\InterviewPrep_Diff_20240523.bak'\nWITH DIFFERENTIAL, COMPRESSION;</code></pre>\n<ul>\n<li>Grows larger over time until the next full backup</li>\n<li>To restore: Full + latest Differential</li>\n<li>Typically done daily or every few hours</li>\n</ul>\n\n<h4>3. Transaction Log Backup</h4>\n<p>Backs up the transaction log — all changes since the last log backup. Enables point-in-time recovery. Only works when Recovery Model is <strong>Full</strong> or <strong>Bulk-Logged</strong>.</p>\n<pre><code>BACKUP LOG InterviewPrep\nTO DISK = 'D:\\Backups\\InterviewPrep_Log_20240523_14h.bak'\nWITH COMPRESSION;</code></pre>\n<ul>\n<li>Smallest and fastest</li>\n<li>Also truncates the inactive portion of the log (prevents log file bloat)</li>\n<li>To restore: Full + last Differential + all Log backups since the Differential</li>\n<li>Typically done every 15-60 minutes in production</li>\n</ul>\n\n<h4>Typical production backup strategy:</h4>\n<pre><code>-- Sunday: Full backup\n-- Mon-Sat: Differential backup (nightly)\n-- Every 30 min: Transaction Log backup\n\n-- To restore to Tuesday 2:45pm:\n-- 1. Restore Sunday Full (NORECOVERY)\n-- 2. Restore Monday night Differential (NORECOVERY)\n-- 3. Restore all log backups from Monday night through Tuesday 2:45pm (RECOVERY at end)</code></pre>\n\n<p>In my experience, most teams underestimate how critical log backups are. I had a scenario where we needed to restore to a specific minute before accidental bulk deletes. Transaction log backups saved us — we recovered to the exact minute before the mistake.</p>",
+      "followUps": [
+        "What is point-in-time recovery and when is it needed?",
+        "What is Copy-Only backup?",
+        "What recovery model allows transaction log backups?"
+      ],
+      "tip": "Remember the restore chain: Full → Differential → Log backups. You need all of them in sequence.",
+      "tags": [
+        "database",
+        "backup",
+        "full-backup",
+        "differential",
+        "transaction-log",
+        "recovery"
+      ],
+      "sortOrder": 54,
+      "isActive": true
+    },
+    {
+      "id": "db-055",
+      "category": "database",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "What are the High Availability solutions in SQL Server? Explain Mirroring, Log Shipping, Replication, and Always On.",
+      "answer": "<p>SQL Server provides several HA (High Availability) and DR (Disaster Recovery) solutions. Here's how they compare — this comes up in senior-level interviews:</p>\n\n<h4>1. Always On Availability Groups (Modern — preferred)</h4>\n<p>One primary replica + up to 8 secondary replicas. Secondaries can be readable. Automatic failover in seconds.</p>\n<ul>\n<li>✅ Automatic failover, readable secondaries, offload reporting queries</li>\n<li>✅ Synchronous (zero data loss) or Asynchronous (geo-redundancy)</li>\n<li>❌ Requires Windows Server Failover Clustering (WSFC) or Domain-independent AG</li>\n<li>Introduced in SQL Server 2012, enhanced ever since</li>\n</ul>\n\n<h4>2. Database Mirroring (Deprecated in 2012, removed in 2022)</h4>\n<p>One principal + one mirror, with optional witness for automatic failover. Sends transaction log records to mirror in real-time.</p>\n<ul>\n<li>High Safety mode: synchronous (zero data loss, automatic failover with witness)</li>\n<li>High Performance mode: asynchronous (some data loss possible)</li>\n<li>Mirror is not readable — no offloading</li>\n<li>❌ Deprecated — don't use in new systems, mention Always On instead</li>\n</ul>\n\n<h4>3. Log Shipping</h4>\n<p>Automates: backup transaction logs on primary → copy to standby server → restore on standby. Low-cost DR solution.</p>\n<pre><code>-- What happens under the hood (automated jobs):\n-- Primary:  BACKUP LOG every 15 minutes → network share\n-- Standby:  Copy job picks up the file\n-- Standby:  Restore job applies it (WITH STANDBY or NORECOVERY)</code></pre>\n<ul>\n<li>✅ Simple, low cost, works across versions, standby can be readable (WITH STANDBY)</li>\n<li>❌ Manual failover, data loss = last log backup interval (15-30 min typically)</li>\n<li>Good for: budget-conscious DR where some data loss is acceptable</li>\n</ul>\n\n<h4>4. Replication</h4>\n<p>Not really HA — it's data distribution. Copies data changes from publisher to subscriber(s).</p>\n<ul>\n<li><strong>Snapshot</strong>: full copy periodically</li>\n<li><strong>Transactional</strong>: near real-time changes (used for read scale-out)</li>\n<li><strong>Merge</strong>: bidirectional sync (mobile/disconnected scenarios)</li>\n<li>Used for: reporting databases, distributing data to multiple locations, read offloading</li>\n<li>❌ Not a failover solution — subscriber can have subset of data</li>\n</ul>\n\n<h4>Quick comparison table:</h4>\n<table>\n<tr><th>Solution</th><th>Failover</th><th>Data Loss</th><th>Readable Secondary</th></tr>\n<tr><td>Always On AG</td><td>Auto (seconds)</td><td>Zero (sync)</td><td>Yes</td></tr>\n<tr><td>Mirroring</td><td>Auto (with witness)</td><td>Zero (sync)</td><td>No</td></tr>\n<tr><td>Log Shipping</td><td>Manual</td><td>Minutes</td><td>Yes (STANDBY)</td></tr>\n<tr><td>Replication</td><td>N/A</td><td>N/A</td><td>Yes (subscriber)</td></tr>\n</table>\n\n<p>In any new project today, I recommend Always On AGs. Log shipping is a good cheap fallback when you can't afford the WSFC infrastructure.</p>",
+      "followUps": [
+        "What is the difference between synchronous and asynchronous availability groups?",
+        "What is Failover Cluster Instance (FCI) vs Availability Groups?",
+        "What is RTO and RPO in disaster recovery?"
+      ],
+      "tip": "Always On AGs are the modern answer. Mirroring is deprecated. Log Shipping is cheap but manual failover.",
+      "tags": [
+        "database",
+        "high-availability",
+        "always-on",
+        "log-shipping",
+        "replication",
+        "mirroring",
+        "disaster-recovery"
+      ],
+      "sortOrder": 55,
+      "isActive": true
+    },
+    {
+      "id": "db-056",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What are DCL commands in SQL? Explain GRANT, DENY, and REVOKE.",
+      "answer": "<p>DCL stands for <strong>Data Control Language</strong>. It controls who can access and manipulate database objects.</p>\n\n<h4>GRANT — Give permissions</h4>\n<pre><code>-- Grant SELECT on a table to a user\nGRANT SELECT ON dbo.Employees TO [AppUser];\n\n-- Grant multiple permissions\nGRANT SELECT, INSERT, UPDATE ON dbo.Orders TO [AppUser];\n\n-- Grant EXECUTE on a stored procedure\nGRANT EXECUTE ON dbo.uspGetOrderSummary TO [ReportingUser];\n\n-- Grant to a role (better practice — manage roles, not individual users)\nGRANT SELECT ON dbo.Products TO [ReadOnlyRole];</code></pre>\n\n<h4>DENY — Explicitly block permissions (overrides GRANT)</h4>\n<pre><code>-- Even if AppUser is in a role that has DELETE, this prevents it\nDENY DELETE ON dbo.Employees TO [AppUser];\n\n-- DENY is the strongest — it overrides any GRANT from role membership</code></pre>\n\n<h4>REVOKE — Remove a previously granted or denied permission</h4>\n<pre><code>-- Remove the SELECT grant (user loses permission if not granted elsewhere)\nREVOKE SELECT ON dbo.Employees FROM [AppUser];\n\n-- Revoke a DENY (removes the explicit deny, but doesn't grant access)\nREVOKE DELETE ON dbo.Employees FROM [AppUser];</code></pre>\n\n<h4>Permission precedence:</h4>\n<p><strong>DENY &gt; GRANT</strong> always. If a user is in Role A (which has GRANT SELECT) and you DENY SELECT to that user directly, they cannot SELECT — the DENY wins.</p>\n\n<h4>Practical approach I use:</h4>\n<pre><code>-- Create roles, not per-user grants\nCREATE ROLE ReadOnlyRole;\nCREATE ROLE AppRole;\n\nGRANT SELECT ON SCHEMA::dbo TO ReadOnlyRole;\nGRANT SELECT, INSERT, UPDATE ON SCHEMA::dbo TO AppRole;\nGRANT EXECUTE ON SCHEMA::dbo TO AppRole;\n\n-- Assign users to roles\nALTER ROLE AppRole ADD MEMBER [WebAppUser];\nALTER ROLE ReadOnlyRole ADD MEMBER [ReportingUser];</code></pre>\n\n<p>In real-world apps, I always use <em>least privilege</em> — the web app service account only gets SELECT/INSERT/UPDATE/DELETE on specific tables and EXECUTE on stored procs. Never db_owner or sa in production.</p>",
+      "followUps": [
+        "What is the difference between REVOKE and DENY?",
+        "What are database roles vs server roles in SQL Server?",
+        "What is the principle of least privilege in database security?"
+      ],
+      "tip": "DENY always wins over GRANT — even if the user gets GRANT through a role, an explicit DENY blocks them.",
+      "tags": [
+        "database",
+        "dcl",
+        "grant",
+        "deny",
+        "revoke",
+        "security",
+        "permissions"
+      ],
+      "sortOrder": 56,
+      "isActive": true
+    },
+    {
+      "id": "db-057",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is Fill Factor in SQL Server? What is the default value and when do you change it?",
+      "answer": "<p>Fill Factor determines <strong>how full SQL Server fills index pages when creating or rebuilding an index</strong>. It's expressed as a percentage from 1–100.</p>\n\n<h4>Default Fill Factor</h4>\n<p>Server-level default is <strong>0</strong>, which is treated the same as <strong>100%</strong> — pages are filled completely during creation/rebuild.</p>\n\n<pre><code>-- Check server-level default\nEXEC sp_configure 'fill factor (%)';\n-- Typically returns 0 (= 100% full)\n\n-- Check fill factor on a specific index\nSELECT name, fill_factor \nFROM sys.indexes \nWHERE object_id = OBJECT_ID('Orders');</code></pre>\n\n<h4>Why would you NOT fill pages 100%?</h4>\n<p>When pages are 100% full and a new row needs to be inserted, SQL Server must perform a <strong>page split</strong> — it moves half the data to a new page. Page splits:</p>\n<ul>\n<li>Cause fragmentation</li>\n<li>Are slow (I/O heavy)</li>\n<li>Happen frequently on tables with heavy INSERT/UPDATE activity</li>\n</ul>\n\n<h4>Setting Fill Factor — Leave room for growth</h4>\n<pre><code>-- Create index with 80% fill factor (leaves 20% free space)\nCREATE INDEX IX_Orders_CustomerId ON Orders(CustomerId)\nWITH (FILLFACTOR = 80);\n\n-- Rebuild with different fill factor\nALTER INDEX IX_Orders_CustomerId ON Orders\nREBUILD WITH (FILLFACTOR = 80);</code></pre>\n\n<h4>Guidelines from real experience:</h4>\n<table>\n<tr><th>Scenario</th><th>Fill Factor</th><th>Why</th></tr>\n<tr><td>Read-heavy, rarely updated</td><td>95-100%</td><td>Minimize I/O, no splits needed</td></tr>\n<tr><td>Moderate INSERT/UPDATE activity</td><td>80-90%</td><td>Balance between space and splits</td></tr>\n<tr><td>Heavy random inserts (e.g., GUID PKs)</td><td>70-80%</td><td>Lots of page splits without free space</td></tr>\n<tr><td>Monotonically increasing PK (INT IDENTITY)</td><td>95-100%</td><td>Inserts always at end, no mid-page splits</td></tr>\n</table>\n\n<p>One important note: Fill Factor only applies <em>at rebuild/creation time</em>. As data comes in, pages fill up until the next rebuild. That's why regular index maintenance (weekly/monthly rebuilds) is part of any production DBA routine.</p>\n\n<pre><code>-- Maintain indexes (rebuild if fragmentation > 30%, reorganize if 10-30%)\nALTER INDEX ALL ON Orders REBUILD;  -- reapplies the fill factor</code></pre>",
+      "followUps": [
+        "What is the difference between REBUILD and REORGANIZE for indexes?",
+        "What is a page split and why is it bad?",
+        "How does Fill Factor relate to index fragmentation?"
+      ],
+      "tip": "Fill Factor 0 = 100% full. Lower value = more free space = fewer page splits = less fragmentation over time.",
+      "tags": [
+        "database",
+        "fill-factor",
+        "index",
+        "page-split",
+        "fragmentation",
+        "performance"
+      ],
+      "sortOrder": 57,
+      "isActive": true
+    },
+    {
+      "id": "db-058",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What are the Recovery Models in SQL Server? Explain Simple, Full, and Bulk-Logged.",
+      "answer": "<p>The Recovery Model controls <strong>how SQL Server manages the transaction log</strong> — specifically how much log is retained and what kinds of recovery are possible.</p>\n\n<h4>1. Simple Recovery Model</h4>\n<p>The transaction log is automatically truncated after each checkpoint. No transaction log backups possible.</p>\n<pre><code>ALTER DATABASE MyDb SET RECOVERY SIMPLE;</code></pre>\n<ul>\n<li>✅ Log file stays small, auto-managed</li>\n<li>✅ No log backup overhead</li>\n<li>❌ Can only restore to last Full or Differential backup</li>\n<li>❌ No point-in-time recovery</li>\n<li>Use for: development databases, data warehouses with full nightly backups, non-critical systems</li>\n</ul>\n\n<h4>2. Full Recovery Model</h4>\n<p>Every transaction is fully logged and log is retained until you explicitly back it up.</p>\n<pre><code>ALTER DATABASE MyDb SET RECOVERY FULL;</code></pre>\n<ul>\n<li>✅ Point-in-time recovery (restore to any specific minute)</li>\n<li>✅ Transaction log backups possible</li>\n<li>❌ Log file grows until backed up — must have regular log backup jobs</li>\n<li>Use for: production OLTP systems, any database where you can't afford to lose more than minutes of data</li>\n</ul>\n<pre><code>-- Typical job setup under Full recovery:\n-- Every 30 min: BACKUP LOG MyDb TO DISK = '...'\n-- This truncates the inactive log AND creates the log backup file</code></pre>\n\n<h4>3. Bulk-Logged Recovery Model</h4>\n<p>Like Full, but minimally logs certain bulk operations (BULK INSERT, SELECT INTO, index rebuilds). Designed for temporary use during large data loads.</p>\n<pre><code>-- Pattern: switch to Bulk-Logged during load\nALTER DATABASE MyDb SET RECOVERY BULK_LOGGED;\n\n-- Run your bulk operation\nBULK INSERT Orders FROM 'C:\\data\\orders.csv' WITH (FIELDTERMINATOR=',');\n-- SELECT INTO, CREATE INDEX also benefit here\n\n-- Switch back after load\nALTER DATABASE MyDb SET RECOVERY FULL;\nBACKUP LOG MyDb TO DISK = 'D:\\Backups\\AfterBulkLoad.bak';</code></pre>\n<ul>\n<li>✅ Dramatically faster for bulk operations</li>\n<li>✅ Much smaller log growth during bulk loads</li>\n<li>❌ Log backup containing bulk operation cannot be used for point-in-time recovery</li>\n<li>Use for: ETL windows, initial data loads, periodic large batch operations</li>\n</ul>\n\n<h4>Which one to choose in production?</h4>\n<p>OLTP production → <strong>Full</strong> always. Simple for dev/test. Bulk-Logged temporarily during large ETL jobs then switch back to Full immediately after and take a log backup.</p>",
+      "followUps": [
+        "What happens to the transaction log if I forget to take log backups under Full Recovery?",
+        "Can you switch between recovery models? What are the implications?",
+        "What is a log chain and why does it matter for restore?"
+      ],
+      "tip": "Under Full Recovery, if you don't take regular log backups, the log file grows forever — set up a SQL Agent job.",
+      "tags": [
+        "database",
+        "recovery-model",
+        "simple",
+        "full",
+        "bulk-logged",
+        "transaction-log",
+        "backup"
+      ],
+      "sortOrder": 58,
+      "isActive": true
     }
   ]
 }
