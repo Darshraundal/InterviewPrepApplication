@@ -7,7 +7,14 @@
       "emoji": "💉",
       "description": "IoC container, service lifetimes, captive dependencies, constructor injection",
       "sortOrder": 1,
-      "tags": ["di", "ioc", "lifetime", "singleton", "scoped", "transient"],
+      "tags": [
+        "di",
+        "ioc",
+        "lifetime",
+        "singleton",
+        "scoped",
+        "transient"
+      ],
       "isActive": true
     },
     {
@@ -17,7 +24,14 @@
       "emoji": "🗄️",
       "description": "SQL queries, stored procedures, indexing, joins, performance, transactions",
       "sortOrder": 2,
-      "tags": ["sql", "database", "stored-procedure", "index", "join", "transaction"],
+      "tags": [
+        "sql",
+        "database",
+        "stored-procedure",
+        "index",
+        "join",
+        "transaction"
+      ],
       "isActive": true
     },
     {
@@ -27,7 +41,14 @@
       "emoji": "🌐",
       "description": "REST, HTTP verbs, routing, model binding, filters, versioning, Swagger",
       "sortOrder": 3,
-      "tags": ["webapi", "rest", "http", "routing", "filters", "swagger"],
+      "tags": [
+        "webapi",
+        "rest",
+        "http",
+        "routing",
+        "filters",
+        "swagger"
+      ],
       "isActive": true
     },
     {
@@ -37,7 +58,13 @@
       "emoji": "🏛️",
       "description": "Model-View-Controller pattern, Razor views, partial views, TempData, routing",
       "sortOrder": 4,
-      "tags": ["mvc", "razor", "views", "routing", "filters"],
+      "tags": [
+        "mvc",
+        "razor",
+        "views",
+        "routing",
+        "filters"
+      ],
       "isActive": true
     },
     {
@@ -47,7 +74,13 @@
       "emoji": "🧩",
       "description": "Encapsulation, inheritance, polymorphism, abstraction, interfaces vs abstract classes",
       "sortOrder": 5,
-      "tags": ["oops", "inheritance", "polymorphism", "abstraction", "encapsulation"],
+      "tags": [
+        "oops",
+        "inheritance",
+        "polymorphism",
+        "abstraction",
+        "encapsulation"
+      ],
       "isActive": true
     },
     {
@@ -57,7 +90,14 @@
       "emoji": "💎",
       "description": "Single Responsibility, Open/Closed, Liskov, Interface Segregation, Dependency Inversion",
       "sortOrder": 6,
-      "tags": ["solid", "srp", "ocp", "lsp", "isp", "dip"],
+      "tags": [
+        "solid",
+        "srp",
+        "ocp",
+        "lsp",
+        "isp",
+        "dip"
+      ],
       "isActive": true
     },
     {
@@ -67,7 +107,14 @@
       "emoji": "🅰️",
       "description": "Components, services, lifecycle hooks, RxJS, routing, forms, HTTP client",
       "sortOrder": 7,
-      "tags": ["angular", "rxjs", "components", "services", "lifecycle", "forms"],
+      "tags": [
+        "angular",
+        "rxjs",
+        "components",
+        "services",
+        "lifecycle",
+        "forms"
+      ],
       "isActive": true
     },
     {
@@ -77,7 +124,15 @@
       "emoji": "🔐",
       "description": "JWT, OAuth, OIDC, ASP.NET Core Identity, roles, claims, policies",
       "sortOrder": 8,
-      "tags": ["jwt", "oauth", "oidc", "identity", "auth", "claims", "roles"],
+      "tags": [
+        "jwt",
+        "oauth",
+        "oidc",
+        "identity",
+        "auth",
+        "claims",
+        "roles"
+      ],
       "isActive": true
     },
     {
@@ -87,7 +142,14 @@
       "emoji": "⚡",
       "description": "async/await, Task, Thread, deadlocks, cancellation tokens, parallel programming",
       "sortOrder": 9,
-      "tags": ["async", "await", "task", "thread", "concurrency", "parallel"],
+      "tags": [
+        "async",
+        "await",
+        "task",
+        "thread",
+        "concurrency",
+        "parallel"
+      ],
       "isActive": true
     },
     {
@@ -97,7 +159,14 @@
       "emoji": "🧬",
       "description": "Entity Framework Core, LINQ, migrations, Dapper, ORM patterns, N+1 problem",
       "sortOrder": 10,
-      "tags": ["efcore", "dapper", "linq", "migrations", "orm", "dbcontext"],
+      "tags": [
+        "efcore",
+        "dapper",
+        "linq",
+        "migrations",
+        "orm",
+        "dbcontext"
+      ],
       "isActive": true
     },
     {
@@ -107,7 +176,13 @@
       "emoji": "🔧",
       "description": "Custom middleware, action filters, exception handling, pipeline order, CORS",
       "sortOrder": 11,
-      "tags": ["middleware", "filters", "pipeline", "cors", "exception"],
+      "tags": [
+        "middleware",
+        "filters",
+        "pipeline",
+        "cors",
+        "exception"
+      ],
       "isActive": true
     },
     {
@@ -117,7 +192,14 @@
       "emoji": "🎨",
       "description": "Repository, Unit of Work, Factory, Strategy, Decorator, Observer, Singleton",
       "sortOrder": 12,
-      "tags": ["patterns", "repository", "factory", "strategy", "decorator", "observer"],
+      "tags": [
+        "patterns",
+        "repository",
+        "factory",
+        "strategy",
+        "decorator",
+        "observer"
+      ],
       "isActive": true
     },
     {
@@ -127,7 +209,13 @@
       "emoji": "🏗️",
       "description": "Microservices, clean architecture, CQRS, event-driven, API gateway, Docker",
       "sortOrder": 13,
-      "tags": ["microservices", "architecture", "cqrs", "event-driven", "docker"],
+      "tags": [
+        "microservices",
+        "architecture",
+        "cqrs",
+        "event-driven",
+        "docker"
+      ],
       "isActive": true
     },
     {
@@ -137,7 +225,14 @@
       "emoji": "💻",
       "description": "Algorithm and data structure problems: arrays, strings, sorting, searching, recursion",
       "sortOrder": 14,
-      "tags": ["algorithm", "array", "string", "sorting", "recursion", "linked-list"],
+      "tags": [
+        "algorithm",
+        "array",
+        "string",
+        "sorting",
+        "recursion",
+        "linked-list"
+      ],
       "isActive": true
     },
     {
@@ -147,7 +242,48 @@
       "emoji": "🤝",
       "description": "Soft skills, teamwork, conflict resolution, project challenges, career goals",
       "sortOrder": 15,
-      "tags": ["behavioral", "hr", "soft-skills", "teamwork", "leadership"],
+      "tags": [
+        "behavioral",
+        "hr",
+        "soft-skills",
+        "teamwork",
+        "leadership"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "linq",
+      "name": "LINQ",
+      "slug": "linq",
+      "emoji": "🔍",
+      "description": "Language Integrated Query — LINQ to Objects, LINQ to Entities, deferred execution, joins, grouping",
+      "sortOrder": 16,
+      "tags": [
+        "linq",
+        "query",
+        "lambda",
+        "select",
+        "where",
+        "groupby",
+        "join"
+      ],
+      "isActive": true
+    },
+    {
+      "id": "testing",
+      "name": "Testing",
+      "slug": "testing",
+      "emoji": "🧪",
+      "description": "Unit testing with xUnit, mocking with Moq, integration tests, TDD, code coverage",
+      "sortOrder": 17,
+      "tags": [
+        "unit-testing",
+        "xunit",
+        "moq",
+        "tdd",
+        "integration-testing",
+        "coverage"
+      ],
       "isActive": true
     }
   ]

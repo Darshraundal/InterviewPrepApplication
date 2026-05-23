@@ -23,7 +23,11 @@
         }
       ],
       "tip": "<strong>Statelessness is the most important constraint</strong> — and the most commonly violated. Server-side sessions break horizontal scaling. JWT moves state to the client, which is why it's the standard in .NET APIs.",
-      "tags": ["webapi", "rest", "http"],
+      "tags": [
+        "webapi",
+        "rest",
+        "http"
+      ],
       "sortOrder": 1,
       "isActive": true
     },
@@ -49,7 +53,12 @@
         }
       ],
       "tip": "<strong>PATCH is underused but important</strong> for performance — updating a user's display name shouldn't require sending their entire profile. In .NET, use <code>JsonPatchDocument&lt;T&gt;</code> from <code>Microsoft.AspNetCore.JsonPatch</code> for RFC 6902 compliant PATCH.",
-      "tags": ["webapi", "rest", "http", "http-verbs"],
+      "tags": [
+        "webapi",
+        "rest",
+        "http",
+        "http-verbs"
+      ],
       "sortOrder": 2,
       "isActive": true
     },
@@ -71,7 +80,12 @@
         }
       ],
       "tip": "<strong>401 vs 403:</strong> 401 = \"I don't know who you are\" (unauthenticated). 403 = \"I know who you are but you can't do this\" (unauthorized). Mixing these up is the most common REST API mistake.",
-      "tags": ["webapi", "rest", "http", "status-codes"],
+      "tags": [
+        "webapi",
+        "rest",
+        "http",
+        "status-codes"
+      ],
       "sortOrder": 3,
       "isActive": true
     },
@@ -102,7 +116,11 @@
         }
       ],
       "tip": "<strong>[ApiController] attribute</strong> changes several default behaviors: automatic 400 on model validation failure, infers [FromBody] for complex types, requires attribute routing. Always use it on API controllers.",
-      "tags": ["webapi", "routing", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "routing",
+        "aspnetcore"
+      ],
       "sortOrder": 4,
       "isActive": true
     },
@@ -128,7 +146,11 @@
         }
       ],
       "tip": "<strong>Custom model binder</strong> — useful for binding comma-separated query params to a List<string>, or converting a string to a domain type. Implement <code>IModelBinder</code> and register with <code>[ModelBinder(typeof(MyBinder))]</code>.",
-      "tags": ["webapi", "model-binding", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "model-binding",
+        "aspnetcore"
+      ],
       "sortOrder": 5,
       "isActive": true
     },
@@ -150,7 +172,12 @@
         }
       ],
       "tip": "<strong>Always use FluentValidation for business rule validation</strong> (\"email must be unique\", \"amount must be less than client's credit limit\") — these need async DB calls which data annotations can't do. Use data annotations for simple format rules ([Required], [StringLength]).",
-      "tags": ["webapi", "validation", "aspnetcore", "model-binding"],
+      "tags": [
+        "webapi",
+        "validation",
+        "aspnetcore",
+        "model-binding"
+      ],
       "sortOrder": 6,
       "isActive": true
     },
@@ -176,7 +203,12 @@
         }
       ],
       "tip": "<strong>CORS is enforced by the browser, not the server.</strong> A curl request or Postman call to an API with \"wrong\" CORS headers will succeed — only the browser enforces it. CORS is not a security mechanism for APIs; it's a browser protection for end users.",
-      "tags": ["webapi", "cors", "security", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "cors",
+        "security",
+        "aspnetcore"
+      ],
       "sortOrder": 7,
       "isActive": true
     },
@@ -202,7 +234,12 @@
         }
       ],
       "tip": "<strong>Filter vs Middleware:</strong> Middleware operates on the raw HTTP pipeline (HttpContext). Filters operate within the MVC pipeline and have access to controller/action context (ActionDescriptor, ModelState). Use filters when you need MVC-aware logic; use middleware for HTTP-level cross-cutting concerns.",
-      "tags": ["webapi", "filters", "aspnetcore", "middleware"],
+      "tags": [
+        "webapi",
+        "filters",
+        "aspnetcore",
+        "middleware"
+      ],
       "sortOrder": 8,
       "isActive": true
     },
@@ -229,7 +266,11 @@
         }
       ],
       "tip": "<strong>Always version from day one</strong> — retrofitting versioning is painful. Even if v1 and v2 are identical initially, the infrastructure is there. Mark deprecated versions with <code>[Obsolete]</code> and <code>Deprecated = true</code> in ApiVersionAttribute.",
-      "tags": ["webapi", "versioning", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "versioning",
+        "aspnetcore"
+      ],
       "sortOrder": 9,
       "isActive": true
     },
@@ -251,7 +292,12 @@
         }
       ],
       "tip": "<strong>Never return raw exception messages or stack traces in production.</strong> Log them internally (Serilog), return a generic ProblemDetails to the client. Distinguish between 4xx (client's fault, detailed message is OK) and 5xx (server's fault, generic message only).",
-      "tags": ["webapi", "exception-handling", "middleware", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "exception-handling",
+        "middleware",
+        "aspnetcore"
+      ],
       "sortOrder": 10,
       "isActive": true
     },
@@ -273,7 +319,12 @@
         }
       ],
       "tip": "<strong>Scalar</strong> (newer alternative to Swagger UI) is built into .NET 9 and looks much better. If you're on .NET 8, adding Scalar takes 2 lines: <code>builder.Services.AddOpenApi()</code> + <code>app.MapOpenApi()</code>. Worth knowing.",
-      "tags": ["webapi", "swagger", "openapi", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "swagger",
+        "openapi",
+        "aspnetcore"
+      ],
       "sortOrder": 11,
       "isActive": true
     },
@@ -295,7 +346,12 @@
         }
       ],
       "tip": "<strong>Always decorate actions with [Produces] and [Consumes]</strong> — this appears in Swagger docs and helps clients know exactly what to send/expect. <code>[ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PortfolioDto))]</code> gives Swagger the response schema.",
-      "tags": ["webapi", "content-negotiation", "http", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "content-negotiation",
+        "http",
+        "aspnetcore"
+      ],
       "sortOrder": 12,
       "isActive": true
     },
@@ -321,7 +377,12 @@
         }
       ],
       "tip": "<strong>429 Too Many Requests</strong> is the correct status code for rate limiting. Include a <code>Retry-After</code> header telling the client when they can try again. For public APIs, use IP-based limits; for authenticated APIs, use user-based limits to be fair.",
-      "tags": ["webapi", "rate-limiting", "performance", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "rate-limiting",
+        "performance",
+        "aspnetcore"
+      ],
       "sortOrder": 13,
       "isActive": true
     },
@@ -343,7 +404,11 @@
         }
       ],
       "tip": "<strong>Use <code>ActionResult&lt;T&gt;</code></strong> over <code>IActionResult</code> whenever you have a specific return type. Swagger will correctly generate the response schema. With plain <code>IActionResult</code>, Swagger can't infer the response type unless you add <code>[ProducesResponseType]</code> attributes.",
-      "tags": ["webapi", "aspnetcore", "action-result"],
+      "tags": [
+        "webapi",
+        "aspnetcore",
+        "action-result"
+      ],
       "sortOrder": 14,
       "isActive": true
     },
@@ -365,7 +430,11 @@
         }
       ],
       "tip": "<strong>Minimal APIs and controllers can coexist in the same app.</strong> Use controllers for your complex CRUD endpoints and minimal APIs for simple webhook receivers or health check endpoints. The performance difference matters only at extreme scale.",
-      "tags": ["webapi", "minimal-api", "aspnetcore"],
+      "tags": [
+        "webapi",
+        "minimal-api",
+        "aspnetcore"
+      ],
       "sortOrder": 15,
       "isActive": true
     },
@@ -387,7 +456,14 @@
         }
       ],
       "tip": "<strong>For interviews:</strong> Know that REST is the default for modern APIs — lightweight, JSON, HTTP verbs, stateless. SOAP is legacy enterprise territory. The key SOAP concepts to know: WSDL (contract), envelope (message wrapper), fault (error). If asked about SOAP in a .NET context, the answer is WCF (server) or <code>Add Service Reference</code> (client).",
-      "tags": ["webapi", "rest", "soap", "grpc", "wcf", "protocol"],
+      "tags": [
+        "webapi",
+        "rest",
+        "soap",
+        "grpc",
+        "wcf",
+        "protocol"
+      ],
       "sortOrder": 16,
       "isActive": true
     },
@@ -409,8 +485,352 @@
         }
       ],
       "tip": "<strong>Key points for interviews:</strong> Kestrel = built-in cross-platform web server for ASP.NET Core. In development it runs standalone. In production it runs behind IIS/Nginx. HTTP/1.1, HTTP/2, HTTP/3 supported. Configure via <code>appsettings.json → Kestrel.Endpoints</code> or <code>builder.WebHost.ConfigureKestrel()</code>.",
-      "tags": ["webapi", "kestrel", "hosting", "iis", "web-server"],
+      "tags": [
+        "webapi",
+        "kestrel",
+        "hosting",
+        "iis",
+        "web-server"
+      ],
       "sortOrder": 17,
+      "isActive": true
+    },
+    {
+      "id": "webapi-018",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is ADO.NET? How does it compare to EF Core?",
+      "answer": "<p><strong>ADO.NET</strong> (ActiveX Data Objects .NET) is the low-level .NET data access framework. It provides direct, raw access to databases via SQL commands. EF Core is built on top of ADO.NET.</p><h4>Core ADO.NET classes:</h4><ul><li><code>SqlConnection</code> — represents an open connection to a SQL Server database.</li><li><code>SqlCommand</code> — executes SQL statements or stored procedures.</li><li><code>SqlDataReader</code> — forward-only, read-only cursor for reading rows one at a time. Fastest for large result sets.</li><li><code>SqlDataAdapter</code> + <code>DataSet</code> — disconnected model: fills a DataSet in memory, allows offline manipulation, then updates the DB in batch.</li><li><code>SqlParameter</code> — parameterised queries to prevent SQL injection.</li></ul><pre><code class=\"language-csharp\">using var conn = new SqlConnection(connectionString);\nconn.Open();\n\nusing var cmd = new SqlCommand(\n    \"SELECT Id, Name, Salary FROM Employees WHERE DeptId = @DeptId\", conn);\ncmd.Parameters.AddWithValue(\"@DeptId\", deptId); // parameterised — prevents SQL injection\n\nusing var reader = cmd.ExecuteReader();\nwhile (reader.Read())\n{\n    var id     = reader.GetInt32(0);\n    var name   = reader.GetString(1);\n    var salary = reader.GetDecimal(2);\n    Console.WriteLine($\"{id}: {name} - {salary:C}\");\n}\n\n// ExecuteNonQuery — for INSERT, UPDATE, DELETE (returns rows affected)\nvar insertCmd = new SqlCommand(\"INSERT INTO Logs (Message) VALUES (@m)\", conn);\ninsertCmd.Parameters.AddWithValue(\"@m\", \"Event logged\");\nint rowsAffected = insertCmd.ExecuteNonQuery();\n\n// ExecuteScalar — returns single value (first column of first row)\nvar countCmd = new SqlCommand(\"SELECT COUNT(*) FROM Employees\", conn);\nint count = (int)countCmd.ExecuteScalar();</code></pre><h4>ADO.NET vs EF Core:</h4><ul><li><strong>ADO.NET</strong> — maximum performance, full SQL control, verbose code, manual mapping, no change tracking. Use for: stored procedure-heavy apps, bulk operations, when ORM overhead is unacceptable.</li><li><strong>EF Core</strong> — ORM, automatic SQL generation, LINQ queries, change tracking, migrations. Use for: most CRUD apps, where developer productivity > micro-optimisation.</li><li><strong>Dapper</strong> — sits between: uses ADO.NET under the hood, maps results to objects automatically via reflection, but you write raw SQL. Best of both worlds for read-heavy scenarios.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between ExecuteReader, ExecuteNonQuery, and ExecuteScalar?",
+          "answer": "<p><ul><li><code>ExecuteReader()</code> — executes a SELECT query and returns a <code>SqlDataReader</code> for iterating over result rows. Use for queries that return multiple rows/columns.</li><li><code>ExecuteNonQuery()</code> — executes INSERT, UPDATE, DELETE, or DDL statements. Returns the number of rows affected. Returns -1 for stored procedures that don't set ROWCOUNT.</li><li><code>ExecuteScalar()</code> — executes a query and returns only the first column of the first row as <code>object</code>. Use for aggregate queries: <code>COUNT(*)</code>, <code>MAX()</code>, <code>SUM()</code>.</li></ul><p>Always use parameterised queries (<code>SqlParameter</code>) — never string-concatenate user input into SQL commands.</p>"
+        }
+      ],
+      "tip": "<strong>Always use parameters:</strong> Never concatenate user input into SQL strings. Use <code>SqlParameter</code> or Dapper's parameter syntax. SQL injection via string concatenation is one of the most common and dangerous vulnerabilities.",
+      "tags": [
+        "adonet",
+        "sqlconnection",
+        "datareader",
+        "sql",
+        "database"
+      ],
+      "sortOrder": 18,
+      "isActive": true
+    },
+    {
+      "id": "webapi-019",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "low",
+      "question": "What is MediaTypeFormatter (Web API) / IOutputFormatter (ASP.NET Core)? How does content negotiation work?",
+      "answer": "<p>In legacy <strong>ASP.NET Web API (System.Web.Http)</strong>, a <code>MediaTypeFormatter</code> is responsible for serialising and deserialising HTTP message bodies — converting between .NET objects and JSON, XML, or other formats.</p><p>In modern <strong>ASP.NET Core Web API</strong>, this responsibility is split into:</p><ul><li><code>IOutputFormatter</code> — serialises the response body (object → bytes sent to client).</li><li><code>IInputFormatter</code> — deserialises the request body (bytes from client → object).</li></ul><h4>Content Negotiation:</h4><p>Content negotiation is the process by which the client and server agree on the response format. The client sends an <code>Accept</code> header indicating what formats it can handle. The server tries to find a matching formatter.</p><pre><code class=\"language-http\">GET /api/products/1 HTTP/1.1\nAccept: application/xml, application/json;q=0.9, */*;q=0.8</code></pre><p>ASP.NET Core selects the best matching <code>IOutputFormatter</code> and serialises accordingly. If no match, it falls back to the first registered formatter.</p><h4>Configuring formatters in Program.cs:</h4><pre><code class=\"language-csharp\">builder.Services.AddControllers(options =>\n{\n    options.RespectBrowserAcceptHeader = true; // honour Accept header\n    options.ReturnHttpNotAcceptable = true;    // 406 if no matching formatter\n})\n.AddXmlSerializerFormatters();  // add XML support\n// JSON is registered by default (System.Text.Json)\n// Optionally: .AddNewtonsoftJson() for Newtonsoft</code></pre><h4>Custom output formatter example:</h4><pre><code class=\"language-csharp\">public class CsvOutputFormatter : TextOutputFormatter\n{\n    public CsvOutputFormatter()\n    {\n        SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse(\"text/csv\"));\n        SupportedEncodings.Add(Encoding.UTF8);\n    }\n    public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext ctx, ...)\n    {\n        // write CSV content to context.HttpContext.Response.Body\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you force a specific format in ASP.NET Core Web API?",
+          "answer": "<p>Use the <code>[Produces]</code> attribute to restrict a controller or action to specific media types:</p><pre><code class=\"language-csharp\">[Produces(\"application/json\")] // always returns JSON\n[ApiController]\npublic class ProductsController : ControllerBase { }</code></pre><p>Or use <code>[FormatFilter]</code> + format query parameter to allow format selection via URL: <code>/api/products?format=xml</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Practical:</strong> In ASP.NET Core Web API, JSON is the default and most teams never change it. The key concept to understand is that formatters are pluggable — you can add CSV, XML, or custom formats without changing controller code.",
+      "tags": [
+        "formatter",
+        "content-negotiation",
+        "json",
+        "xml",
+        "webapi"
+      ],
+      "sortOrder": 19,
+      "isActive": true
+    },
+    {
+      "id": "webapi-020",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "How do you consume an ASP.NET Core Web API from a console application?",
+      "answer": "<p>The recommended way is to use <code>HttpClient</code> via <code>IHttpClientFactory</code>, or use a typed HTTP client. For a simple console app, you can use <code>HttpClient</code> directly.</p><h4>Simple console app — using HttpClient directly:</h4><pre><code class=\"language-csharp\">using System.Net.Http.Json; // for GetFromJsonAsync, PostAsJsonAsync\n\nusing var httpClient = new HttpClient\n{\n    BaseAddress = new Uri(\"https://api.example.com/\")\n};\nhttpClient.DefaultRequestHeaders.Add(\"Accept\", \"application/json\");\n\n// GET request — deserialise to a list\nvar products = await httpClient.GetFromJsonAsync&lt;List&lt;Product&gt;&gt;(\"api/products\");\nforeach (var p in products)\n    Console.WriteLine($\"{p.Id}: {p.Name} - {p.Price:C}\");\n\n// POST request\nvar newProduct = new Product { Name = \"Widget\", Price = 9.99m };\nvar response = await httpClient.PostAsJsonAsync(\"api/products\", newProduct);\nresponse.EnsureSuccessStatusCode();\nvar created = await response.Content.ReadFromJsonAsync&lt;Product&gt;();\nConsole.WriteLine($\"Created with Id: {created.Id}\");\n\n// PUT request\nnewProduct.Price = 12.99m;\nawait httpClient.PutAsJsonAsync($\"api/products/{created.Id}\", newProduct);\n\n// DELETE request\nawait httpClient.DeleteAsync($\"api/products/{created.Id}\");</code></pre><h4>With JWT authentication:</h4><pre><code class=\"language-csharp\">// Add Authorization header for protected endpoints\nhttpClient.DefaultRequestHeaders.Authorization =\n    new System.Net.Http.Headers.AuthenticationHeaderValue(\"Bearer\", token);</code></pre><h4>With IHttpClientFactory in a hosted console app (.NET generic host):</h4><pre><code class=\"language-csharp\">var host = Host.CreateDefaultBuilder(args)\n    .ConfigureServices(services =>\n    {\n        services.AddHttpClient&lt;IProductApiClient, ProductApiClient&gt;(client =&gt;\n        {\n            client.BaseAddress = new Uri(\"https://api.example.com/\");\n        });\n    }).Build();\n\nawait host.RunAsync();</code></pre>",
+      "followUps": [
+        {
+          "question": "Why should you use IHttpClientFactory instead of creating new HttpClient()?",
+          "answer": "<p>Two problems with <code>new HttpClient()</code>:</p><ul><li><strong>Socket exhaustion</strong> — HttpClient holds a socket open. If you create a new one for every request and dispose it, the underlying TCP socket lingers in <code>TIME_WAIT</code> state. Under high load you run out of sockets. (<code>IHttpClientFactory</code> pools and reuses handler instances.)</li><li><strong>DNS changes ignored</strong> — a long-lived HttpClient caches DNS entries. If the server's IP changes (blue-green deployment, failover), the cached HttpClient won't see it. IHttpClientFactory rotates handlers on a configurable interval (default: 2 minutes).</li></ul><p>Always use <code>IHttpClientFactory</code> (or <code>using var client = new HttpClient()</code> only for short-lived console scripts).</p>"
+        }
+      ],
+      "tip": "<strong>GetFromJsonAsync is the easiest way</strong> to consume a JSON API in .NET. It's in <code>System.Net.Http.Json</code> (NuGet or included in .NET 5+). No manual deserialization needed.",
+      "tags": [
+        "httpclient",
+        "consume-api",
+        "console",
+        "webapi",
+        "json"
+      ],
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "id": "webapi-021",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Can you perform INSERT or UPDATE operations using an HTTP GET request? What are the consequences?",
+      "answer": "<p><strong>Technically yes</strong> — nothing in HTTP prevents you from running DML inside a GET endpoint. But it is <strong>fundamentally wrong</strong> and violates core REST/HTTP principles.</p><h4>Why GET should never have side effects (safe + idempotent):</h4><ul><li><strong>Safe</strong> — GET requests must not change server state. The HTTP spec (RFC 7231) defines GET as safe, meaning clients, proxies, and browsers can assume it has no side effects.</li><li><strong>Idempotent</strong> — calling GET multiple times must produce the same result (no mutation).</li></ul><h4>Real-world consequences of DML in GET:</h4><ul><li><strong>Browser prefetching</strong> — browsers prefetch links in &lt;a&gt; tags for performance. Every link on the page would trigger your INSERT.</li><li><strong>Web crawlers / SEO bots</strong> — Google, Bing, etc. crawl all GET URLs. They would insert/update/delete your data.</li><li><strong>Caching proxies</strong> — GET responses are cached by CDNs and proxies. Your mutation may be served from cache and never actually hit the server.</li><li><strong>Link prefetch exploits (CSRF)</strong> — an attacker can embed <code>&lt;img src=\"https://yoursite.com/api/delete?id=1\"&gt;</code> in a phishing page. If a logged-in user visits it, the browser GETs the URL and triggers the delete.</li><li><strong>Accidental double-submits</strong> — if a user refreshes, the browser re-sends GET without warning (unlike POST, which shows a confirmation).</li></ul><h4>The correct approach:</h4><ul><li>Use <code>POST</code> for creating resources.</li><li>Use <code>PUT</code> / <code>PATCH</code> for updating resources.</li><li>Use <code>DELETE</code> for deleting resources.</li><li>Use <code>GET</code> only for reading/fetching data.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is idempotency and which HTTP methods are idempotent?",
+          "answer": "<p><strong>Idempotent</strong> means calling the operation multiple times produces the same result as calling it once.</p><ul><li><strong>GET</strong> — idempotent + safe (read-only).</li><li><strong>PUT</strong> — idempotent (setting a resource to a specific state; calling it 3 times is same as once).</li><li><strong>DELETE</strong> — idempotent (deleting an already-deleted resource returns 404 but has no additional effect).</li><li><strong>POST</strong> — NOT idempotent (each POST creates a new resource; calling it 3 times creates 3 records).</li><li><strong>PATCH</strong> — not necessarily idempotent (depends on whether the patch is absolute or relative, e.g., 'set status=Active' vs 'increment counter by 1').</li></ul><p>Idempotency matters for retry logic — if a PUT request times out, it's safe to retry. If a POST request times out, retrying may create duplicates (use idempotency keys to handle this).</p>"
+        }
+      ],
+      "tip": "<strong>Rule:</strong> GET = read only. Never mutate state on a GET. If you see code like <code>GetAndDeleteUser(id)</code> mapped to HttpGet, that is a red flag in any code review.",
+      "tags": [
+        "http-methods",
+        "get",
+        "idempotent",
+        "rest",
+        "webapi"
+      ],
+      "sortOrder": 21,
+      "isActive": true
+    },
+    {
+      "id": "webapi-022",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you secure an ASP.NET Core Web API? What are the key practices?",
+      "answer": "<p>Securing a Web API involves multiple layers. Here are the key practices:</p><h4>1. HTTPS Enforcement</h4><pre><code class=\"language-csharp\">app.UseHttpsRedirection(); // redirects HTTP → HTTPS\n// Also add HSTS for browsers\napp.UseHsts();</code></pre><h4>2. JWT Bearer Authentication</h4><pre><code class=\"language-csharp\">builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n    .AddJwtBearer(options =>\n    {\n        options.TokenValidationParameters = new TokenValidationParameters\n        {\n            ValidateIssuer = true,\n            ValidIssuer = config[\"Jwt:Issuer\"],\n            ValidateAudience = true,\n            ValidAudience = config[\"Jwt:Audience\"],\n            ValidateLifetime = true,        // reject expired tokens\n            ValidateIssuerSigningKey = true,\n            IssuerSigningKey = new SymmetricSecurityKey(\n                Encoding.UTF8.GetBytes(config[\"Jwt:Secret\"]))\n        };\n    });\n\n// All controllers secured by default\n[Authorize] // or globally via filters\npublic class ProductsController : ControllerBase { }</code></pre><h4>3. Role/Claims-based Authorization</h4><pre><code class=\"language-csharp\">[Authorize(Roles = \"Admin\")]\n[HttpDelete(\"{id}\")]\npublic IActionResult Delete(int id) { }\n\n// Policy-based\n[Authorize(Policy = \"CanEditProduct\")]\npublic IActionResult Update(...) { }</code></pre><h4>4. Input Validation</h4><p>Use Data Annotations + <code>ModelState.IsValid</code>. Never trust client data. Use parameterised queries to prevent SQL injection.</p><h4>5. CORS Policy</h4><pre><code class=\"language-csharp\">builder.Services.AddCors(options =>\n{\n    options.AddPolicy(\"AllowedOrigins\", policy =>\n        policy.WithOrigins(\"https://myfrontend.com\")\n              .AllowedMethods(\"GET\", \"POST\")\n              .AllowedHeaders(\"Authorization\", \"Content-Type\"));\n});\napp.UseCors(\"AllowedOrigins\");</code></pre><h4>6. Rate Limiting</h4><pre><code class=\"language-csharp\">builder.Services.AddRateLimiter(options =>\n    options.AddFixedWindowLimiter(\"api\", opt =>\n    {\n        opt.PermitLimit = 100;\n        opt.Window = TimeSpan.FromMinutes(1);\n    }));\napp.UseRateLimiter();</code></pre><h4>7. Sensitive data protection</h4><ul><li>Never log sensitive data (tokens, passwords).</li><li>Return generic error messages in production (don't leak stack traces).</li><li>Store secrets in Azure Key Vault / environment variables, not in appsettings.json.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between [Authorize] on a controller vs using a global filter?",
+          "answer": "<p>Placing <code>[Authorize]</code> on each controller is explicit but error-prone — a developer can forget to add it to a new controller. Applying it globally via a filter ensures every endpoint is secured by default, and you opt-out specific endpoints with <code>[AllowAnonymous]</code>.</p><pre><code class=\"language-csharp\">// Global — all controllers require auth by default\nbuilder.Services.AddControllers(options =>\n    options.Filters.Add(new AuthorizeFilter()));\n\n// Individual controller opts out\n[AllowAnonymous]\npublic class PublicController : ControllerBase { }</code></pre><p><strong>Best practice:</strong> Default to deny (global <code>[Authorize]</code>) and explicitly allow public endpoints with <code>[AllowAnonymous]</code>. This is the 'secure by default' approach.</p>"
+        }
+      ],
+      "tip": "<strong>Security layers:</strong> HTTPS (transport) → Authentication (who are you?) → Authorization (what can you do?) → Input validation (is the input safe?) → Rate limiting (too many requests?). All layers are needed.",
+      "tags": [
+        "security",
+        "jwt",
+        "cors",
+        "rate-limiting",
+        "authorization",
+        "webapi"
+      ],
+      "sortOrder": 22,
+      "isActive": true
+    },
+    {
+      "id": "webapi-023",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you implement caching in ASP.NET Core? What are IMemoryCache and IDistributedCache?",
+      "answer": "<p>Caching is one of the first things I look at when an API is slow. In one project, adding a 5-minute cache on a product catalogue endpoint cut database load by 70%.</p><h4>IMemoryCache — in-process, single server</h4><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddMemoryCache();\n\n// In a service\npublic class ProductService\n{\n    private readonly IMemoryCache _cache;\n    private readonly AppDbContext _db;\n\n    public ProductService(IMemoryCache cache, AppDbContext db)\n    {\n        _cache = cache; _db = db;\n    }\n\n    public async Task&lt;List&lt;Product&gt;&gt; GetProductsAsync()\n    {\n        const string cacheKey = \"products:all\";\n\n        // GetOrCreateAsync -- atomic: get if exists, create if not\n        return await _cache.GetOrCreateAsync(cacheKey, async entry =&gt;\n        {\n            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);\n            entry.SlidingExpiration = TimeSpan.FromMinutes(2);\n            entry.Priority = CacheItemPriority.High;\n            return await _db.Products.ToListAsync();\n        });\n    }\n\n    public void InvalidateProducts()\n    {\n        _cache.Remove(\"products:all\"); // bust the cache on write\n    }\n}</code></pre><h4>IDistributedCache — shared across multiple servers (Redis)</h4><p>IMemoryCache doesn't work in a load-balanced environment — each server has its own memory. If a user hits Server A and caches data, Server B doesn't have it. Use Redis for shared distributed cache.</p><pre><code class=\"language-csharp\">// Install: Microsoft.Extensions.Caching.StackExchangeRedis\nbuilder.Services.AddStackExchangeRedisCache(options =&gt;\n{\n    options.Configuration = config[\"Redis:ConnectionString\"]; // \"localhost:6379\"\n    options.InstanceName = \"MyApp:\";\n});\n\n// Usage with JSON serialization\npublic async Task&lt;Product&gt; GetProductAsync(int id)\n{\n    string key = $\"product:{id}\";\n    var cached = await _cache.GetStringAsync(key);\n\n    if (cached != null)\n        return JsonSerializer.Deserialize&lt;Product&gt;(cached);\n\n    var product = await _db.Products.FindAsync(id);\n    if (product != null)\n    {\n        var options = new DistributedCacheEntryOptions\n        {\n            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)\n        };\n        await _cache.SetStringAsync(key, JsonSerializer.Serialize(product), options);\n    }\n    return product;\n}</code></pre><h4>Response Caching — HTTP-level cache headers</h4><pre><code class=\"language-csharp\">// Cache the entire HTTP response\n[HttpGet]\n[ResponseCache(Duration = 60, VaryByQueryKeys = new[] { \"category\" })]\npublic IActionResult GetCategories() { ... }\n\n// Program.cs\nbuilder.Services.AddResponseCaching();\napp.UseResponseCaching();</code></pre><h4>Which one to use?</h4><ul><li><strong>IMemoryCache</strong> — single-server apps, small data, very fast.</li><li><strong>IDistributedCache / Redis</strong> — multi-server, sessions, heavy objects, data that must be consistent across instances.</li><li><strong>ResponseCache</strong> — caching full HTTP responses for GET endpoints, CDN-friendly.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is cache stampede and how do you prevent it?",
+          "answer": "<p>Cache stampede (thundering herd) happens when a popular cache entry expires and 100 concurrent requests all find a cache miss simultaneously, all hit the database at once, and all try to repopulate the cache. The DB gets hammered right when the cache would have helped the most.</p><p><strong>Solutions:</strong></p><ul><li><strong>GetOrCreateAsync</strong> is <em>not</em> atomic for distributed cache — it can still have races. For in-process IMemoryCache, Microsoft's GetOrCreateAsync has basic single-key locking, but it's not a full stampede guard.</li><li><strong>Probabilistic early expiration</strong> — re-fetch the value slightly before it expires, with a small probability that increases as expiry approaches.</li><li><strong>Locking pattern</strong> — use a per-key SemaphoreSlim to ensure only one request repopulates each cache key at a time. Others wait for the result.</li><li><strong>Background refresh</strong> — use a background service (BackgroundService/IHostedService) to proactively refresh cache before it expires.</li></ul><p>In practice, for non-critical data, I accept brief stampedes. For high-traffic endpoints, I use a locking pattern or background refresh.</p>"
+        }
+      ],
+      "tip": "<strong>Cache invalidation is the hard part.</strong> Caching reads is easy; keeping the cache consistent after writes is the challenge. Pattern I use: clear the cache key immediately after a write. For complex scenarios, use cache tags or versioned keys.",
+      "tags": [
+        "caching",
+        "imemorycache",
+        "redis",
+        "distributed-cache",
+        "performance"
+      ],
+      "sortOrder": 23,
+      "isActive": true
+    },
+    {
+      "id": "webapi-024",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you implement structured logging in ASP.NET Core? Tell me about Serilog.",
+      "answer": "<p>The built-in <code>ILogger&lt;T&gt;</code> is great for writing logs, but the default provider just dumps text to the console. In any production project I've worked on, the first thing I do is replace the default logging with <strong>Serilog</strong> — because structured logging is the difference between searchable insights and a wall of text.</p><h4>What is structured logging?</h4><p>Instead of writing <code>'User 42 placed order 99'</code> as a plain string, structured logging captures the properties separately: <code>{ UserId: 42, OrderId: 99, Action: 'PlaceOrder' }</code>. This lets you query logs like a database — 'show me all failed orders in the last hour for users in London'.</p><h4>Setting up Serilog in ASP.NET Core:</h4><pre><code class=\"language-csharp\">// Install: Serilog.AspNetCore, Serilog.Sinks.Console, Serilog.Sinks.File\n// Optional: Serilog.Sinks.Seq (UI for log exploration), Serilog.Sinks.Elasticsearch\n\n// Program.cs\nLog.Logger = new LoggerConfiguration()\n    .MinimumLevel.Information()\n    .MinimumLevel.Override(\"Microsoft\", LogEventLevel.Warning) // suppress noisy MS logs\n    .MinimumLevel.Override(\"Microsoft.EntityFrameworkCore\", LogEventLevel.Information)\n    .Enrich.FromLogContext()          // include scope data\n    .Enrich.WithMachineName()        // know which server logged it\n    .Enrich.WithEnvironmentName()\n    .WriteTo.Console(outputTemplate: \"[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}\")\n    .WriteTo.File(\"logs/app-.log\",\n        rollingInterval: RollingInterval.Day,\n        retainedFileCountLimit: 7)\n    .CreateLogger();\n\ntry\n{\n    builder.Host.UseSerilog(); // replace default logging with Serilog\n    var app = builder.Build();\n    app.UseSerilogRequestLogging(); // log every HTTP request with timing\n    app.Run();\n}\ncatch (Exception ex)\n{\n    Log.Fatal(ex, \"Application startup failed\");\n}\nfinally\n{\n    Log.CloseAndFlush(); // ensure buffered logs are written before shutdown\n}</code></pre><h4>Using ILogger in code (always inject — never use Log.Logger directly in classes):</h4><pre><code class=\"language-csharp\">public class OrderService\n{\n    private readonly ILogger&lt;OrderService&gt; _logger;\n\n    public OrderService(ILogger&lt;OrderService&gt; logger)\n    {\n        _logger = logger;\n    }\n\n    public async Task&lt;Order&gt; PlaceOrderAsync(int userId, OrderDto dto)\n    {\n        // Structured log — {UserId} and {ProductId} are named properties\n        _logger.LogInformation(\"Placing order for user {UserId}, product {ProductId}\",\n            userId, dto.ProductId);\n\n        try\n        {\n            var order = await _db.SaveOrderAsync(dto);\n            _logger.LogInformation(\"Order {OrderId} placed successfully\", order.Id);\n            return order;\n        }\n        catch (Exception ex)\n        {\n            _logger.LogError(ex, \"Failed to place order for user {UserId}\", userId);\n            throw;\n        }\n    }\n}\n\n// Log Scopes -- attach context to all logs within a block\nusing (_logger.BeginScope(new { RequestId = HttpContext.TraceIdentifier }))\n{\n    _logger.LogInformation(\"Processing\"); // RequestId included automatically\n}</code></pre><h4>Log levels — when to use each:</h4><ul><li><code>LogTrace</code> — very detailed diagnostics, disabled in production.</li><li><code>LogDebug</code> — dev-time info, disable in prod to reduce noise.</li><li><code>LogInformation</code> — normal business events (user logged in, order placed).</li><li><code>LogWarning</code> — unexpected but handled situations (retry needed, fallback used).</li><li><code>LogError</code> — failures that affected a request but app keeps running.</li><li><code>LogCritical</code> — app is about to crash or is in a broken state.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between Serilog and NLog? Which do you prefer?",
+          "answer": "<p>Both are mature structured logging frameworks. The differences are mostly style and ecosystem:</p><ul><li><strong>Serilog</strong> — fluent API for configuration, strongly typed destructuring, huge sink ecosystem (100+ sinks: Seq, Elasticsearch, Application Insights, Datadog, etc.). I prefer it because the setup is code-first and version-controllable — no XML config files.</li><li><strong>NLog</strong> — XML or code configuration, been around longer, very stable. Popular in enterprises that have been on .NET Framework since the beginning. NLog's Layout Renderers are very powerful for text-based log formatting.</li></ul><p>My preference: Serilog + Seq for local dev (beautiful UI, searchable), Serilog + Application Insights or Datadog for production. Both are excellent — if a project already uses NLog, I keep it. If starting fresh, I pick Serilog.</p>"
+        }
+      ],
+      "tip": "<strong>Never log sensitive data.</strong> Passwords, credit card numbers, PII — strip them before logging. Serilog's Destructuring.ByTransforming() lets you define how objects are logged, so you can mask sensitive fields project-wide.",
+      "tags": [
+        "logging",
+        "serilog",
+        "structured-logging",
+        "ilogger",
+        "aspnetcore"
+      ],
+      "sortOrder": 24,
+      "isActive": true
+    },
+    {
+      "id": "webapi-025",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What are Health Checks in ASP.NET Core and how do you set them up?",
+      "answer": "<p>Health checks are endpoints that tell your infrastructure (load balancers, Kubernetes, Azure App Service) whether your app is alive and ready to serve traffic. In every project I've deployed to Azure, the first thing the DevOps team asks for is a health check endpoint — it's what makes zero-downtime deployments possible.</p><h4>Two concepts:</h4><ul><li><strong>Liveness</strong> — is the app running? If not, restart it.</li><li><strong>Readiness</strong> — is the app ready to accept traffic? If not, don't route requests to it (e.g., still warming up, DB connection not ready).</li></ul><h4>Basic setup:</h4><pre><code class=\"language-csharp\">// Install: Microsoft.AspNetCore.Diagnostics.HealthChecks\n// For DB: AspNetCore.HealthChecks.SqlServer\n// For Redis: AspNetCore.HealthChecks.Redis\n\n// Program.cs\nbuilder.Services\n    .AddHealthChecks()\n    // Built-in DB check\n    .AddSqlServer(\n        connectionString: config.GetConnectionString(\"Default\"),\n        name: \"sql-server\",\n        failureStatus: HealthStatus.Degraded,\n        tags: new[] { \"db\", \"readiness\" })\n    // Redis check\n    .AddRedis(\n        config[\"Redis:ConnectionString\"],\n        name: \"redis\",\n        tags: new[] { \"cache\", \"readiness\" })\n    // Custom check\n    .AddCheck&lt;ExternalApiHealthCheck&gt;(\"payment-api\", tags: new[] { \"external\" });\n\n// Map endpoints\napp.MapHealthChecks(\"/health\"); // simple -- just 200/503\napp.MapHealthChecks(\"/health/detail\", new HealthCheckOptions\n{\n    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse // JSON detail\n});\n// Readiness check -- only checks 'readiness' tagged checks\napp.MapHealthChecks(\"/health/ready\", new HealthCheckOptions\n{\n    Predicate = check =&gt; check.Tags.Contains(\"readiness\")\n});\n// Liveness -- just check app is running (no DB check)\napp.MapHealthChecks(\"/health/live\", new HealthCheckOptions\n{\n    Predicate = _ =&gt; false // no checks, just return Healthy if app responds\n});</code></pre><h4>Custom health check:</h4><pre><code class=\"language-csharp\">public class ExternalApiHealthCheck : IHealthCheck\n{\n    private readonly HttpClient _http;\n    public ExternalApiHealthCheck(IHttpClientFactory factory)\n        =&gt; _http = factory.CreateClient();\n\n    public async Task&lt;HealthCheckResult&gt; CheckHealthAsync(\n        HealthCheckContext context, CancellationToken ct = default)\n    {\n        try\n        {\n            var response = await _http.GetAsync(\"https://api.payment.com/ping\", ct);\n            return response.IsSuccessStatusCode\n                ? HealthCheckResult.Healthy(\"Payment API reachable\")\n                : HealthCheckResult.Degraded($\"Payment API returned {response.StatusCode}\");\n        }\n        catch (Exception ex)\n        {\n            return HealthCheckResult.Unhealthy(\"Payment API unreachable\", ex);\n        }\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How does Kubernetes use health checks?",
+          "answer": "<p>Kubernetes has two probes that map directly to liveness and readiness:</p><ul><li><strong>livenessProbe</strong> — hits your <code>/health/live</code> endpoint. If it fails N times, Kubernetes kills the pod and restarts it.</li><li><strong>readinessProbe</strong> — hits your <code>/health/ready</code> endpoint. If it fails, Kubernetes stops routing traffic to this pod (removes it from the service's load balancer) but doesn't restart it. The pod comes back into rotation when it starts passing again.</li></ul><p>This gives you safe rolling deployments: new pods start up, pass readiness, then get traffic. Old pods drain and terminate. No downtime.</p>"
+        }
+      ],
+      "tip": "<strong>Separate liveness from readiness.</strong> Liveness should be trivial — just return 200. Readiness should check dependencies (DB, Redis). If you mix them, a DB blip will cause all your pods to restart simultaneously — exactly the wrong time for a restart.",
+      "tags": [
+        "health-checks",
+        "aspnetcore",
+        "kubernetes",
+        "deployment",
+        "monitoring"
+      ],
+      "sortOrder": 25,
+      "isActive": true
+    },
+    {
+      "id": "webapi-026",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How does JSON serialization work in ASP.NET Core? System.Text.Json vs Newtonsoft.Json?",
+      "answer": "<p>ASP.NET Core 3.0+ ships with <strong>System.Text.Json</strong> as the default serialiser, replacing the old dependency on <strong>Newtonsoft.Json (Json.NET)</strong>. I've used both extensively and there are real differences to know.</p><h4>System.Text.Json (default in .NET 6/7/8)</h4><pre><code class=\"language-csharp\">// Manual serialization\nvar product = new Product { Id = 1, Name = \"Widget\", Price = 9.99m };\nstring json = JsonSerializer.Serialize(product);\n// { \"Id\":1, \"Name\":\"Widget\", \"Price\":9.99 }\n\n// Deserialization\nvar dto = JsonSerializer.Deserialize&lt;Product&gt;(json);\n\n// Options\nvar options = new JsonSerializerOptions\n{\n    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,  // camelCase properties\n    WriteIndented = true,                               // pretty print\n    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull, // skip nulls\n    PropertyNameCaseInsensitive = true                 // case-insensitive reads\n};\n\n// Attributes\npublic class Order\n{\n    [JsonPropertyName(\"order_id\")]     // custom property name in JSON\n    public int Id { get; set; }\n\n    [JsonIgnore]                        // never serialize this\n    public string InternalNote { get; set; }\n\n    [JsonConverter(typeof(DateTimeOffsetConverter))]\n    public DateTimeOffset CreatedAt { get; set; }\n}</code></pre><h4>Configure globally in Program.cs:</h4><pre><code class=\"language-csharp\">builder.Services.AddControllers()\n    .AddJsonOptions(opts =&gt;\n    {\n        opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;\n        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());\n        opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;\n    });</code></pre><h4>When to switch to Newtonsoft.Json:</h4><pre><code class=\"language-csharp\">// Install: Microsoft.AspNetCore.Mvc.NewtonsoftJson\nbuilder.Services.AddControllers()\n    .AddNewtonsoftJson(opts =&gt;\n    {\n        opts.SerializerSettings.ContractResolver =\n            new CamelCasePropertyNamesContractResolver();\n        opts.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;\n        opts.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;\n    });</code></pre><h4>System.Text.Json vs Newtonsoft — real differences:</h4><ul><li><strong>Performance</strong>: System.Text.Json is faster and uses less memory — it was built for performance from the ground up.</li><li><strong>Features</strong>: Newtonsoft has more features — dynamic serialisation, LINQ to JSON (<code>JObject</code>/<code>JArray</code>), better handling of edge cases, polymorphic serialisation without extra config.</li><li><strong>Circular references</strong>: Newtonsoft handles these natively with <code>ReferenceLoopHandling.Ignore</code>. System.Text.Json needs <code>ReferenceHandler.Preserve</code> or you restructure the DTO.</li><li><strong>Migration friction</strong>: Existing projects using Newtonsoft-specific features need effort to migrate. I don't migrate unless there's a performance need.</li></ul><p><strong>My rule:</strong> New projects use System.Text.Json. Legacy projects stay on Newtonsoft. If I need JObject/dynamic JSON manipulation, Newtonsoft wins.</p>",
+      "followUps": [
+        {
+          "question": "How do you handle polymorphic serialization (serialize derived types) in System.Text.Json?",
+          "answer": "<pre><code class=\"language-csharp\">// .NET 7+ -- built-in polymorphic serialization\n[JsonPolymorphic]\n[JsonDerivedType(typeof(Circle), typeDiscriminator: \"circle\")]\n[JsonDerivedType(typeof(Rectangle), typeDiscriminator: \"rectangle\")]\npublic abstract class Shape { public string Color { get; set; } }\npublic class Circle : Shape { public double Radius { get; set; } }\npublic class Rectangle : Shape { public double Width { get; set; } public double Height { get; set; } }\n\n// Serializes with $type discriminator:\n// { \"$type\": \"circle\", \"Radius\": 5.0, \"Color\": \"Red\" }</code></pre><p>Before .NET 7, this required a custom JsonConverter or switching to Newtonsoft. In .NET 7+, it's first-class support.</p>"
+        }
+      ],
+      "tip": "<strong>Performance tip:</strong> If you're serializing a lot in hot paths, use System.Text.Json's source generation (<code>[JsonSerializable]</code> attribute) to generate serializer code at compile time, eliminating runtime reflection entirely.",
+      "tags": [
+        "json",
+        "serialization",
+        "system-text-json",
+        "newtonsoft",
+        "aspnetcore"
+      ],
+      "sortOrder": 26,
+      "isActive": true
+    },
+    {
+      "id": "webapi-027",
+      "category": "webapi",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "How do you improve ASP.NET Core Web API performance? What's your checklist?",
+      "answer": "<p>Performance tuning is something I approach methodically — measure first, optimise second. Here's the checklist I go through:</p><h4>1. Database — usually the biggest win</h4><ul><li>Add indexes on columns used in WHERE, JOIN, ORDER BY clauses. Check execution plans for table scans.</li><li>Use <code>AsNoTracking()</code> in EF Core for read-only queries — no change tracking overhead.</li><li>Fix N+1 problems with <code>Include()</code> / <code>ThenInclude()</code>.</li><li>Select only what you need: <code>.Select(x =&gt; new { x.Id, x.Name })</code> instead of loading the whole entity.</li><li>Use Dapper for complex reporting queries where EF Core's generated SQL is inefficient.</li></ul><h4>2. Caching</h4><ul><li>Cache expensive DB queries with IMemoryCache or Redis. Even a 30-second cache on a product list can eliminate thousands of queries.</li><li>Use Response Caching for GET endpoints that don't change per-user.</li><li>Cache computed results (reports, aggregations) in the background via IHostedService.</li></ul><h4>3. Async all the way</h4><ul><li>All I/O (DB, HTTP calls, file reads) should be async — never block with <code>.Result</code> or <code>.Wait()</code>.</li><li>Use <code>Task.WhenAll</code> to run independent async operations in parallel instead of sequentially.</li></ul><h4>4. HTTP and API design</h4><ul><li>Enable GZIP/Brotli response compression — can reduce response size by 70-80%.</li><li>Use <code>IAsyncEnumerable</code> + streaming for large result sets instead of loading everything into memory.</li><li>Pagination on all list endpoints — never return unbounded lists.</li></ul><pre><code class=\"language-csharp\">// Response compression\nbuilder.Services.AddResponseCompression(opts =&gt;\n{\n    opts.EnableForHttps = true;\n    opts.Providers.Add&lt;BrotliCompressionProvider&gt;();\n    opts.Providers.Add&lt;GzipCompressionProvider&gt;();\n});\napp.UseResponseCompression();\n\n// Streaming large datasets\n[HttpGet(\"export\")]\npublic async IAsyncEnumerable&lt;OrderDto&gt; ExportOrders(\n    [EnumeratorCancellation] CancellationToken ct)\n{\n    await foreach (var order in _db.Orders.AsAsyncEnumerable().WithCancellation(ct))\n        yield return new OrderDto(order); // streams row by row, low memory\n}</code></pre><h4>5. Reduce allocations in hot paths</h4><ul><li>Use <code>Span&lt;T&gt;</code> and <code>Memory&lt;T&gt;</code> to avoid array copies in parsing/processing code.</li><li>Use <code>StringBuilder</code> for string concatenation in loops.</li><li>Use object pools (<code>ObjectPool&lt;T&gt;</code>) for frequently created objects.</li><li>Run a profiler (dotMemory, PerfView, BenchmarkDotNet) before optimising — don't guess.</li></ul><h4>6. Connection pooling</h4><p>SQL Server and HttpClient connections are pooled by default. Don't create new SqlConnection or HttpClient per request — use DI-injected DbContext (scoped) and IHttpClientFactory.</p><h4>7. Output caching (ASP.NET Core 7+)</h4><pre><code class=\"language-csharp\">builder.Services.AddOutputCache();\napp.UseOutputCache();\n\n[HttpGet]\n[OutputCache(Duration = 60, VaryByQueryKeys = new[] { \"category\" })]\npublic async Task&lt;IActionResult&gt; GetProducts(string category) { ... }</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you measure performance issues in ASP.NET Core?",
+          "answer": "<p>I never guess at performance problems — I measure:</p><ul><li><strong>Application Insights / Datadog / Jaeger</strong> — distributed tracing in production. Shows which endpoint is slow and why (DB calls, external calls, CPU).</li><li><strong>MiniProfiler</strong> — dev-time profiling, shows DB query count and timing inline on every page/API response. Great for catching N+1 on the spot.</li><li><strong>BenchmarkDotNet</strong> — micro-benchmarks to compare two implementations (e.g., System.Text.Json vs Newtonsoft speed).</li><li><strong>dotnet-counters / dotnet-trace</strong> — CLI tools for live production metrics (GC, thread pool, request queue).</li><li><strong>EF Core logging</strong> — set log level to Debug to see all SQL generated. Catching a query that generates 200 SQL statements is usually the first performance fix.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Order of impact:</strong> Database (indexes, N+1) > Caching > Async > HTTP compression > Memory allocations. Fix the database first. Nine times out of ten, a slow API is a slow query.",
+      "tags": [
+        "performance",
+        "caching",
+        "async",
+        "compression",
+        "efcore",
+        "webapi"
+      ],
+      "sortOrder": 27,
+      "isActive": true
+    },
+    {
+      "id": "webapi-028",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "How do you store and read configuration in ASP.NET Core? Where should DB connection strings live?",
+      "answer": "<p>This comes up in almost every interview and in every project — where to put config and how to read it safely. I've learned the hard way that putting connection strings in source code or even in appsettings.json committed to a repo is a mistake you only make once.</p><h4>Configuration sources — read in priority order (each overrides the previous):</h4><ol><li><code>appsettings.json</code> — base config, safe for non-sensitive defaults.</li><li><code>appsettings.{Environment}.json</code> — environment-specific overrides (Development, Staging, Production).</li><li>Environment variables — great for containers and CI/CD.</li><li>User Secrets (dev only) — local machine secrets, never committed.</li><li>Azure Key Vault / AWS Secrets Manager — production secrets.</li><li>Command-line arguments — highest priority, useful for deployment overrides.</li></ol><h4>appsettings.json (non-sensitive config):</h4><pre><code class=\"language-json\">{\n  \"ConnectionStrings\": {\n    \"Default\": \"Server=(localdb)\\\\mssqllocaldb;Database=MyApp;Trusted_Connection=true\"\n  },\n  \"Jwt\": {\n    \"Issuer\": \"https://myapp.com\",\n    \"Audience\": \"https://myapp.com\"\n  },\n  \"FeatureFlags\": {\n    \"EnableNewCheckout\": true\n  },\n  \"Logging\": {\n    \"LogLevel\": {\n      \"Default\": \"Information\",\n      \"Microsoft.AspNetCore\": \"Warning\"\n    }\n  }\n}</code></pre><h4>User Secrets — dev machine only, never in git:</h4><pre><code class=\"language-bash\"># One-time setup per project\ndotnet user-secrets init\n\n# Store a secret\ndotnet user-secrets set \"ConnectionStrings:Default\" \"Server=dev-server;Password=real-password\"\ndotnet user-secrets set \"Jwt:Secret\" \"my-super-secret-key\"\n\n# Stored in %APPDATA%/Microsoft/UserSecrets/{project-id}/secrets.json\n# Never in the project folder, never in git</code></pre><h4>Reading configuration in code:</h4><pre><code class=\"language-csharp\">// Option 1: IConfiguration (direct key access)\npublic class SomeService\n{\n    public SomeService(IConfiguration config)\n    {\n        var connStr = config.GetConnectionString(\"Default\");\n        var issuer  = config[\"Jwt:Issuer\"];               // nested with :\n        var enabled = config.GetValue&lt;bool&gt;(\"FeatureFlags:EnableNewCheckout\");\n    }\n}\n\n// Option 2: IOptions&lt;T&gt; (strongly typed, preferred for complex settings)\npublic class JwtSettings\n{\n    public string Issuer   { get; set; }\n    public string Audience { get; set; }\n    public string Secret   { get; set; }\n}\n\n// Program.cs -- bind config section to a class\nbuilder.Services.Configure&lt;JwtSettings&gt;(builder.Configuration.GetSection(\"Jwt\"));\n\n// Inject and use\npublic class TokenService\n{\n    private readonly JwtSettings _settings;\n    public TokenService(IOptions&lt;JwtSettings&gt; opts) =&gt; _settings = opts.Value;\n}</code></pre><h4>Production — Azure Key Vault:</h4><pre><code class=\"language-csharp\">// Install: Azure.Extensions.AspNetCore.Configuration.Secrets\n// Uses Managed Identity -- no password stored anywhere\nif (builder.Environment.IsProduction())\n{\n    builder.Configuration.AddAzureKeyVault(\n        new Uri($\"https://my-vault.vault.azure.net/\"),\n        new DefaultAzureCredential()); // uses Managed Identity\n}\n// Secrets in Key Vault override appsettings.json values</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between IConfiguration, IOptions<T>, IOptionsSnapshot<T>, and IOptionsMonitor<T>?",
+          "answer": "<p><ul><li><strong>IConfiguration</strong> — raw config access by key string. No type safety. Good for one-off reads.</li><li><strong>IOptions&lt;T&gt;</strong> — singleton lifetime, reads config once at startup. Use for settings that don't change while the app runs.</li><li><strong>IOptionsSnapshot&lt;T&gt;</strong> — scoped lifetime, re-reads config per request. Use when config might change (e.g., appsettings.json updated) and you want the new value on the next request. Only available in scoped/transient services.</li><li><strong>IOptionsMonitor&lt;T&gt;</strong> — singleton, notifies you when config changes via <code>OnChange()</code> callback. Use in background services or any singleton that needs to react to live config changes.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Never commit secrets to git.</strong> Rotate them immediately if you do. Use User Secrets for dev, environment variables for CI/CD and containers, Azure Key Vault for production. The 'Jwt:Secret' key should never appear in any committed file.",
+      "tags": [
+        "configuration",
+        "appsettings",
+        "user-secrets",
+        "keyvault",
+        "ioptions"
+      ],
+      "sortOrder": 28,
+      "isActive": true
+    },
+    {
+      "id": "webapi-029",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Why do we use Kestrel if IIS already exists? What is a reverse proxy?",
+      "answer": "<p>This is a question that trips up a lot of people — they assume Kestrel replaces IIS, but in production they often work together. Let me explain both.</p><h4>Kestrel vs IIS — not a competition:</h4><p><strong>Kestrel</strong> is ASP.NET Core's built-in, cross-platform web server. It runs your .NET app directly, handles HTTP connections, and is the default server for all .NET environments (Windows, Linux, macOS, Docker). It's fast, lightweight, and maintained by the ASP.NET Core team.</p><p><strong>IIS (Internet Information Services)</strong> is Windows-only and has been the traditional Microsoft web server for decades. It handles SSL termination, Windows Auth, request queueing, process management, and serves as a robust reverse proxy.</p><h4>Reverse Proxy concept:</h4><p>In production, you typically put a battle-hardened server like IIS, Nginx, or Azure Application Gateway in <em>front</em> of Kestrel. This is the reverse proxy pattern:</p><pre><code class=\"language-text\">Internet → [IIS / Nginx / Azure App Gateway] → [Kestrel (your .NET app)]\n            (reverse proxy)                       (app server)\n\nReverse proxy handles:\n• SSL termination (HTTPS → HTTP to Kestrel)\n• Port 80/443 binding\n• Static file serving\n• Load balancing across multiple Kestrel instances\n• DDoS protection, rate limiting at network level\n• Compression, caching headers\n• Multiple apps on same server (different paths/domains)\n• Process management (restart Kestrel if it crashes)</code></pre><h4>Why not expose Kestrel directly to the internet?</h4><ul><li>Kestrel is optimised for ASP.NET Core — it's not a general-purpose hardened web server.</li><li>It lacks Windows Auth, kernel-mode request handling, and decades of security hardening that IIS has.</li><li>Reverse proxy adds a security layer — the internet never directly reaches your app server.</li><li>With Nginx on Linux: one Nginx instance can reverse-proxy 10 different .NET microservices on different ports.</li></ul><h4>In-process vs out-of-process hosting with IIS:</h4><pre><code class=\"language-xml\">&lt;!-- web.config --&gt;\n&lt;aspNetCore processPath=\"dotnet\" arguments=\"MyApp.dll\"\n    hostingModel=\"inprocess\" /&gt;\n&lt;!--\n  inprocess (default): IIS worker process hosts the .NET app directly.\n  Fastest option, one process.\n\n  outofprocess: IIS reverse-proxies to a separate Kestrel process.\n  More isolated, better for legacy/migration scenarios.\n--&gt;</code></pre><h4>On Linux (typical production):</h4><pre><code class=\"language-nginx\"># Nginx config -- reverse proxy to Kestrel on port 5000\nserver {\n    listen 80;\n    server_name myapp.com;\n\n    location / {\n        proxy_pass         http://localhost:5000;\n        proxy_http_version 1.1;\n        proxy_set_header   Upgrade $http_upgrade;\n        proxy_set_header   Connection keep-alive;\n        proxy_set_header   Host $host;\n        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is UseForwardedHeaders() and why do you need it with a reverse proxy?",
+          "answer": "<p>When Kestrel sits behind a reverse proxy, the original client IP and HTTPS scheme are lost — Kestrel only sees the proxy's local IP and HTTP (because SSL is terminated at the proxy). This breaks things like <code>Request.IsHttps</code>, redirect URLs, and IP-based logging.</p><p><code>UseForwardedHeaders()</code> reads the <code>X-Forwarded-For</code> and <code>X-Forwarded-Proto</code> headers that the proxy sets, and uses them to populate <code>HttpContext.Connection.RemoteIpAddress</code> and <code>Request.Scheme</code> correctly.</p><pre><code class=\"language-csharp\">app.UseForwardedHeaders(new ForwardedHeadersOptions\n{\n    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto\n});\n// Must be FIRST middleware — before any code that reads Request.Scheme or IP</code></pre><p>Without this, your HTTPS redirects might loop, generated URLs might use HTTP, and audit logs will show the proxy IP instead of the real client IP.</p>"
+        }
+      ],
+      "tip": "<strong>Docker containers usually skip the reverse proxy</strong> — instead, Azure App Gateway, an Ingress controller (in Kubernetes), or Azure Front Door sits in front of the container. The container runs Kestrel directly. Same architecture, different components.",
+      "tags": [
+        "kestrel",
+        "iis",
+        "reverse-proxy",
+        "nginx",
+        "deployment"
+      ],
+      "sortOrder": 29,
+      "isActive": true
+    },
+    {
+      "id": "webapi-030",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the difference between Web API and WCF? When would you still use WCF?",
+      "answer": "<p>WCF (Windows Communication Foundation) was Microsoft's pre-Web-API framework for building services. In any interview at a company with legacy .NET Framework code, this question will come up. My honest answer: WCF is a legacy technology. New projects should use Web API or gRPC. But I need to understand WCF to maintain existing systems.</p><h4>Web API vs WCF — side by side:</h4><table><tr><th>Aspect</th><th>Web API</th><th>WCF</th></tr><tr><td>Protocol</td><td>HTTP only (REST)</td><td>HTTP, TCP, Named Pipes, MSMQ</td></tr><tr><td>Message format</td><td>JSON, XML</td><td>XML/SOAP (primary), can do REST</td></tr><tr><td>Platform</td><td>Cross-platform (.NET, Node, mobile)</td><td>Windows-heavy, some Linux via CoreWCF</td></tr><tr><td>Contract</td><td>URL + HTTP verb</td><td>Explicit contracts via [ServiceContract], [OperationContract]</td></tr><tr><td>Config</td><td>Code-first, minimal</td><td>Complex XML config (app.config)</td></tr><tr><td>Modern?</td><td>Current standard ✅</td><td>Legacy, Microsoft deprecated ❌</td></tr></table><h4>WCF architecture (for legacy understanding):</h4><pre><code class=\"language-csharp\">// WCF Service Contract\n[ServiceContract]\npublic interface IOrderService\n{\n    [OperationContract]\n    Order GetOrder(int id);\n\n    [OperationContract]\n    void CreateOrder(Order order);\n}\n\n// WCF Service Implementation\npublic class OrderService : IOrderService\n{\n    public Order GetOrder(int id) { ... }\n    public void CreateOrder(Order order) { ... }\n}\n\n// WCF uses SOAP envelope -- XML heavy\n// POST /OrderService.svc\n// Content-Type: text/xml\n// &lt;s:Envelope&gt;&lt;s:Body&gt;&lt;GetOrder&gt;&lt;id&gt;1&lt;/id&gt;&lt;/GetOrder&gt;&lt;/s:Body&gt;&lt;/s:Envelope&gt;\n\n// Web API equivalent -- clean and simple\n// GET /api/orders/1\n// Returns: { \"id\": 1, \"status\": \"Pending\" }</code></pre><h4>When you'd still encounter WCF:</h4><ul><li>Maintaining legacy .NET Framework enterprise applications (banking, insurance).</li><li>When the client system expects SOAP/WSDL contracts and can't be changed.</li><li>TCP binding for high-performance internal services (though gRPC has superseded this).</li><li>Named Pipes for inter-process communication on the same machine.</li><li>Message queue integration with MSMQ (though modern apps use Azure Service Bus/RabbitMQ instead).</li></ul><h4>Migration path:</h4><p>If you're maintaining a WCF service and need to modernise: <strong>CoreWCF</strong> is an open-source port of WCF to .NET Core/5+ for running legacy WCF services without rewriting them. For new features, write them as Web API or gRPC endpoints alongside the existing WCF service.</p>",
+      "followUps": [
+        {
+          "question": "What is SOAP and how is it different from REST?",
+          "answer": "<p><strong>SOAP (Simple Object Access Protocol)</strong> is a protocol with strict XML-based message format, mandatory envelope structure, and WSDL contract definition. It supports built-in error handling (SOAP faults), transactions, and security (WS-Security). Heavy, verbose, but formally specified.</p><p><strong>REST</strong> is an architectural style (not a protocol) that uses HTTP verbs and URLs to represent resources. Messages are typically JSON (lightweight). No formal contract required (though OpenAPI/Swagger documents it). Stateless by design.</p><p>SOAP example message: 150+ bytes of XML for 'give me user with id 1'. REST: GET /api/users/1. The difference in payload size and simplicity is why REST won the web. SOAP remains in B2B integrations (banking, government) where formal contracts and guaranteed delivery matter.</p>"
+        }
+      ],
+      "tip": "<strong>You'll encounter WCF in interviews at companies with 10+ year old .NET systems.</strong> Know the conceptual difference (SOAP vs REST, contract-first vs URL-based) but don't deep-dive into WCF config — interviewers mostly want to know you understand WHY Web API replaced it.",
+      "tags": [
+        "wcf",
+        "webapi",
+        "soap",
+        "rest",
+        "legacy"
+      ],
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "id": "webapi-031",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "What is HTTP stateless protocol? Why does that mean we need session management?",
+      "answer": "<p>Understanding why HTTP is stateless is the foundation of understanding why cookies, sessions, and tokens exist at all. This question sounds basic but the interviewer wants to see that you understand the WHY behind session management, not just the HOW.</p><h4>What stateless means:</h4><p>Every HTTP request is completely independent. The server treats each request as if it came from a stranger — it has no memory of previous requests. When you make Request 1 (login) and then Request 2 (view your profile), the server doesn't automatically know that Request 2 is from the same user who just logged in.</p><pre><code class=\"language-text\">Request 1: POST /login  { username: \"darshan\", password: \"xxxx\" }\nServer processes it, authenticates the user... but then forgets.\n\nRequest 2: GET /dashboard\nServer has NO IDEA this is the same Darshan who just logged in.\nWithout state management, every request needs re-authentication.</code></pre><h4>Why this is by design (not a flaw):</h4><ul><li><strong>Scalability</strong> — any server in a load-balanced cluster can handle any request. No need to route Darshan's requests to the same server every time.</li><li><strong>Simplicity</strong> — the server doesn't need to track millions of ongoing conversations. Each request is self-contained.</li><li><strong>Reliability</strong> — if one server dies, the next server can serve the next request with no disruption.</li></ul><h4>Solutions for managing state over stateless HTTP:</h4><pre><code class=\"language-csharp\">// 1. SESSIONS -- server-side state identified by a cookie\n// Server stores user data, client holds a session ID cookie\n// Session cookie: { .ASPXSESSION: \"abc123\" }\n// Server looks up \"abc123\" in session store, finds Darshan's data\nHttpContext.Session.SetString(\"UserId\", \"42\");\nvar userId = HttpContext.Session.GetString(\"UserId\");\n\n// 2. COOKIES -- client-side state\n// Server sends a Set-Cookie header, browser sends it back on every request\nResponse.Cookies.Append(\"Preference\", \"dark-mode\",\n    new CookieOptions { Expires = DateTimeOffset.UtcNow.AddDays(30) });\nvar pref = Request.Cookies[\"Preference\"];\n\n// 3. JWT TOKENS -- stateless authentication (my preferred approach for APIs)\n// Token contains the user's identity, signed by the server\n// Client sends it in Authorization header on every request\n// No server-side storage needed -- token is self-describing\n// Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\n\n// 4. HIDDEN FORM FIELDS -- state passed in forms\n&lt;input type=\"hidden\" name=\"orderId\" value=\"99\" /&gt;\n\n// 5. URL QUERY STRINGS -- state in the URL (for non-sensitive, shareable state)\n// GET /orders?status=pending&amp;page=2</code></pre><h4>The key trade-off: server-side vs client-side state:</h4><ul><li><strong>Server-side (Session)</strong> — more secure (data on server, not exposed), harder to scale (need shared session store like Redis), works with any client.</li><li><strong>Client-side (JWT/Cookie)</strong> — scales perfectly (server is stateless, any instance handles any request), but data is visible to the client (JWT is Base64-encoded, not encrypted), and can't be invalidated without extra infrastructure.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between HTTP/1.1, HTTP/2, and HTTP/3?",
+          "answer": "<p><strong>HTTP/1.1</strong> — text-based, one request per TCP connection at a time (sequential). Head-of-line blocking: a slow response blocks all others on the same connection. Fixed with multiple connections per domain (browsers open 6-8 in parallel).</p><p><strong>HTTP/2</strong> — binary protocol, multiplexing (multiple requests/responses over one connection simultaneously), header compression (HPACK), server push. Significantly faster for page loads. Required for gRPC. Most web traffic is HTTP/2 today.</p><p><strong>HTTP/3</strong> — runs over QUIC (UDP-based) instead of TCP. Eliminates TCP head-of-line blocking at the transport layer. Even better for unreliable networks (mobile, lossy connections). Still rolling out — supported by major browsers and CDNs.</p><p>In ASP.NET Core: HTTP/2 and HTTP/3 are supported by Kestrel natively. Enable HTTP/3 with <code>builder.WebHost.ConfigureKestrel(opts =&gt; opts.ListenAnyIP(5001, lo =&gt; lo.UseHttps().Protocols = HttpProtocols.Http1AndHttp2AndHttp3))</code>.</p>"
+        }
+      ],
+      "tip": "<strong>For APIs — use JWT, not sessions.</strong> Sessions require server-side storage and don't scale horizontally without Redis. JWT is self-contained and stateless, matching HTTP's stateless nature. Use sessions for web apps where cookie-based auth makes sense.",
+      "tags": [
+        "http",
+        "stateless",
+        "session",
+        "cookie",
+        "jwt"
+      ],
+      "sortOrder": 31,
       "isActive": true
     }
   ]

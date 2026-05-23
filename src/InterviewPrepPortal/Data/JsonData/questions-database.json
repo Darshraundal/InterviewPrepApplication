@@ -1129,6 +1129,201 @@
       ],
       "sortOrder": 40,
       "isActive": true
+    },
+    {
+      "id": "db-041",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you delete duplicate rows in SQL Server while keeping one copy?",
+      "answer": "<p>The cleanest approach uses <code>ROW_NUMBER()</code> inside a CTE to identify and delete duplicates in a single statement.</p><h4>Method 1: CTE + ROW_NUMBER() (recommended)</h4><pre><code class=\"language-sql\">-- Keep the row with the lowest Id; delete all others with the same (FirstName, LastName, Email)\nWITH DuplicateCTE AS\n(\n    SELECT *,\n           ROW_NUMBER() OVER (\n               PARTITION BY FirstName, LastName, Email  -- define what 'duplicate' means\n               ORDER BY Id                              -- which copy to keep (lowest Id)\n           ) AS RowNum\n    FROM Employees\n)\nDELETE FROM DuplicateCTE\nWHERE RowNum > 1;  -- delete all rows except the first (RowNum = 1)</code></pre><p>You can <strong>preview</strong> what will be deleted by changing <code>DELETE FROM</code> to <code>SELECT *</code> first.</p><h4>Method 2: Self-join (older approach)</h4><pre><code class=\"language-sql\">DELETE e1\nFROM Employees e1\nINNER JOIN Employees e2\n    ON  e1.FirstName = e2.FirstName\n    AND e1.LastName  = e2.LastName\n    AND e1.Email     = e2.Email\n    AND e1.Id > e2.Id;  -- keep the row with the lower Id</code></pre><h4>Method 3: Using a temp table (safest for large tables)</h4><pre><code class=\"language-sql\">-- Step 1: Copy distinct rows to temp table\nSELECT DISTINCT * INTO #TempClean FROM Employees;\n\n-- Step 2: Clear original table\nTRUNCATE TABLE Employees;\n\n-- Step 3: Reinsert clean data\nINSERT INTO Employees SELECT * FROM #TempClean;\n\nDROP TABLE #TempClean;</code></pre><p>Always run inside a transaction and test with a SELECT before committing the DELETE.</p>",
+      "followUps": [
+        {
+          "question": "How do you find duplicates without deleting them?",
+          "answer": "<pre><code class=\"language-sql\">-- Find all duplicate groups and how many times each occurs\nSELECT FirstName, LastName, Email, COUNT(*) AS DuplicateCount\nFROM Employees\nGROUP BY FirstName, LastName, Email\nHAVING COUNT(*) > 1\nORDER BY DuplicateCount DESC;\n\n-- See all individual duplicate rows\nSELECT *\nFROM Employees\nWHERE Email IN (\n    SELECT Email FROM Employees\n    GROUP BY Email\n    HAVING COUNT(*) > 1\n)\nORDER BY Email, Id;</code></pre>"
+        }
+      ],
+      "tip": "<strong>Always preview first:</strong> Replace DELETE with SELECT * in the CTE method to see exactly which rows will be removed. Wrap in a transaction with ROLLBACK until you're confident.",
+      "tags": [
+        "sql",
+        "duplicates",
+        "row-number",
+        "cte",
+        "delete"
+      ],
+      "sortOrder": 41,
+      "isActive": true
+    },
+    {
+      "id": "db-042",
+      "category": "database",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "How do you optimise a slow SQL query or stored procedure?",
+      "answer": "<p>Query optimisation is a systematic process. Here's the approach I follow:</p><h4>Step 1: Check the execution plan</h4><p>In SSMS: press <kbd>Ctrl+M</kbd> to enable Actual Execution Plan, then run the query. Look for:</p><ul><li><strong>Table Scan / Clustered Index Scan</strong> — reading the whole table, no index used. Usually the biggest problem.</li><li><strong>Index Seek</strong> — good, using an index efficiently.</li><li><strong>Hash Match / Sort</strong> with high cost% — may indicate missing indexes or sorting large datasets.</li><li><strong>Key Lookup</strong> — occurs when a non-clustered index is used but extra columns are needed from the base table. Fix with covering indexes (INCLUDE columns).</li></ul><h4>Step 2: Add appropriate indexes</h4><pre><code class=\"language-sql\">-- Non-clustered index on filter/join column\nCREATE INDEX IX_Orders_CustomerId ON Orders (CustomerId);\n\n-- Covering index — includes extra columns to avoid key lookups\nCREATE INDEX IX_Orders_CustomerId_Status\nON Orders (CustomerId, Status)\nINCLUDE (OrderDate, TotalAmount);\n</code></pre><h4>Step 3: Rewrite the query</h4><ul><li>Avoid <code>SELECT *</code> — select only columns you need.</li><li>Replace correlated subqueries with <code>JOIN</code>s.</li><li>Use <code>EXISTS</code> instead of <code>IN</code> with subqueries for large sets.</li><li>Avoid functions on indexed columns in <code>WHERE</code>: <code>WHERE YEAR(OrderDate) = 2024</code> prevents index use — rewrite as <code>WHERE OrderDate >= '2024-01-01' AND OrderDate < '2025-01-01'</code>.</li><li>Replace cursors with set-based operations.</li></ul><h4>Step 4: Stored procedure specific</h4><pre><code class=\"language-sql\">-- Add at the top of every stored procedure\nSET NOCOUNT ON;  -- suppresses 'rows affected' messages, small perf gain\n\n-- Handle parameter sniffing with OPTION(RECOMPILE) or OPTIMIZE FOR\nSELECT * FROM Orders WHERE CustomerId = @CustomerId\nOPTION (RECOMPILE);\n\n-- Or use local variables to avoid sniffing\nDECLARE @LocalId INT = @CustomerId;\nSELECT * FROM Orders WHERE CustomerId = @LocalId;</code></pre><h4>Step 5: Statistics and fragmentation</h4><pre><code class=\"language-sql\">UPDATE STATISTICS Orders;        -- update stale statistics\nALTER INDEX ALL ON Orders REBUILD; -- rebuild fragmented indexes</code></pre>",
+      "followUps": [
+        {
+          "question": "What is parameter sniffing in SQL Server?",
+          "answer": "<p>When a stored procedure is first executed, SQL Server compiles an execution plan based on the parameter values used in that first call. This plan is cached and reused for all subsequent calls — even if later calls have very different parameter values. If the first call used a parameter that returns 1 row, the plan may use a Nested Loop join. If later calls return 1 million rows, that plan is terrible — but SQL Server keeps using it. This is <strong>parameter sniffing</strong>.</p><p><strong>Fixes:</strong> <code>OPTION (RECOMPILE)</code> (recompiles each execution — overhead but optimal plan each time), <code>OPTION (OPTIMIZE FOR (@param = value))</code> (compile for a specific value), local variables (values unknown at compile time, SQL Server makes an average-row estimate), or <code>WITH (RECOMPILE)</code> on the CREATE PROCEDURE.</p>"
+        }
+      ],
+      "tip": "<strong>Start with the execution plan.</strong> 80% of query performance issues are solved by adding an index on the right column. Look for Table Scans first.",
+      "tags": [
+        "sql",
+        "performance",
+        "index",
+        "execution-plan",
+        "stored-procedure",
+        "optimisation"
+      ],
+      "sortOrder": 42,
+      "isActive": true
+    },
+    {
+      "id": "db-043",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the difference between a stored procedure and a function in SQL Server?",
+      "answer": "<p>Both are named, reusable blocks of SQL code, but they serve different purposes and have different rules.</p><h4>Stored Procedure</h4><ul><li>Created with <code>CREATE PROCEDURE</code>.</li><li>Called with <code>EXEC</code> or <code>EXECUTE</code>.</li><li>Can have <strong>input and output parameters</strong>.</li><li>Can perform DML (INSERT, UPDATE, DELETE) and DDL (CREATE, DROP).</li><li>Can use transactions (<code>BEGIN TRAN</code>, <code>COMMIT</code>, <code>ROLLBACK</code>).</li><li>Can call other stored procedures.</li><li><strong>Cannot be used in a SELECT statement</strong>.</li><li>Can return zero, one, or multiple result sets.</li></ul><h4>Function (Scalar and Table-Valued)</h4><ul><li>Created with <code>CREATE FUNCTION</code>.</li><li><strong>Must return a value</strong> (scalar) or a table (TVF).</li><li>Called inside SQL expressions (<code>SELECT</code>, <code>WHERE</code>, <code>JOIN</code>).</li><li><strong>Cannot perform DML</strong> (no INSERT/UPDATE/DELETE in T-SQL functions).</li><li>Cannot use transactions.</li><li>Scalar functions in <code>WHERE</code> clauses prevent index use — avoid for large tables.</li></ul><pre><code class=\"language-sql\">-- Stored Procedure\nCREATE PROCEDURE GetEmployeesByDept @DeptId INT\nAS\nBEGIN\n    SET NOCOUNT ON;\n    SELECT Id, Name, Salary FROM Employees WHERE DepartmentId = @DeptId;\nEND;\n\nEXEC GetEmployeesByDept @DeptId = 3;\n\n-- Scalar Function\nCREATE FUNCTION dbo.GetFullName(@FirstName NVARCHAR(50), @LastName NVARCHAR(50))\nRETURNS NVARCHAR(101)\nAS\nBEGIN\n    RETURN @FirstName + ' ' + @LastName;\nEND;\n\nSELECT dbo.GetFullName(FirstName, LastName) AS FullName FROM Employees;\n\n-- Table-Valued Function (TVF)\nCREATE FUNCTION dbo.GetTopEarners(@MinSalary DECIMAL(10,2))\nRETURNS TABLE\nAS\nRETURN\n    SELECT Id, Name, Salary FROM Employees WHERE Salary >= @MinSalary;\n\n-- Use in a JOIN\nSELECT e.Name, d.Name AS Dept\nFROM dbo.GetTopEarners(50000) e\nJOIN Departments d ON e.DepartmentId = d.Id;</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between a scalar function and a table-valued function (TVF)?",
+          "answer": "<p><strong>Scalar function</strong> returns a single value (one row, one column). Can be used anywhere a scalar expression is valid.</p><p><strong>Table-valued function (TVF)</strong> returns a table and can be used in the FROM clause like a table or view. There are two types:</p><ul><li><strong>Inline TVF</strong> — a single RETURN SELECT statement. The query optimizer can 'inline' this into the calling query, allowing index use. Very efficient.</li><li><strong>Multi-statement TVF (MSTVF)</strong> — has a BEGIN...END block and inserts rows into a declared table variable. Opaque to the optimizer — it can't look inside, leading to poor cardinality estimates. Avoid for performance-critical code.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Rule of thumb:</strong> If you need to encapsulate logic and reuse it in a SELECT, use a TVF. If you need to perform data modifications (INSERT/UPDATE/DELETE) or complex logic, use a stored procedure.",
+      "tags": [
+        "stored-procedure",
+        "function",
+        "tvf",
+        "sql",
+        "database"
+      ],
+      "sortOrder": 43,
+      "isActive": true
+    },
+    {
+      "id": "db-044",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Write a SQL query to count the number of employees in each department.",
+      "answer": "<p>This is a classic GROUP BY aggregation query — a staple of SQL interviews.</p><h4>Basic query:</h4><pre><code class=\"language-sql\">SELECT DepartmentId,\n       COUNT(*) AS EmployeeCount\nFROM Employees\nGROUP BY DepartmentId\nORDER BY EmployeeCount DESC;</code></pre><h4>With department names (using JOIN):</h4><pre><code class=\"language-sql\">SELECT d.Id,\n       d.Name      AS DepartmentName,\n       COUNT(e.Id) AS EmployeeCount\nFROM Departments d\nLEFT JOIN Employees e ON e.DepartmentId = d.Id\n-- LEFT JOIN ensures departments with 0 employees are included\nGROUP BY d.Id, d.Name\nORDER BY EmployeeCount DESC;</code></pre><h4>With only departments that have more than 5 employees (HAVING):</h4><pre><code class=\"language-sql\">SELECT d.Name, COUNT(e.Id) AS EmployeeCount\nFROM Departments d\nINNER JOIN Employees e ON e.DepartmentId = d.Id\nGROUP BY d.Id, d.Name\nHAVING COUNT(e.Id) > 5\nORDER BY EmployeeCount DESC;</code></pre><h4>With additional stats:</h4><pre><code class=\"language-sql\">SELECT d.Name                              AS Department,\n       COUNT(e.Id)                        AS HeadCount,\n       AVG(e.Salary)                      AS AvgSalary,\n       MAX(e.Salary)                      AS MaxSalary,\n       MIN(e.Salary)                      AS MinSalary,\n       SUM(e.Salary)                      AS TotalPayroll\nFROM Departments d\nLEFT JOIN Employees e ON e.DepartmentId = d.Id\nGROUP BY d.Id, d.Name\nORDER BY HeadCount DESC;</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between WHERE and HAVING in this context?",
+          "answer": "<p><code>WHERE</code> filters rows <strong>before</strong> grouping — it cannot reference aggregate functions. <code>HAVING</code> filters groups <strong>after</strong> grouping — it can reference aggregates like <code>COUNT()</code>, <code>SUM()</code>.</p><pre><code class=\"language-sql\">-- WHERE filters individual rows before grouping\nSELECT DepartmentId, COUNT(*) AS Total\nFROM Employees\nWHERE Salary > 30000         -- filter rows: only consider employees with salary > 30K\nGROUP BY DepartmentId\nHAVING COUNT(*) > 3;         -- filter groups: only departments with more than 3 such employees</code></pre><p>Think of it as: WHERE = row-level filter, HAVING = group-level filter. You can use both in the same query.</p>"
+        }
+      ],
+      "tip": "<strong>Use LEFT JOIN (not INNER JOIN)</strong> when listing departments with counts — INNER JOIN would exclude departments with zero employees. If you want zero-employee departments to appear in the list, LEFT JOIN is essential.",
+      "tags": [
+        "sql",
+        "group-by",
+        "count",
+        "aggregate",
+        "join"
+      ],
+      "sortOrder": 44,
+      "isActive": true
+    },
+    {
+      "id": "db-045",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is denormalization? When do you intentionally break normal form?",
+      "answer": "<p>Normalisation removes redundancy and protects data integrity. Denormalisation deliberately re-introduces some redundancy for performance. It's a trade-off I've had to make a few times on reporting-heavy systems.</p><h4>Why normalisation causes performance pain:</h4><p>A fully normalised schema requires JOINs to get useful data. A 5-table JOIN to display one product in a product listing page, running 10,000 times per minute, adds up. The query is correct but slow.</p><h4>Common denormalisation strategies:</h4><h5>1. Stored/computed columns (most common)</h5><pre><code class=\"language-sql\">-- Instead of computing total every time:\nSELECT SUM(Quantity * UnitPrice) FROM OrderItems WHERE OrderId = 1\n\n-- Store it directly on the order:\nALTER TABLE Orders ADD TotalAmount DECIMAL(10,2);\n-- Update on every order item change\n-- Trade-off: one extra update per write, zero extra work per read</code></pre><h5>2. Flattening lookup tables</h5><pre><code class=\"language-sql\">-- Normalised: Orders JOIN Customers to get CustomerName\n-- Denormalised: store CustomerName directly on Order\nALTER TABLE Orders ADD CustomerName NVARCHAR(100);\n-- Risk: customer changes name -- Orders still show old name\n-- Acceptable when: Orders are historical records (name at time of order matters)</code></pre><h5>3. Read model / CQRS projection tables</h5><p>Rather than denormalising the transactional tables, create separate read-optimised tables that aggregate data. The write side stays normalised; the read side is pre-joined.</p><pre><code class=\"language-sql\">-- Read model table for product listing page\nCREATE TABLE ProductListingReadModel (\n    ProductId    INT,\n    Name         NVARCHAR(200),\n    CategoryName NVARCHAR(100), -- denormalised from Categories\n    Price        DECIMAL(10,2),\n    StockCount   INT,           -- denormalised from Inventory\n    AverageRating DECIMAL(3,2), -- pre-computed from Reviews\n    ReviewCount  INT\n);\n-- Rebuilt when products/categories/inventory/reviews change\n-- SELECT is now a single table scan -- blazing fast</code></pre><h4>When I denormalise:</h4><ul><li>Reporting/analytics queries that join 5+ tables and run constantly.</li><li>Historical records where the value at point-in-time matters more than current value (order confirmation email, invoice line items).</li><li>Read-heavy endpoints where the join cost is measured and proven to be the bottleneck.</li><li>Data warehouses / OLAP — these are intentionally denormalised (star schema).</li></ul><h4>When I don't:</h4><ul><li>OLTP — transactional systems should stay normalised to preserve data integrity.</li><li>Before measuring — denormalisation adds complexity; prove you need it first.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between OLTP and OLAP database design?",
+          "answer": "<p><strong>OLTP (Online Transaction Processing)</strong> — designed for fast, concurrent reads and writes of individual rows. Think: a bank processing deposits, an e-commerce site placing orders. Highly normalised (3NF or higher), many narrow tables, optimised for INSERT/UPDATE/DELETE. SQL Server, PostgreSQL in transactional mode.</p><p><strong>OLAP (Online Analytical Processing)</strong> — designed for complex analytical queries over large volumes of historical data. Think: 'What were sales by region for the last 12 months, broken down by product category?'. Intentionally denormalised — star schema or snowflake schema, wide fact tables, dimension tables. Optimised for SELECT aggregations over millions of rows. Azure Synapse, Redshift, BigQuery, Snowflake.</p><p>Most real applications have both: an OLTP database for day-to-day operations, and a data warehouse (OLAP) for reporting. ETL or CDC (Change Data Capture) moves data from OLTP to OLAP on a schedule.</p>"
+        }
+      ],
+      "tip": "<strong>CQRS + read models is the modern approach.</strong> Instead of denormalising your transactional tables (which creates data consistency headaches), create separate read-optimised projections. Your write model stays clean; your read model is optimised for queries.",
+      "tags": [
+        "denormalization",
+        "performance",
+        "sql",
+        "cqrs",
+        "oltp",
+        "olap"
+      ],
+      "sortOrder": 45,
+      "isActive": true
+    },
+    {
+      "id": "db-046",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is SQL Server Connection Pooling? How does it work and what are the pitfalls?",
+      "answer": "<p>Creating a new database connection is expensive — it involves network handshakes, authentication, and resource allocation on the SQL Server side. Connection pooling reuses existing connections rather than creating new ones on every request. ADO.NET handles this automatically — you don't write any pooling code yourself, but understanding it explains a lot of production issues.</p><h4>How it works:</h4><p>When you call <code>conn.Open()</code>, ADO.NET doesn't always create a new physical connection. It checks a pool of available connections with the same connection string. If one is available, it returns it. When you call <code>conn.Close()</code> or <code>conn.Dispose()</code> (via <code>using</code>), the connection doesn't actually close — it returns to the pool for the next caller.</p><pre><code class=\"language-csharp\">// Pool settings in connection string\nvar connStr = new SqlConnectionStringBuilder\n{\n    DataSource = \"server\",\n    InitialCatalog = \"MyDb\",\n    IntegratedSecurity = true,\n    Pooling = true,          // enabled by default\n    MinPoolSize = 5,         // keep 5 connections always open\n    MaxPoolSize = 100,       // max connections in pool\n    ConnectTimeout = 30\n}.ConnectionString;</code></pre><h4>EF Core and pooling:</h4><p>When you register DbContext as Scoped (the default), EF Core creates a new DbContext per request — but that DbContext's underlying SqlConnection still uses the ADO.NET pool. There's also <strong>DbContext pooling</strong> in EF Core, which pools the DbContext object itself:</p><pre><code class=\"language-csharp\">// EF Core DbContext pooling -- higher throughput for simple cases\nbuilder.Services.AddDbContextPool&lt;AppDbContext&gt;(opts =&gt;\n    opts.UseSqlServer(connStr),\n    poolSize: 128); // default 1024</code></pre><h4>Connection pool exhaustion — the silent killer:</h4><p>This is the production issue that looks like random timeouts with the error: <em>'Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool.'</em></p><p>It happens when:</p><ul><li>You forget to dispose SqlConnection (no <code>using</code> block) — connections leak into the pool and are never returned.</li><li>You hold connections open during long operations (slow loops, waiting for user input).</li><li>Traffic spike exceeds MaxPoolSize.</li><li>Long-running transactions hold connections until committed.</li></ul><pre><code class=\"language-csharp\">// BAD -- connection never returned to pool\nvar conn = new SqlConnection(connStr);\nconn.Open();\n// ... forgot to close or dispose\n\n// GOOD -- always use 'using'\nusing var conn = new SqlConnection(connStr);\nconn.Open();\n// conn.Dispose() called automatically, connection returned to pool</code></pre><h4>Diagnosing pool exhaustion:</h4><ul><li>Monitor <strong>sp_who2</strong> or <strong>sys.dm_exec_sessions</strong> in SQL Server to see active connections.</li><li>Use <strong>Performance Counters</strong>: 'NumberOfReclaimedConnections', 'NumberOfPooledConnections'.</li><li>Set a lower MaxPoolSize in dev to reproduce the issue faster.</li></ul>",
+      "followUps": [
+        {
+          "question": "How does changing a connection string affect pooling?",
+          "answer": "<p>Connection pools are keyed on the exact connection string — every unique string gets its own pool. So if you dynamically build connection strings with different usernames, passwords, or options, you'll create a separate pool for each unique string. In multi-tenant apps where each tenant has its own DB user, this means N connection pools (one per tenant). That's usually fine but be aware of the pool-per-tenant overhead. If connection strings differ only by whitespace or property order, ADO.NET treats them as different strings — this is a common gotcha that leads to unexpected pool fragmentation.</p>"
+        }
+      ],
+      "tip": "<strong>Always use 'using' for SqlConnection.</strong> This is the single most important rule. Connection leaks are insidious — the app works fine under low load and mysteriously breaks under traffic spikes.",
+      "tags": [
+        "connection-pooling",
+        "adonet",
+        "sql-server",
+        "performance",
+        "efcore"
+      ],
+      "sortOrder": 46,
+      "isActive": true
+    },
+    {
+      "id": "db-047",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are subqueries in SQL? What is the difference between a correlated and non-correlated subquery?",
+      "answer": "<p>A subquery is a query nested inside another query. I use them regularly, but I also know when they're a performance trap — and when to replace them with a JOIN or CTE.</p><h4>Non-correlated subquery — runs once, independent of outer query:</h4><pre><code class=\"language-sql\">-- Find employees who earn more than the average salary\nSELECT Name, Salary\nFROM Employees\nWHERE Salary > (SELECT AVG(Salary) FROM Employees); -- runs ONCE, result reused\n\n-- Using IN with a subquery\nSELECT Name\nFROM Employees\nWHERE DepartmentId IN (\n    SELECT Id FROM Departments WHERE Name = 'Engineering'\n);\n-- Non-correlated -- inner query runs once, returns a list, outer filters by it\n\n-- Subquery in FROM clause (derived table)\nSELECT DeptName, AvgSalary\nFROM (\n    SELECT d.Name AS DeptName, AVG(e.Salary) AS AvgSalary\n    FROM Departments d\n    JOIN Employees e ON e.DepartmentId = d.Id\n    GROUP BY d.Name\n) AS DeptStats\nWHERE AvgSalary > 60000;</code></pre><h4>Correlated subquery — runs once PER ROW of the outer query:</h4><pre><code class=\"language-sql\">-- Find employees who earn more than the average for THEIR department\n-- The subquery references e.DepartmentId from the OUTER query\nSELECT e.Name, e.Salary, e.DepartmentId\nFROM Employees e\nWHERE e.Salary > (\n    SELECT AVG(e2.Salary)\n    FROM Employees e2\n    WHERE e2.DepartmentId = e.DepartmentId -- references outer query's row\n);\n-- This runs the subquery ONCE PER EMPLOYEE ROW -- can be slow on large tables\n\n-- EXISTS with correlated subquery (very common pattern)\nSELECT c.Name\nFROM Customers c\nWHERE EXISTS (\n    SELECT 1 FROM Orders o\n    WHERE o.CustomerId = c.Id  -- correlated -- checks per customer\n    AND o.OrderDate >= '2024-01-01'\n);\n-- Returns customers who have placed an order since Jan 2024\n-- EXISTS stops at the first match -- faster than IN for large sets</code></pre><h4>EXISTS vs IN — important distinction:</h4><pre><code class=\"language-sql\">-- IN -- problematic with NULLs and large subquery results\nSELECT * FROM Employees\nWHERE DepartmentId IN (SELECT Id FROM Departments WHERE IsActive = 1);\n-- If any Id in the subquery is NULL, IN returns empty result (NULL logic)\n\n-- EXISTS -- preferred for correlated checks, handles NULLs correctly\nSELECT * FROM Employees e\nWHERE EXISTS (\n    SELECT 1 FROM Departments d\n    WHERE d.Id = e.DepartmentId AND d.IsActive = 1\n);\n-- Short-circuits at first match, no NULL issues</code></pre><h4>When to use subquery vs JOIN vs CTE:</h4><ul><li><strong>Subquery</strong> — good for scalar values (single result), EXISTS checks, derived tables used once.</li><li><strong>JOIN</strong> — better performance than correlated subqueries for most cases, especially when you need columns from both tables.</li><li><strong>CTE</strong> — best for readability when subquery would be nested 2+ levels deep, or when the same subquery is referenced multiple times.</li></ul>",
+      "followUps": [
+        {
+          "question": "Why can correlated subqueries be a performance problem?",
+          "answer": "<p>A correlated subquery executes once for every row in the outer query. If the outer query returns 10,000 rows, the subquery runs 10,000 times. For large tables, this can turn a 1-second query into a 100-second one.</p><p><strong>Fix — rewrite as a JOIN:</strong></p><pre><code class=\"language-sql\">-- Slow correlated subquery (runs once per employee)\nSELECT Name, Salary\nFROM Employees e\nWHERE Salary > (SELECT AVG(Salary) FROM Employees e2 WHERE e2.DeptId = e.DeptId);\n\n-- Fast equivalent using CTE + JOIN\nWITH DeptAvg AS (\n    SELECT DeptId, AVG(Salary) AS AvgSalary\n    FROM Employees\n    GROUP BY DeptId  -- runs ONCE\n)\nSELECT e.Name, e.Salary\nFROM Employees e\nJOIN DeptAvg d ON e.DeptId = d.DeptId\nWHERE e.Salary > d.AvgSalary;</code></pre><p>Always check the execution plan when you have correlated subqueries in production queries — look for loops/nested loops with high estimated rows.</p>"
+        }
+      ],
+      "tip": "<strong>EXISTS over IN for safety.</strong> IN with a subquery that can return NULLs will silently return zero rows — a hard bug to track down. EXISTS never has this issue. Also, EXISTS short-circuits at the first match, making it faster for large sets.",
+      "tags": [
+        "subqueries",
+        "sql",
+        "correlated",
+        "exists",
+        "in"
+      ],
+      "sortOrder": 47,
+      "isActive": true
+    },
+    {
+      "id": "db-048",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are constraints in SQL? Explain all types with examples.",
+      "answer": "<p>Constraints are rules enforced at the database level to ensure data integrity. They're your last line of defence — even if application code has a bug, constraints prevent bad data from entering the database. I always define constraints in migrations or schema scripts, not just in application validation.</p><h4>1. PRIMARY KEY</h4><pre><code class=\"language-sql\">-- Uniquely identifies each row, NOT NULL, one per table\nCREATE TABLE Orders (\n    Id INT PRIMARY KEY IDENTITY(1,1), -- auto-increment\n    CustomerId INT NOT NULL\n);\n\n-- Composite primary key\nCREATE TABLE OrderItems (\n    OrderId   INT,\n    ProductId INT,\n    Quantity  INT,\n    PRIMARY KEY (OrderId, ProductId) -- combination must be unique\n);</code></pre><h4>2. FOREIGN KEY</h4><pre><code class=\"language-sql\">-- Enforces referential integrity between tables\nCREATE TABLE Orders (\n    Id         INT PRIMARY KEY,\n    CustomerId INT NOT NULL,\n    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)\n        ON DELETE CASCADE    -- delete order when customer deleted\n        ON UPDATE CASCADE    -- update FK when PK changes\n);\n-- Can't insert an Order with a CustomerId that doesn't exist in Customers\n-- Can't delete a Customer who has Orders (without CASCADE)</code></pre><h4>3. UNIQUE</h4><pre><code class=\"language-sql\">-- Column value must be unique across the table (NULLs allowed)\nCREATE TABLE Users (\n    Id    INT PRIMARY KEY,\n    Email NVARCHAR(200) UNIQUE,  -- no two users with same email\n    Phone NVARCHAR(20)  UNIQUE   -- no two users with same phone\n);\n\n-- Composite unique constraint\nALTER TABLE Products\nADD CONSTRAINT UQ_Products_NameCategory UNIQUE (Name, CategoryId);\n-- Same product name allowed in different categories, not in the same category</code></pre><h4>4. NOT NULL</h4><pre><code class=\"language-sql\">CREATE TABLE Employees (\n    Id        INT PRIMARY KEY,\n    FirstName NVARCHAR(50) NOT NULL,  -- must always have a value\n    LastName  NVARCHAR(50) NOT NULL,\n    MiddleName NVARCHAR(50) NULL      -- optional (NULL = 'no value')\n);</code></pre><h4>5. CHECK</h4><pre><code class=\"language-sql\">-- Validates values against a condition\nCREATE TABLE Products (\n    Id       INT PRIMARY KEY,\n    Name     NVARCHAR(100) NOT NULL,\n    Price    DECIMAL(10,2) CHECK (Price >= 0),           -- no negative prices\n    Stock    INT           CHECK (Stock >= 0),           -- no negative stock\n    Rating   DECIMAL(2,1)  CHECK (Rating BETWEEN 0 AND 5),\n    Status   NVARCHAR(20)  CHECK (Status IN ('Active', 'Inactive', 'Discontinued'))\n);</code></pre><h4>6. DEFAULT</h4><pre><code class=\"language-sql\">-- Provides a default value when no value is specified\nCREATE TABLE Orders (\n    Id         INT PRIMARY KEY,\n    Status     NVARCHAR(20)   DEFAULT 'Pending',\n    CreatedAt  DATETIME2      DEFAULT GETUTCDATE(),\n    IsDeleted  BIT            DEFAULT 0\n);\n\n-- Using default\nINSERT INTO Orders (Id) VALUES (1);\n-- Status = 'Pending', CreatedAt = current UTC time, IsDeleted = 0</code></pre><h4>Adding constraints to existing tables:</h4><pre><code class=\"language-sql\">-- Named constraint (better -- you can reference it later to drop)\nALTER TABLE Employees\nADD CONSTRAINT CHK_Salary CHECK (Salary > 0),\nADD CONSTRAINT UQ_Employees_Email UNIQUE (Email);\n\n-- Drop a named constraint\nALTER TABLE Employees DROP CONSTRAINT CHK_Salary;</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between PRIMARY KEY and UNIQUE constraint?",
+          "answer": "<p>Both enforce uniqueness, but with important differences:</p><ul><li><strong>PRIMARY KEY</strong> — one per table, no NULLs allowed, always creates a clustered index (by default in SQL Server).</li><li><strong>UNIQUE</strong> — multiple per table, allows one NULL (in SQL Server — multiple NULLs in PostgreSQL), creates a non-clustered index by default.</li></ul><p>Example: <code>Employee</code> table — <code>Id</code> is PRIMARY KEY (identity, never null). <code>Email</code> is UNIQUE (must be distinct, but an unregistered user might not have one yet — though I'd argue email should be NOT NULL too). <code>NationalInsuranceNumber</code> is UNIQUE NOT NULL (every employee has one, each is unique, but it's not the system identifier).</p>"
+        }
+      ],
+      "tip": "<strong>Name all your constraints.</strong> AUTO-named constraints (SQL Server generates names like 'DF__Orders__Status__3B75D760') are hard to drop and manage in migrations. Always give them explicit names: CHK_Price, UQ_Email, FK_Orders_Customers. Your future self will thank you.",
+      "tags": [
+        "constraints",
+        "sql",
+        "primary-key",
+        "foreign-key",
+        "unique",
+        "check"
+      ],
+      "sortOrder": 48,
+      "isActive": true
     }
   ]
 }

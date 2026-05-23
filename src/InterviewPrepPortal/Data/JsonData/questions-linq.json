@@ -1,0 +1,173 @@
+{
+  "categoryId": "linq",
+  "questions": [
+    {
+      "id": "linq-001",
+      "category": "linq",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is LINQ in C#? What are the two syntax styles?",
+      "answer": "<p><strong>LINQ (Language Integrated Query)</strong> is a .NET feature that brings query capabilities directly into C#. It provides a uniform syntax to query any data source that implements <code>IEnumerable&lt;T&gt;</code> (in-memory collections) or <code>IQueryable&lt;T&gt;</code> (databases via EF Core, XML, etc.).</p><h4>Two syntax styles — both compile to identical IL:</h4><h4>Query Syntax (SQL-like)</h4><pre><code class=\"language-csharp\">var result = from emp in employees\n             where emp.Salary > 50000\n             orderby emp.Name ascending\n             select new { emp.Name, emp.Department };\n\n// With join\nvar query = from emp in employees\n            join dept in departments on emp.DeptId equals dept.Id\n            where emp.Salary > 50000\n            select new { emp.Name, DeptName = dept.Name };</code></pre><h4>Method Syntax (lambda chains — more common in practice)</h4><pre><code class=\"language-csharp\">var result = employees\n    .Where(emp => emp.Salary > 50000)\n    .OrderBy(emp => emp.Name)\n    .Select(emp => new { emp.Name, emp.Department });\n\n// With join\nvar query = employees\n    .Join(departments,\n          emp  => emp.DeptId,\n          dept => dept.Id,\n          (emp, dept) => new { emp.Name, DeptName = dept.Name })\n    .Where(x => x.Name != null);</code></pre><h4>LINQ data source types:</h4><ul><li><strong>LINQ to Objects</strong> — queries in-memory <code>IEnumerable&lt;T&gt;</code> collections. All C# is valid.</li><li><strong>LINQ to Entities (EF Core)</strong> — queries <code>IQueryable&lt;T&gt;</code>, translates to SQL. Only operations the provider can translate work.</li><li><strong>LINQ to XML</strong> — queries XDocument/XElement objects.</li><li><strong>LINQ to DataSet</strong> — queries ADO.NET DataSets.</li></ul>",
+      "followUps": [
+        {
+          "question": "When would you prefer query syntax over method syntax?",
+          "answer": "<p>Query syntax tends to be more readable for complex multi-table joins and grouping operations where the SQL-like structure is clearer:</p><pre><code class=\"language-csharp\">// Query syntax — cleaner for complex joins + grouping\nvar query = from o in orders\n            join c in customers on o.CustomerId equals c.Id\n            join p in products  on o.ProductId  equals p.Id\n            group o by c.Name into g\n            select new { Customer = g.Key, OrderCount = g.Count() };\n\n// Method syntax equivalent — harder to read with multiple joins\nvar query = orders\n    .Join(customers, o => o.CustomerId, c => c.Id, (o, c) => new { o, c })\n    .Join(products,  x => x.o.ProductId, p => p.Id, (x, p) => new { x.o, x.c, p })\n    .GroupBy(x => x.c.Name)\n    .Select(g => new { Customer = g.Key, OrderCount = g.Count() });</code></pre><p>In practice, most developers use method syntax for simple queries and query syntax for complex joins. There's no performance difference — both compile to the same code.</p>"
+        }
+      ],
+      "tip": "<strong>LINQ to Objects vs LINQ to Entities:</strong> LINQ to Objects runs all logic in C# memory. LINQ to Entities translates to SQL — only SQL-translatable operations work. If you call a custom C# method inside a LINQ to Entities query, it throws at runtime unless you first call .AsEnumerable() to switch to client-side evaluation.",
+      "tags": [
+        "linq",
+        "query-syntax",
+        "method-syntax",
+        "lambda",
+        "csharp"
+      ],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "linq-002",
+      "category": "linq",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is deferred execution vs immediate execution in LINQ?",
+      "answer": "<p>This is one of the most important LINQ concepts for writing correct, performant code.</p><h4>Deferred Execution</h4><p>A LINQ query is <strong>defined</strong> when you write it, but <strong>not executed</strong> until you actually iterate over the results. The query object is just a description of what to do — not the result.</p><p><strong>Operators that defer:</strong> <code>Where</code>, <code>Select</code>, <code>OrderBy</code>, <code>GroupBy</code>, <code>Join</code>, <code>Take</code>, <code>Skip</code>, <code>SelectMany</code></p><pre><code class=\"language-csharp\">var employees = new List&lt;Employee&gt; { ... };\n\n// QUERY IS DEFINED — no execution yet\nvar query = employees.Where(e => e.Salary > 50000);\n\n// Modify the source after defining the query\nemployees.Add(new Employee { Name = \"Alice\", Salary = 80000 });\n\n// QUERY EXECUTES NOW (foreach triggers execution)\nforeach (var emp in query) // Alice will be included!\n    Console.WriteLine(emp.Name);\n\n// Each iteration re-executes the query\nforeach (var emp in query) // executes again from scratch\n    Console.WriteLine(emp.Name);</code></pre><h4>Immediate Execution</h4><p>These operators force the query to execute right now and materialise the results into memory.</p><p><strong>Operators that execute immediately:</strong> <code>ToList()</code>, <code>ToArray()</code>, <code>ToDictionary()</code>, <code>Count()</code>, <code>First()</code>/<code>FirstOrDefault()</code>, <code>Single()</code>, <code>Any()</code>, <code>All()</code>, <code>Sum()</code>, <code>Max()</code>, <code>Min()</code>, <code>Average()</code></p><pre><code class=\"language-csharp\">// ToList() executes immediately — results are fixed at this point\nvar results = employees.Where(e => e.Salary > 50000).ToList();\n\n// Adding to source now has no effect on 'results'\nemployees.Add(new Employee { Name = \"Alice\", Salary = 80000 });\n// results still does not contain Alice</code></pre><h4>Practical impact:</h4><ul><li>In EF Core: deferred queries build up SQL and execute in one round-trip when materialised. Adding <code>.Where()</code> after another <code>.Where()</code> combines into one SQL query.</li><li>Call <code>.ToList()</code> when you want to snapshot results and prevent repeated database calls.</li><li>Don't call <code>.ToList()</code> prematurely in EF Core — it loads all data to memory before filtering.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the danger of deferred execution with EF Core?",
+          "answer": "<p>The classic mistake: calling <code>ToList()</code> too early, then filtering in memory:</p><pre><code class=\"language-csharp\">// BAD — loads ALL employees from DB, then filters in C# memory\nvar result = context.Employees.ToList()\n    .Where(e => e.DepartmentId == 5);\n// SELECT * FROM Employees  (loads 1M rows!)\n\n// GOOD — filter runs in SQL, only matching rows transferred\nvar result = context.Employees\n    .Where(e => e.DepartmentId == 5)\n    .ToList();\n// SELECT * FROM Employees WHERE DepartmentId = 5 (fast!)</code></pre><p>Also: N+1 problem — querying a list then accessing a navigation property in a loop triggers a separate query per row. Fix with <code>.Include()</code> to eager-load related data.</p>"
+        }
+      ],
+      "tip": "<strong>Rule:</strong> Keep LINQ queries deferred (IQueryable) as long as possible in EF Core to let the DB do the filtering. Only call ToList()/ToArray() when you need the data in memory.",
+      "tags": [
+        "linq",
+        "deferred-execution",
+        "immediate-execution",
+        "efcore",
+        "performance"
+      ],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "linq-003",
+      "category": "linq",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What are the most commonly used LINQ methods? Give examples of each.",
+      "answer": "<p>Here are the LINQ methods you'll use daily:</p><h4>Filtering</h4><pre><code class=\"language-csharp\">var adults   = people.Where(p => p.Age >= 18);\nvar first    = people.FirstOrDefault(p => p.Name == \"Alice\"); // null if not found\nvar single   = people.SingleOrDefault(p => p.Id == 5);        // throws if >1 match</code></pre><h4>Projection (transformation)</h4><pre><code class=\"language-csharp\">var names = people.Select(p => p.Name);\nvar dtos  = people.Select(p => new PersonDto { Id = p.Id, FullName = p.Name });\n\n// SelectMany — flatten nested collections\nvar allTags = posts.SelectMany(p => p.Tags); // each post has a list of tags</code></pre><h4>Ordering</h4><pre><code class=\"language-csharp\">var sorted    = people.OrderBy(p => p.LastName).ThenBy(p => p.FirstName);\nvar descSorted = people.OrderByDescending(p => p.Age);</code></pre><h4>Aggregation</h4><pre><code class=\"language-csharp\">int    count   = employees.Count(e => e.DeptId == 3);\ndecimal total  = orders.Sum(o => o.Amount);\ndecimal avg    = employees.Average(e => e.Salary);\ndecimal max    = employees.Max(e => e.Salary);\ndecimal min    = employees.Min(e => e.Salary);</code></pre><h4>Paging</h4><pre><code class=\"language-csharp\">int page = 2, pageSize = 10;\nvar paged = products.Skip((page - 1) * pageSize).Take(pageSize);</code></pre><h4>Set operations</h4><pre><code class=\"language-csharp\">var unique   = list1.Distinct();\nvar combined = list1.Union(list2);     // distinct union\nvar both     = list1.Intersect(list2); // items in both\nvar diff     = list1.Except(list2);    // in list1 but not list2</code></pre><h4>Quantifiers</h4><pre><code class=\"language-csharp\">bool hasAdults = people.Any(p => p.Age >= 18);  // true if any match\nbool allAdult  = people.All(p => p.Age >= 18);  // true if all match\nbool hasAlice  = people.Any(p => p.Name == \"Alice\");</code></pre><h4>Grouping</h4><pre><code class=\"language-csharp\">var byDept = employees\n    .GroupBy(e => e.DepartmentId)\n    .Select(g => new { DeptId = g.Key, Count = g.Count(), Avg = g.Average(e => e.Salary) });</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between First() and Single()?",
+          "answer": "<p><code>First()</code> returns the first matching element. It doesn't care if there are multiple matches. <code>Single()</code> asserts there is exactly one match — it throws <code>InvalidOperationException</code> if zero or more than one element matches.</p><ul><li><code>First()</code> — use when you want the top result and duplicates are expected/acceptable.</li><li><code>Single()</code> — use when you know (and enforce) uniqueness, e.g., looking up by primary key.</li><li><code>FirstOrDefault()</code> / <code>SingleOrDefault()</code> — same but return <code>null</code> (or default value) instead of throwing when no match is found.</li></ul><p><strong>With LINQ to Entities:</strong> <code>Single()</code> generates <code>SELECT TOP 2</code> SQL to check for duplicates. <code>First()</code> generates <code>SELECT TOP 1</code>. For primary key lookups where you know it's unique, <code>FirstOrDefault()</code> is slightly more efficient than <code>SingleOrDefault()</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Null safety in C# 8+:</strong> FirstOrDefault() can return null for reference types. In nullable contexts, the return type is T? — handle the null case explicitly to avoid NullReferenceException.",
+      "tags": [
+        "linq",
+        "where",
+        "select",
+        "groupby",
+        "aggregate",
+        "csharp"
+      ],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "linq-004",
+      "category": "linq",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you implement a LEFT JOIN in LINQ? What is the difference from an INNER JOIN?",
+      "answer": "<p>LINQ's <code>Join()</code> method performs an <strong>INNER JOIN</strong> — only elements with matching keys on both sides are included. For a <strong>LEFT JOIN</strong> (include all left elements, null for non-matching right), use <code>GroupJoin()</code> combined with <code>SelectMany()</code> and <code>DefaultIfEmpty()</code>.</p><h4>INNER JOIN (Join)</h4><pre><code class=\"language-csharp\">// Method syntax\nvar innerJoin = employees\n    .Join(departments,\n          emp  => emp.DepartmentId,     // key selector from left (employees)\n          dept => dept.Id,              // key selector from right (departments)\n          (emp, dept) => new            // result selector\n          {\n              emp.Name,\n              DeptName = dept.Name\n          });\n// Only employees who have a matching department are included</code></pre><h4>LEFT JOIN (GroupJoin + SelectMany + DefaultIfEmpty)</h4><pre><code class=\"language-csharp\">// Method syntax\nvar leftJoin = employees\n    .GroupJoin(\n        departments,\n        emp  => emp.DepartmentId,\n        dept => dept.Id,\n        (emp, depts) => new { emp, depts })\n    .SelectMany(\n        x => x.depts.DefaultIfEmpty(), // DefaultIfEmpty() = null if no matching dept\n        (x, dept) => new\n        {\n            x.emp.Name,\n            DeptName = dept?.Name ?? \"No Department\" // null-safe\n        });\n\n// Query syntax (easier to read for left join)\nvar leftJoin = from emp in employees\n               join dept in departments\n                   on emp.DepartmentId equals dept.Id\n                   into deptGroup          // group join\n               from dept in deptGroup.DefaultIfEmpty() // flatten with default\n               select new\n               {\n                   emp.Name,\n                   DeptName = dept == null ? \"No Department\" : dept.Name\n               };</code></pre>",
+      "followUps": [
+        {
+          "question": "When should you use LINQ joins vs navigation properties in EF Core?",
+          "answer": "<p>In EF Core, if you have proper navigation properties defined, you rarely need explicit LINQ joins. EF Core translates navigation property access into the appropriate JOINs automatically:</p><pre><code class=\"language-csharp\">// Navigation property — no explicit join needed\nvar query = context.Employees\n    .Include(e => e.Department)  // LEFT JOIN Departments ON ...\n    .Where(e => e.Department.Name == \"Engineering\")\n    .Select(e => new { e.Name, e.Department.Name });\n\n// Explicit LINQ join — needed when no navigation property exists\n// or when joining on non-FK columns\nvar query = context.Employees\n    .Join(context.Departments, e => e.DeptCode, d => d.Code,\n          (e, d) => new { e.Name, d.Name });</code></pre><p>Prefer navigation properties — they're cleaner and EF Core generates efficient SQL. Use explicit LINQ joins for non-standard join conditions.</p>"
+        }
+      ],
+      "tip": "<strong>Query syntax for left joins:</strong> The query syntax version with 'into' and 'DefaultIfEmpty()' is significantly more readable than the method syntax. This is one case where query syntax wins.",
+      "tags": [
+        "linq",
+        "join",
+        "left-join",
+        "groupjoin",
+        "efcore"
+      ],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "linq-005",
+      "category": "linq",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How does GroupBy work in LINQ? Give a practical example with multiple aggregates.",
+      "answer": "<p><code>GroupBy</code> groups elements by a key and returns an <code>IEnumerable&lt;IGrouping&lt;TKey, TElement&gt;&gt;</code>. Each group has a <code>Key</code> property and is itself an enumerable of the elements in that group.</p><h4>Basic GroupBy:</h4><pre><code class=\"language-csharp\">var byDept = employees.GroupBy(e => e.DepartmentId);\n\nforeach (var group in byDept)\n{\n    Console.WriteLine($\"Dept {group.Key}: {group.Count()} employees\");\n    foreach (var emp in group)\n        Console.WriteLine($\"  - {emp.Name}\");\n}</code></pre><h4>With Select to project into a summary:</h4><pre><code class=\"language-csharp\">var deptSummary = employees\n    .GroupBy(e => e.DepartmentId)\n    .Select(g => new\n    {\n        DepartmentId = g.Key,\n        HeadCount    = g.Count(),\n        AvgSalary    = g.Average(e => e.Salary),\n        MaxSalary    = g.Max(e => e.Salary),\n        MinSalary    = g.Min(e => e.Salary),\n        TotalPayroll = g.Sum(e => e.Salary),\n        Names        = g.Select(e => e.Name).ToList()\n    })\n    .OrderByDescending(x => x.HeadCount);\n</code></pre><h4>Group by multiple keys (anonymous type):</h4><pre><code class=\"language-csharp\">var byDeptAndYear = employees\n    .GroupBy(e => new { e.DepartmentId, Year = e.HireDate.Year })\n    .Select(g => new\n    {\n        g.Key.DepartmentId,\n        g.Key.Year,\n        Count = g.Count()\n    });\n</code></pre><h4>Equivalent SQL:</h4><pre><code class=\"language-sql\">SELECT DepartmentId, COUNT(*) AS HeadCount,\n       AVG(Salary), MAX(Salary), MIN(Salary), SUM(Salary)\nFROM Employees\nGROUP BY DepartmentId\nORDER BY HeadCount DESC;</code></pre>",
+      "followUps": [
+        {
+          "question": "How does ToLookup differ from GroupBy?",
+          "answer": "<p>Both group elements by a key, but they have different execution models:</p><ul><li><code>GroupBy</code> — deferred execution. Returns an IEnumerable of groups. The grouping happens when you iterate.</li><li><code>ToLookup()</code> — immediate execution. Creates a <code>Lookup&lt;TKey, TElement&gt;</code> in memory — a dictionary-like structure you can index into directly. Best when you need to look up groups repeatedly by key.</li></ul><pre><code class=\"language-csharp\">// ToLookup — immediate, use when you need random access by key\nvar lookup = employees.ToLookup(e => e.DepartmentId);\n\nvar engineeringTeam = lookup[3]; // O(1) access by key — no re-enumeration\nvar hrTeam = lookup[5];\n\n// GroupBy — deferred, use when streaming/building SQL queries\nvar groups = employees.GroupBy(e => e.DepartmentId); // no execution yet</code></pre>"
+        }
+      ],
+      "tip": "<strong>GroupBy returns groups, not a flat list.</strong> Always follow GroupBy with .Select() to project the groups into summary objects. Forgetting .Select() and trying to use the raw IGrouping is a common beginner mistake.",
+      "tags": [
+        "linq",
+        "groupby",
+        "aggregate",
+        "tolookup"
+      ],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "linq-006",
+      "category": "linq",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the difference between LINQ to Objects and LINQ to Entities? What operations are not translatable?",
+      "answer": "<p>This distinction is critical for EF Core developers — mixing them up causes runtime exceptions or silent performance disasters.</p><h4>LINQ to Objects</h4><ul><li>Operates on in-memory <code>IEnumerable&lt;T&gt;</code> collections.</li><li>Any valid C# code can appear in a lambda — custom methods, string operations, complex logic.</li><li>Executes entirely in the .NET runtime.</li><li>No translation — all logic runs in C#.</li></ul><h4>LINQ to Entities (EF Core)</h4><ul><li>Operates on <code>IQueryable&lt;T&gt;</code> from EF Core's <code>DbSet&lt;T&gt;</code>.</li><li>EF Core's LINQ provider translates the expression tree to SQL.</li><li><strong>Only operations the SQL provider can translate work</strong>. Custom C# methods cannot be translated.</li></ul><h4>Common non-translatable operations:</h4><pre><code class=\"language-csharp\">// THROWS at runtime — EF Core can't translate a custom C# method\nvar result = context.Products\n    .Where(p => MyCustomValidation(p.Name)) // can't translate!\n    .ToList();\n\n// FIX — move to client-side after initial query\nvar result = context.Products\n    .Where(p => p.IsActive) // translatable — stays SQL\n    .AsEnumerable()          // switch to LINQ to Objects\n    .Where(p => MyCustomValidation(p.Name)) // runs in C# memory\n    .ToList();\n\n// Other non-translatable examples:\n.Where(p => p.Name.Contains(someVar, StringComparison.OrdinalIgnoreCase)) // comparison overload not translatable\n.Where(p => new List&lt;int&gt; { 1,2,3 }.Contains(p.Id)) // this IS translatable (generates IN clause)\n\n// Translatable operations:\n.Where(p => p.Name.StartsWith(\"A\"))     // translates to LIKE 'A%'\n.Where(p => p.Name.ToLower() == \"test\") // translates to LOWER() = 'test'\n.Where(p => EF.Functions.Like(p.Name, \"%test%\")) // explicit LIKE</code></pre>",
+      "followUps": [
+        {
+          "question": "What is AsEnumerable() vs AsQueryable() and when do you use each?",
+          "answer": "<p><code>.AsEnumerable()</code> — switches from <code>IQueryable</code> (database) to <code>IEnumerable</code> (client-side). All subsequent LINQ operations run in C# memory. Use it when you need to apply operations EF Core can't translate to SQL. <strong>Warning:</strong> Everything before <code>.AsEnumerable()</code> runs in SQL; everything after runs in memory. Call it as late as possible to minimise data transferred from the DB.</p><p><code>.AsQueryable()</code> — wraps an <code>IEnumerable</code> as <code>IQueryable</code> so you can compose it with methods that accept <code>IQueryable</code>. Useful when building dynamic query predicates. Does NOT send queries to a database; if the source is already in-memory, the 'queries' still run in-memory.</p>"
+        }
+      ],
+      "tip": "<strong>Golden rule for EF Core LINQ:</strong> Keep everything as IQueryable (avoid AsEnumerable) until you've applied all filters, projections, and ordering. The DB should do the heavy lifting. Only materialise (ToList/AsEnumerable) when you need C#-only operations.",
+      "tags": [
+        "linq",
+        "efcore",
+        "iqueryable",
+        "ienumerable",
+        "translation"
+      ],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "linq-007",
+      "category": "linq",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "How do you use Aggregate() in LINQ? What is it equivalent to?",
+      "answer": "<p><code>Aggregate()</code> is LINQ's general-purpose fold/reduce operation. It applies a function to an accumulator and each element, returning a single accumulated result. It's equivalent to <code>Array.reduce()</code> in JavaScript or <code>functools.reduce()</code> in Python.</p><pre><code class=\"language-csharp\">// Sum using Aggregate (equivalent to .Sum())\nint total = numbers.Aggregate(0, (acc, n) => acc + n);\n\n// Product of all numbers\nint product = numbers.Aggregate(1, (acc, n) => acc * n);\n\n// String join using Aggregate (equivalent to string.Join(\",\", ...))\nstring csv = words.Aggregate((acc, word) => acc + \", \" + word);\n// More efficient: string.Join(\", \", words)\n\n// Find the longest string\nstring longest = words.Aggregate(\"\", (acc, w) => w.Length > acc.Length ? w : acc);\n\n// Build a complex object\nvar summary = employees.Aggregate(\n    new { Total = 0m, Count = 0 },\n    (acc, emp) => new { Total = acc.Total + emp.Salary, Count = acc.Count + 1 },\n    acc => new { AvgSalary = acc.Total / acc.Count, acc.Count });\n</code></pre><h4>Three Aggregate overloads:</h4><ol><li><code>Aggregate(func)</code> — uses first element as seed, throws on empty sequence.</li><li><code>Aggregate(seed, func)</code> — uses provided seed value, safe on empty sequence.</li><li><code>Aggregate(seed, func, resultSelector)</code> — additionally transforms the final accumulated value.</li></ol><p>In practice, prefer the built-in aggregates (<code>Sum</code>, <code>Max</code>, <code>Count</code>, <code>Average</code>) for simple operations — they're more readable and EF Core can translate them to SQL. Use <code>Aggregate</code> for custom fold logic that the built-ins can't express.</p>",
+      "followUps": [
+        {
+          "question": "What is Zip() in LINQ?",
+          "answer": "<p><code>Zip()</code> merges two sequences element by element, pairing elements at matching positions:</p><pre><code class=\"language-csharp\">var names  = new[] { \"Alice\", \"Bob\", \"Charlie\" };\nvar scores = new[] { 95, 87, 92 };\n\nvar results = names.Zip(scores, (name, score) => $\"{name}: {score}\");\n// Alice: 95\n// Bob: 87\n// Charlie: 92\n\n// C# 8+ Tuple overload\nvar pairs = names.Zip(scores); // IEnumerable&lt;(string, int)&gt;\nforeach (var (name, score) in pairs)\n    Console.WriteLine($\"{name}: {score}\");</code></pre><p>The result length is the minimum of both sequences — if one sequence is shorter, the extra elements from the longer sequence are ignored.</p>"
+        }
+      ],
+      "tip": "<strong>Prefer readable aggregates:</strong> Use Sum(), Max(), Count() etc. instead of Aggregate() where possible — they're clearer and EF Core translates them to SQL. Use Aggregate() when you need custom folding logic that built-ins can't handle.",
+      "tags": [
+        "linq",
+        "aggregate",
+        "reduce",
+        "fold",
+        "functional"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    }
+  ]
+}
