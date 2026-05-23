@@ -311,9 +311,18 @@
       "question": "What are shadow properties in EF Core? When would you use them?",
       "answer": "<p>Shadow properties are properties that exist in the EF Core model and database schema but are <strong>not</strong> defined as a C# property on the entity class. EF tracks them internally via <code>ChangeTracker</code> — you can query and set them using the <code>EF.Property&lt;T&gt;</code> method.</p><pre><code class=\"language-csharp\">// Entity without shadow property defined on it\npublic class Product\n{\n    public int Id { get; set; }\n    public string Name { get; set; }\n    // No 'CreatedAt' property here!\n}\n\n// Configure shadow property in OnModelCreating\nprotected override void OnModelCreating(ModelBuilder modelBuilder)\n{\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;DateTime&gt;(\"CreatedAt\") // shadow property\n        .HasDefaultValueSql(\"GETUTCDATE()\");\n\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;string&gt;(\"LastModifiedBy\"); // another shadow property\n}\n\n// Querying with shadow property\nvar recentProducts = context.Products\n    .Where(p => EF.Property&lt;DateTime&gt;(p, \"CreatedAt\") > DateTime.UtcNow.AddDays(-7))\n    .ToList();\n\n// Setting a shadow property before SaveChanges\nvar product = new Product { Name = \"Widget\" };\ncontext.Products.Add(product);\ncontext.Entry(product).Property(\"LastModifiedBy\").CurrentValue = \"darshan@company.com\";\nawait context.SaveChangesAsync();\n\n// Useful pattern: set audit fields globally via SaveChanges override\npublic override Task&lt;int&gt; SaveChangesAsync(CancellationToken ct = default)\n{\n    var entries = ChangeTracker.Entries&lt;Product&gt;()\n        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);\n    foreach (var entry in entries)\n    {\n        entry.Property(\"UpdatedAt\").CurrentValue = DateTime.UtcNow;\n    }\n    return base.SaveChangesAsync(ct);\n}</code></pre><p><strong>When I actually use shadow properties:</strong></p><ul><li><strong>Audit columns</strong> (CreatedAt, UpdatedAt, CreatedBy) that I want in the DB but not cluttering every entity class</li><li><strong>Foreign key columns</strong> that EF creates automatically for navigation properties without a corresponding FK property on the class</li><li><strong>Soft-delete flags</strong> on a base class without exposing them to all consumers</li></ul>",
       "followUps": [
-        "How do shadow properties differ from owned entity types?",
-        "Can you index a shadow property?",
-        "How do you access shadow properties outside of a LINQ query?"
+        {
+          "question": "How do shadow properties differ from owned entity types?",
+          "answer": ""
+        },
+        {
+          "question": "Can you index a shadow property?",
+          "answer": ""
+        },
+        {
+          "question": "How do you access shadow properties outside of a LINQ query?",
+          "answer": ""
+        }
       ],
       "tip": "Shadow properties = DB columns tracked by EF but not on the C# class. Best use: audit columns (CreatedAt, UpdatedBy) that you want in every table without polluting your domain model. Access via EF.Property<T>() or ChangeTracker.",
       "tags": [

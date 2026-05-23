@@ -26,6 +26,7 @@ public class Question
     public ProjectExample? ProjectExample { get; set; }
 
     [JsonPropertyName("followUps")]
+    [JsonConverter(typeof(FollowUpListConverter))]
     public List<FollowUp> FollowUps { get; set; } = [];
 
     [JsonPropertyName("followUpAnswers")]

@@ -223,9 +223,18 @@
       "question": "What is the structure of a JWT token? Explain Header, Payload, and Signature.",
       "answer": "<p>A JWT (JSON Web Token) is three Base64Url-encoded JSON objects concatenated with dots: <code>Header.Payload.Signature</code></p>\n\n<h4>The three parts:</h4>\n<pre><code>// Full JWT looks like this:\neyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJuYW1lIjoiSm9obiIsInJvbGUiOiJBZG1pbiIsImV4cCI6MTcwMDAwMDAwMH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</code></pre>\n\n<h4>1. Header — algorithm metadata</h4>\n<pre><code>{\n  \"alg\": \"HS256\",   // HMAC SHA-256 (symmetric) or RS256 (asymmetric)\n  \"typ\": \"JWT\"\n}</code></pre>\n\n<h4>2. Payload — claims (the actual data)</h4>\n<pre><code>{\n  \"sub\": \"user-123\",        // Subject — usually user ID\n  \"name\": \"John Darshan\",   // Custom claim\n  \"email\": \"john@abc.com\",\n  \"role\": \"Admin\",          // Custom claim for authorization\n  \"iat\": 1700000000,        // Issued At (Unix timestamp)\n  \"exp\": 1700003600,        // Expiry (1 hour from iat)\n  \"iss\": \"myapp.com\",       // Issuer\n  \"aud\": \"myapp-api\"        // Audience\n}</code></pre>\n\n<h4>3. Signature — tamper protection</h4>\n<pre><code>// For HS256 (symmetric — same secret for sign and verify):\nHMACSHA256(\n    base64url(header) + \".\" + base64url(payload),\n    secretKey\n)\n\n// For RS256 (asymmetric — sign with private key, verify with public key):\n// Private key signs → Public key verifies\n// Better for microservices where multiple services verify tokens</code></pre>\n\n<h4>Key security points:</h4>\n<ul>\n<li>The payload is <strong>Base64 encoded, NOT encrypted</strong> — anyone can decode it. Never put passwords or sensitive PII in JWT payload</li>\n<li>The signature <em>proves integrity</em> — if anyone tampers with header or payload, signature validation fails</li>\n<li>Short expiry (15-60 min) + refresh tokens = best practice</li>\n</ul>\n\n<h4>In ASP.NET Core — reading claims from JWT:</h4>\n<pre><code>[HttpGet(\"profile\")]\n[Authorize]\npublic IActionResult GetProfile()\n{\n    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;\n    var email  = User.FindFirst(ClaimTypes.Email)?.Value;\n    var role   = User.FindFirst(ClaimTypes.Role)?.Value;\n    \n    return Ok(new { userId, email, role });\n}</code></pre>\n\n<p>I use jwt.io to decode tokens during debugging — you paste the token and see the header and payload instantly. Remember: the decoded payload is visible to anyone, so treat it as public data.</p>",
       "followUps": [
-        "What is the difference between HS256 and RS256 signing algorithms?",
-        "Why should JWT expiry be short? What is the recommended lifetime?",
-        "How do you revoke a JWT before it expires?"
+        {
+          "question": "What is the difference between HS256 and RS256 signing algorithms?",
+          "answer": ""
+        },
+        {
+          "question": "Why should JWT expiry be short? What is the recommended lifetime?",
+          "answer": ""
+        },
+        {
+          "question": "How do you revoke a JWT before it expires?",
+          "answer": ""
+        }
       ],
       "tip": "JWT payload is Base64 encoded, NOT encrypted. Never store passwords or credit cards in it. Use short expiry (15-60 min) + refresh tokens.",
       "tags": [
@@ -248,9 +257,18 @@
       "question": "What is a Refresh Token? How do you implement token refresh in ASP.NET Core?",
       "answer": "<p>A refresh token is a long-lived credential used to obtain new access tokens (JWTs) without requiring the user to log in again. It solves the problem of short-lived JWTs — you want short expiry for security but don't want to force re-login every 15 minutes.</p>\n\n<h4>The token flow:</h4>\n<pre><code>// 1. Login — server returns both tokens\nPOST /api/auth/login\n→ {\n    \"accessToken\": \"eyJ...\",   // short-lived, e.g. 15 minutes\n    \"refreshToken\": \"abc123...\", // long-lived, e.g. 7-30 days\n    \"expiresIn\": 900\n  }\n\n// 2. Use access token for API calls\nGET /api/orders\nAuthorization: Bearer eyJ...\n\n// 3. When access token expires — use refresh token to get a new one\nPOST /api/auth/refresh\n{ \"refreshToken\": \"abc123...\" }\n→ {\n    \"accessToken\": \"eyJ...(new token)\",\n    \"refreshToken\": \"xyz789...(rotated refresh token)\"\n  }\n\n// 4. On logout — revoke refresh token\nPOST /api/auth/logout\n{ \"refreshToken\": \"xyz789...\" }</code></pre>\n\n<h4>Implementation in ASP.NET Core:</h4>\n<pre><code>// Store refresh tokens in DB (hashed)\npublic class RefreshToken\n{\n    public int Id { get; set; }\n    public string TokenHash { get; set; }  // bcrypt hash of token\n    public string UserId { get; set; }\n    public DateTime ExpiresAt { get; set; }\n    public bool IsRevoked { get; set; }\n    public DateTime CreatedAt { get; set; }\n}\n\n// Refresh endpoint\n[HttpPost(\"refresh\")]\n[AllowAnonymous]\npublic async Task&lt;IActionResult&gt; Refresh([FromBody] RefreshRequest request)\n{\n    var tokenHash = HashToken(request.RefreshToken);\n    var stored = await _db.RefreshTokens\n        .FirstOrDefaultAsync(t => t.TokenHash == tokenHash \n                               && !t.IsRevoked \n                               && t.ExpiresAt > DateTime.UtcNow);\n    \n    if (stored == null) return Unauthorized(\"Invalid or expired refresh token\");\n    \n    // Rotate: revoke old token, issue new pair\n    stored.IsRevoked = true;\n    \n    var newAccessToken  = _jwtService.GenerateAccessToken(stored.UserId);\n    var newRefreshToken = GenerateRefreshToken();\n    \n    _db.RefreshTokens.Add(new RefreshToken {\n        TokenHash  = HashToken(newRefreshToken),\n        UserId     = stored.UserId,\n        ExpiresAt  = DateTime.UtcNow.AddDays(7)\n    });\n    \n    await _db.SaveChangesAsync();\n    \n    return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });\n}\n\nprivate string GenerateRefreshToken()\n    => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));</code></pre>\n\n<h4>Security rules:</h4>\n<ul>\n<li><strong>Rotate refresh tokens</strong> on every use — if a stolen token is used, you detect it when the legitimate user's token is rejected</li>\n<li>Store tokens <em>hashed</em> in DB, never plaintext</li>\n<li>Revoke on logout — clear from DB</li>\n<li>Store access token in memory (JS), refresh token in httpOnly cookie</li>\n<li>Refresh tokens <em>must</em> be revokable (unlike stateless JWTs)</li>\n</ul>",
       "followUps": [
-        "Where should you store access tokens and refresh tokens on the client?",
-        "What is refresh token rotation and why does it help detect theft?",
-        "How do you invalidate all active sessions for a user (e.g., after password change)?"
+        {
+          "question": "Where should you store access tokens and refresh tokens on the client?",
+          "answer": ""
+        },
+        {
+          "question": "What is refresh token rotation and why does it help detect theft?",
+          "answer": ""
+        },
+        {
+          "question": "How do you invalidate all active sessions for a user (e.g., after password change)?",
+          "answer": ""
+        }
       ],
       "tip": "Rotate refresh tokens on every use — if you detect an already-used token, it means token theft — revoke ALL tokens for that user immediately.",
       "tags": [

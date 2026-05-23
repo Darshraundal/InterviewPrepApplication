@@ -1333,9 +1333,18 @@
       "question": "What are the types of database relationships? Explain one-to-one, one-to-many, and many-to-many.",
       "answer": "<p>Database relationships define how tables relate to each other. There are three fundamental types:</p>\n\n<h4>1. One-to-One (1:1)</h4>\n<p>Each row in Table A maps to exactly one row in Table B. Used when you want to split a large table or store optional data separately.</p>\n<pre><code>-- Person and Passport (a person has at most one passport)\nCREATE TABLE Person (\n    PersonId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Passport (\n    PassportId INT PRIMARY KEY,\n    PersonId INT UNIQUE,  -- UNIQUE enforces 1:1\n    PassportNumber NVARCHAR(50),\n    FOREIGN KEY (PersonId) REFERENCES Person(PersonId)\n);</code></pre>\n\n<h4>2. One-to-Many (1:N)</h4>\n<p>The most common relationship. One row in Table A can have many rows in Table B. The foreign key goes on the \"many\" side.</p>\n<pre><code>-- Customer and Orders (one customer, many orders)\nCREATE TABLE Customer (\n    CustomerId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Orders (\n    OrderId INT PRIMARY KEY,\n    CustomerId INT,  -- FK on the many side\n    OrderDate DATE,\n    FOREIGN KEY (CustomerId) REFERENCES Customer(CustomerId)\n);</code></pre>\n\n<h4>3. Many-to-Many (M:N)</h4>\n<p>Requires a <strong>junction table</strong> (also called bridge or associative table) to break it into two 1:N relationships. A student can enroll in many courses; a course can have many students.</p>\n<pre><code>CREATE TABLE Student (StudentId INT PRIMARY KEY, Name NVARCHAR(100));\nCREATE TABLE Course  (CourseId  INT PRIMARY KEY, Title NVARCHAR(100));\n\n-- Junction table\nCREATE TABLE StudentCourse (\n    StudentId INT,\n    CourseId  INT,\n    EnrolledOn DATE,\n    PRIMARY KEY (StudentId, CourseId),  -- composite PK prevents duplicates\n    FOREIGN KEY (StudentId) REFERENCES Student(StudentId),\n    FOREIGN KEY (CourseId)  REFERENCES Course(CourseId)\n);</code></pre>\n\n<p>In EF Core, many-to-many is handled automatically with a skip navigation (<code>student.Courses</code> ↔ <code>course.Students</code>). EF Core 5+ creates the junction table implicitly, but I often define it explicitly if I need to store extra columns on the relationship (like <code>EnrolledOn</code>).</p>",
       "followUps": [
-        "How do you implement many-to-many in EF Core?",
-        "What is a composite primary key?",
-        "When would you use a one-to-one relationship instead of putting everything in one table?"
+        {
+          "question": "How do you implement many-to-many in EF Core?",
+          "answer": ""
+        },
+        {
+          "question": "What is a composite primary key?",
+          "answer": ""
+        },
+        {
+          "question": "When would you use a one-to-one relationship instead of putting everything in one table?",
+          "answer": ""
+        }
       ],
       "tip": "For many-to-many, always create a named junction entity in EF Core if the relationship has extra data.",
       "tags": [
@@ -1357,9 +1366,18 @@
       "question": "What is SET NOCOUNT ON/OFF in SQL Server? When should you use it?",
       "answer": "<p><code>SET NOCOUNT ON</code> suppresses the \"X rows affected\" messages that SQL Server sends back to the client after every INSERT, UPDATE, DELETE, or SELECT statement.</p>\n\n<h4>Why it matters in stored procedures:</h4>\n<pre><code>CREATE PROCEDURE uspGetOrderSummary\nAS\nBEGIN\n    SET NOCOUNT ON;  -- suppress row-count messages\n\n    SELECT o.OrderId, o.CustomerName, SUM(oi.Amount) AS Total\n    FROM Orders o\n    JOIN OrderItems oi ON o.OrderId = oi.OrderId\n    GROUP BY o.OrderId, o.CustomerName;\nEND</code></pre>\n\n<h4>Benefits of SET NOCOUNT ON:</h4>\n<ol>\n<li><strong>Performance</strong> — reduces network traffic, especially in loops or stored procs that execute many DML statements</li>\n<li><strong>ORM compatibility</strong> — ORMs like EF Core use row counts to validate updates. If a stored proc doesn't use <code>SET NOCOUNT ON</code> and returns extra result sets, it can confuse EF's optimistic concurrency check</li>\n<li><strong>Cleaner output</strong> — when calling from application code via ADO.NET or Dapper, you don't get spurious \"1 row(s) affected\" messages mixed in</li>\n</ol>\n\n<h4>When NOT to use it:</h4>\n<p>If you're calling a stored proc from legacy code that checks <code>@@ROWCOUNT</code> or relies on the row-count messages for logic — but honestly, in modern code you'd use <code>OUTPUT</code> params or return values instead.</p>\n\n<p>I make it a habit to always put <code>SET NOCOUNT ON</code> at the top of every stored procedure I write. It's a minor thing but it's considered best practice and interviewers notice it.</p>",
       "followUps": [
-        "How is @@ROWCOUNT affected by SET NOCOUNT ON?",
-        "What is SET XACT_ABORT ON and when do you use it?",
-        "Does SET NOCOUNT ON improve performance significantly?"
+        {
+          "question": "How is @@ROWCOUNT affected by SET NOCOUNT ON?",
+          "answer": ""
+        },
+        {
+          "question": "What is SET XACT_ABORT ON and when do you use it?",
+          "answer": ""
+        },
+        {
+          "question": "Does SET NOCOUNT ON improve performance significantly?",
+          "answer": ""
+        }
       ],
       "tip": "Always add SET NOCOUNT ON at the top of stored procedures — it's a best practice question.",
       "tags": [
@@ -1380,9 +1398,18 @@
       "question": "What is RAISERROR in SQL Server? How does it differ from THROW?",
       "answer": "<p>Both <code>RAISERROR</code> and <code>THROW</code> raise errors in T-SQL, but <code>THROW</code> (introduced in SQL Server 2012) is the modern approach and I always use it in new code.</p>\n\n<h4>RAISERROR (legacy)</h4>\n<pre><code>-- Old way\nIF @UserId IS NULL\nBEGIN\n    RAISERROR('UserId cannot be null', 16, 1);\n    -- Severity 16 = user error, State 1 = arbitrary\n    RETURN;\nEND\n\n-- With formatting\nRAISERROR('Order %d not found for user %s', 16, 1, @OrderId, @UserName);</code></pre>\n\n<h4>THROW (modern — SQL Server 2012+)</h4>\n<pre><code>-- New way\nIF @UserId IS NULL\nBEGIN\n    THROW 50001, 'UserId cannot be null', 1;\n    -- Error number, message, state\nEND\n\n-- Re-throw inside CATCH (preserves original error)\nBEGIN TRY\n    -- risky operation\nEND CATCH\n    THROW;  -- re-throws with original error number/message/line\nEND CATCH</code></pre>\n\n<h4>Key differences:</h4>\n<table>\n<tr><th>Feature</th><th>RAISERROR</th><th>THROW</th></tr>\n<tr><td>Syntax</td><td>Complex with severity/state</td><td>Simpler</td></tr>\n<tr><td>Re-throw original</td><td>Cannot easily</td><td>THROW; (no args) re-throws exactly</td></tr>\n<tr><td>Aborts batch</td><td>Depends on severity</td><td>Always aborts after THROW</td></tr>\n<tr><td>SET XACT_ABORT</td><td>Doesn't auto-rollback</td><td>Respects XACT_ABORT</td></tr>\n</table>\n\n<p>In practice: I use <code>THROW</code> in all new stored procedures and wrap risky code in <code>TRY...CATCH</code>. I use <code>THROW;</code> (bare, no arguments) in CATCH blocks to re-raise the original exception back to the application layer where the actual error handling and logging happens.</p>",
       "followUps": [
-        "What is TRY...CATCH in T-SQL?",
-        "What does SET XACT_ABORT ON do with THROW?",
-        "What are user-defined error numbers (50001+) in SQL Server?"
+        {
+          "question": "What is TRY...CATCH in T-SQL?",
+          "answer": ""
+        },
+        {
+          "question": "What does SET XACT_ABORT ON do with THROW?",
+          "answer": ""
+        },
+        {
+          "question": "What are user-defined error numbers (50001+) in SQL Server?",
+          "answer": ""
+        }
       ],
       "tip": "THROW re-raises the original error cleanly — RAISERROR can't do that. Use THROW in new code.",
       "tags": [
@@ -1404,9 +1431,18 @@
       "question": "What is the difference between a Table Scan, Index Scan, and Index Seek in SQL Server?",
       "answer": "<p>These three terms come up constantly when you're reading execution plans, and understanding the difference directly impacts how you optimize queries.</p>\n\n<h4>Table Scan</h4>\n<p>SQL Server reads every single row in the table from beginning to end. This happens when:</p>\n<ul>\n<li>There's no useful index on the filtered columns</li>\n<li>The optimizer estimates it's cheaper than an index (e.g., returning &gt;30% of rows)</li>\n<li>The table is very small (heap scan is fast on small tables)</li>\n</ul>\n<pre><code>-- This will likely cause a Table Scan if no index on LastName\nSELECT * FROM Employees WHERE LastName LIKE '%smith%'\n-- LIKE with leading wildcard can't use index efficiently</code></pre>\n\n<h4>Index Scan</h4>\n<p>SQL Server reads all (or most) leaf-level pages of an index rather than the whole table. Still sequential, but faster than a table scan if the index is narrower than the table. It happens when:</p>\n<ul>\n<li>An index exists but the query doesn't filter enough (returns many rows)</li>\n<li>Covering index present but predicate isn't highly selective</li>\n</ul>\n\n<h4>Index Seek ✅ (What you want)</h4>\n<p>SQL Server goes directly to the specific rows matching the predicate via the B-tree. This is the most efficient operation — O(log n) instead of O(n).</p>\n<pre><code>-- Index Seek if there's an index on EmployeeId\nSELECT * FROM Employees WHERE EmployeeId = 12345\n\n-- Force seek hint if optimizer chooses wrong plan:\nSELECT * FROM Employees WITH (INDEX(IX_EmployeeId))\nWHERE EmployeeId = 12345</code></pre>\n\n<h4>How to check in execution plan:</h4>\n<pre><code>SET STATISTICS IO ON;\nSELECT * FROM Orders WHERE CustomerId = 100;\n-- Look at \"logical reads\" — high count = scan, low count = seek</code></pre>\n\n<p>In practice: if I see a Table Scan or Index Scan on a large table in an execution plan, my first move is to check if an index exists on the WHERE/JOIN columns. If not, I add one. If yes, I check if the data type matches (implicit conversions kill seeks) or if a function is wrapped around the indexed column (also kills seeks).</p>\n\n<h4>Golden rule that kills Index Seeks:</h4>\n<pre><code>-- BAD: function on indexed column prevents seek\nWHERE YEAR(OrderDate) = 2024\n\n-- GOOD: use range instead\nWHERE OrderDate >= '2024-01-01' AND OrderDate < '2025-01-01'</code></pre>",
       "followUps": [
-        "What causes a Table Scan even when an index exists?",
-        "What is a key lookup and when does it happen?",
-        "How do you read a SQL Server execution plan?"
+        {
+          "question": "What causes a Table Scan even when an index exists?",
+          "answer": ""
+        },
+        {
+          "question": "What is a key lookup and when does it happen?",
+          "answer": ""
+        },
+        {
+          "question": "How do you read a SQL Server execution plan?",
+          "answer": ""
+        }
       ],
       "tip": "Functions on indexed columns prevent seeks. LIKE with leading wildcard prevents seeks. Check logical reads with SET STATISTICS IO ON.",
       "tags": [
@@ -1428,9 +1464,18 @@
       "question": "How do you reseed an identity column in SQL Server? What is DBCC CHECKIDENT?",
       "answer": "<p><code>DBCC CHECKIDENT</code> is the T-SQL command to check or reset (reseed) the current identity value of a table.</p>\n\n<h4>Check current identity value:</h4>\n<pre><code>DBCC CHECKIDENT ('Orders', NORESEED);\n-- Output: Checking identity information: current identity value '150', current column value '150'.</code></pre>\n\n<h4>Reseed to a specific value:</h4>\n<pre><code>-- Next insert will use 101 (seed + 1)\nDBCC CHECKIDENT ('Orders', RESEED, 100);\n\n-- Reset to 0 (next insert gets ID = 1)\nDBCC CHECKIDENT ('Orders', RESEED, 0);\n\n-- After TRUNCATE, identity is automatically reset — but after DELETE it's not\nTRUNCATE TABLE Orders;  -- resets identity to seed value\nDELETE FROM Orders;     -- does NOT reset identity\nDBCC CHECKIDENT ('Orders', RESEED, 0);  -- manually reset after DELETE</code></pre>\n\n<h4>Real scenario where I've used this:</h4>\n<p>In staging/test environments, after clearing test data with DELETE (not TRUNCATE, because of FK constraints), the identity values kept climbing — IDs like 50000 in a test table with 10 rows. I use DBCC CHECKIDENT to reset it to something sensible.</p>\n\n<pre><code>-- Safe pattern for test data cleanup:\nDELETE FROM OrderItems;  -- child first (FK constraint)\nDELETE FROM Orders;      -- parent\nDBCC CHECKIDENT ('OrderItems', RESEED, 0);\nDBCC CHECKIDENT ('Orders', RESEED, 0);</code></pre>\n\n<h4>RESEED with value vs without:</h4>\n<pre><code>-- RESEED with no value: resets to max existing value in the table\n-- Useful if you manually inserted rows with SET IDENTITY_INSERT ON\nDBCC CHECKIDENT ('Orders', RESEED);  -- no value = sync to max row</code></pre>\n\n<p>One gotcha: if you reseed to a value lower than existing rows, the next INSERT will skip to one above the current max (SQL Server 2014+ behavior) — so always RESEED to at least max existing ID to avoid PK violations.</p>",
       "followUps": [
-        "What is the difference between TRUNCATE and DELETE regarding identity reset?",
-        "What is SET IDENTITY_INSERT ON and when do you use it?",
-        "Can you have a non-integer identity column?"
+        {
+          "question": "What is the difference between TRUNCATE and DELETE regarding identity reset?",
+          "answer": ""
+        },
+        {
+          "question": "What is SET IDENTITY_INSERT ON and when do you use it?",
+          "answer": ""
+        },
+        {
+          "question": "Can you have a non-integer identity column?",
+          "answer": ""
+        }
       ],
       "tip": "TRUNCATE resets identity automatically. DELETE does not — use DBCC CHECKIDENT to reset manually.",
       "tags": [
@@ -1451,9 +1496,18 @@
       "question": "What are the types of SQL Server backups? Explain Full, Differential, and Transaction Log backups.",
       "answer": "<p>SQL Server has three core backup types, and they work together in a strategy — you typically don't use just one.</p>\n\n<h4>1. Full Backup</h4>\n<p>A complete snapshot of the entire database — all data and enough of the transaction log to bring the database to a consistent state at the point in time of the backup.</p>\n<pre><code>BACKUP DATABASE InterviewPrep \nTO DISK = 'D:\\Backups\\InterviewPrep_Full_20240523.bak'\nWITH COMPRESSION, STATS = 10;</code></pre>\n<ul>\n<li>Largest in size, slowest</li>\n<li>Self-contained — can restore from just this file</li>\n<li>Typically done weekly (or daily for critical DBs)</li>\n</ul>\n\n<h4>2. Differential Backup</h4>\n<p>Captures only the pages changed since the <em>last Full backup</em>. Much faster and smaller than another full backup.</p>\n<pre><code>BACKUP DATABASE InterviewPrep\nTO DISK = 'D:\\Backups\\InterviewPrep_Diff_20240523.bak'\nWITH DIFFERENTIAL, COMPRESSION;</code></pre>\n<ul>\n<li>Grows larger over time until the next full backup</li>\n<li>To restore: Full + latest Differential</li>\n<li>Typically done daily or every few hours</li>\n</ul>\n\n<h4>3. Transaction Log Backup</h4>\n<p>Backs up the transaction log — all changes since the last log backup. Enables point-in-time recovery. Only works when Recovery Model is <strong>Full</strong> or <strong>Bulk-Logged</strong>.</p>\n<pre><code>BACKUP LOG InterviewPrep\nTO DISK = 'D:\\Backups\\InterviewPrep_Log_20240523_14h.bak'\nWITH COMPRESSION;</code></pre>\n<ul>\n<li>Smallest and fastest</li>\n<li>Also truncates the inactive portion of the log (prevents log file bloat)</li>\n<li>To restore: Full + last Differential + all Log backups since the Differential</li>\n<li>Typically done every 15-60 minutes in production</li>\n</ul>\n\n<h4>Typical production backup strategy:</h4>\n<pre><code>-- Sunday: Full backup\n-- Mon-Sat: Differential backup (nightly)\n-- Every 30 min: Transaction Log backup\n\n-- To restore to Tuesday 2:45pm:\n-- 1. Restore Sunday Full (NORECOVERY)\n-- 2. Restore Monday night Differential (NORECOVERY)\n-- 3. Restore all log backups from Monday night through Tuesday 2:45pm (RECOVERY at end)</code></pre>\n\n<p>In my experience, most teams underestimate how critical log backups are. I had a scenario where we needed to restore to a specific minute before accidental bulk deletes. Transaction log backups saved us — we recovered to the exact minute before the mistake.</p>",
       "followUps": [
-        "What is point-in-time recovery and when is it needed?",
-        "What is Copy-Only backup?",
-        "What recovery model allows transaction log backups?"
+        {
+          "question": "What is point-in-time recovery and when is it needed?",
+          "answer": ""
+        },
+        {
+          "question": "What is Copy-Only backup?",
+          "answer": ""
+        },
+        {
+          "question": "What recovery model allows transaction log backups?",
+          "answer": ""
+        }
       ],
       "tip": "Remember the restore chain: Full → Differential → Log backups. You need all of them in sequence.",
       "tags": [
@@ -1475,9 +1529,18 @@
       "question": "What are the High Availability solutions in SQL Server? Explain Mirroring, Log Shipping, Replication, and Always On.",
       "answer": "<p>SQL Server provides several HA (High Availability) and DR (Disaster Recovery) solutions. Here's how they compare — this comes up in senior-level interviews:</p>\n\n<h4>1. Always On Availability Groups (Modern — preferred)</h4>\n<p>One primary replica + up to 8 secondary replicas. Secondaries can be readable. Automatic failover in seconds.</p>\n<ul>\n<li>✅ Automatic failover, readable secondaries, offload reporting queries</li>\n<li>✅ Synchronous (zero data loss) or Asynchronous (geo-redundancy)</li>\n<li>❌ Requires Windows Server Failover Clustering (WSFC) or Domain-independent AG</li>\n<li>Introduced in SQL Server 2012, enhanced ever since</li>\n</ul>\n\n<h4>2. Database Mirroring (Deprecated in 2012, removed in 2022)</h4>\n<p>One principal + one mirror, with optional witness for automatic failover. Sends transaction log records to mirror in real-time.</p>\n<ul>\n<li>High Safety mode: synchronous (zero data loss, automatic failover with witness)</li>\n<li>High Performance mode: asynchronous (some data loss possible)</li>\n<li>Mirror is not readable — no offloading</li>\n<li>❌ Deprecated — don't use in new systems, mention Always On instead</li>\n</ul>\n\n<h4>3. Log Shipping</h4>\n<p>Automates: backup transaction logs on primary → copy to standby server → restore on standby. Low-cost DR solution.</p>\n<pre><code>-- What happens under the hood (automated jobs):\n-- Primary:  BACKUP LOG every 15 minutes → network share\n-- Standby:  Copy job picks up the file\n-- Standby:  Restore job applies it (WITH STANDBY or NORECOVERY)</code></pre>\n<ul>\n<li>✅ Simple, low cost, works across versions, standby can be readable (WITH STANDBY)</li>\n<li>❌ Manual failover, data loss = last log backup interval (15-30 min typically)</li>\n<li>Good for: budget-conscious DR where some data loss is acceptable</li>\n</ul>\n\n<h4>4. Replication</h4>\n<p>Not really HA — it's data distribution. Copies data changes from publisher to subscriber(s).</p>\n<ul>\n<li><strong>Snapshot</strong>: full copy periodically</li>\n<li><strong>Transactional</strong>: near real-time changes (used for read scale-out)</li>\n<li><strong>Merge</strong>: bidirectional sync (mobile/disconnected scenarios)</li>\n<li>Used for: reporting databases, distributing data to multiple locations, read offloading</li>\n<li>❌ Not a failover solution — subscriber can have subset of data</li>\n</ul>\n\n<h4>Quick comparison table:</h4>\n<table>\n<tr><th>Solution</th><th>Failover</th><th>Data Loss</th><th>Readable Secondary</th></tr>\n<tr><td>Always On AG</td><td>Auto (seconds)</td><td>Zero (sync)</td><td>Yes</td></tr>\n<tr><td>Mirroring</td><td>Auto (with witness)</td><td>Zero (sync)</td><td>No</td></tr>\n<tr><td>Log Shipping</td><td>Manual</td><td>Minutes</td><td>Yes (STANDBY)</td></tr>\n<tr><td>Replication</td><td>N/A</td><td>N/A</td><td>Yes (subscriber)</td></tr>\n</table>\n\n<p>In any new project today, I recommend Always On AGs. Log shipping is a good cheap fallback when you can't afford the WSFC infrastructure.</p>",
       "followUps": [
-        "What is the difference between synchronous and asynchronous availability groups?",
-        "What is Failover Cluster Instance (FCI) vs Availability Groups?",
-        "What is RTO and RPO in disaster recovery?"
+        {
+          "question": "What is the difference between synchronous and asynchronous availability groups?",
+          "answer": ""
+        },
+        {
+          "question": "What is Failover Cluster Instance (FCI) vs Availability Groups?",
+          "answer": ""
+        },
+        {
+          "question": "What is RTO and RPO in disaster recovery?",
+          "answer": ""
+        }
       ],
       "tip": "Always On AGs are the modern answer. Mirroring is deprecated. Log Shipping is cheap but manual failover.",
       "tags": [
@@ -1500,9 +1563,18 @@
       "question": "What are DCL commands in SQL? Explain GRANT, DENY, and REVOKE.",
       "answer": "<p>DCL stands for <strong>Data Control Language</strong>. It controls who can access and manipulate database objects.</p>\n\n<h4>GRANT — Give permissions</h4>\n<pre><code>-- Grant SELECT on a table to a user\nGRANT SELECT ON dbo.Employees TO [AppUser];\n\n-- Grant multiple permissions\nGRANT SELECT, INSERT, UPDATE ON dbo.Orders TO [AppUser];\n\n-- Grant EXECUTE on a stored procedure\nGRANT EXECUTE ON dbo.uspGetOrderSummary TO [ReportingUser];\n\n-- Grant to a role (better practice — manage roles, not individual users)\nGRANT SELECT ON dbo.Products TO [ReadOnlyRole];</code></pre>\n\n<h4>DENY — Explicitly block permissions (overrides GRANT)</h4>\n<pre><code>-- Even if AppUser is in a role that has DELETE, this prevents it\nDENY DELETE ON dbo.Employees TO [AppUser];\n\n-- DENY is the strongest — it overrides any GRANT from role membership</code></pre>\n\n<h4>REVOKE — Remove a previously granted or denied permission</h4>\n<pre><code>-- Remove the SELECT grant (user loses permission if not granted elsewhere)\nREVOKE SELECT ON dbo.Employees FROM [AppUser];\n\n-- Revoke a DENY (removes the explicit deny, but doesn't grant access)\nREVOKE DELETE ON dbo.Employees FROM [AppUser];</code></pre>\n\n<h4>Permission precedence:</h4>\n<p><strong>DENY &gt; GRANT</strong> always. If a user is in Role A (which has GRANT SELECT) and you DENY SELECT to that user directly, they cannot SELECT — the DENY wins.</p>\n\n<h4>Practical approach I use:</h4>\n<pre><code>-- Create roles, not per-user grants\nCREATE ROLE ReadOnlyRole;\nCREATE ROLE AppRole;\n\nGRANT SELECT ON SCHEMA::dbo TO ReadOnlyRole;\nGRANT SELECT, INSERT, UPDATE ON SCHEMA::dbo TO AppRole;\nGRANT EXECUTE ON SCHEMA::dbo TO AppRole;\n\n-- Assign users to roles\nALTER ROLE AppRole ADD MEMBER [WebAppUser];\nALTER ROLE ReadOnlyRole ADD MEMBER [ReportingUser];</code></pre>\n\n<p>In real-world apps, I always use <em>least privilege</em> — the web app service account only gets SELECT/INSERT/UPDATE/DELETE on specific tables and EXECUTE on stored procs. Never db_owner or sa in production.</p>",
       "followUps": [
-        "What is the difference between REVOKE and DENY?",
-        "What are database roles vs server roles in SQL Server?",
-        "What is the principle of least privilege in database security?"
+        {
+          "question": "What is the difference between REVOKE and DENY?",
+          "answer": ""
+        },
+        {
+          "question": "What are database roles vs server roles in SQL Server?",
+          "answer": ""
+        },
+        {
+          "question": "What is the principle of least privilege in database security?",
+          "answer": ""
+        }
       ],
       "tip": "DENY always wins over GRANT — even if the user gets GRANT through a role, an explicit DENY blocks them.",
       "tags": [
@@ -1525,9 +1597,18 @@
       "question": "What is Fill Factor in SQL Server? What is the default value and when do you change it?",
       "answer": "<p>Fill Factor determines <strong>how full SQL Server fills index pages when creating or rebuilding an index</strong>. It's expressed as a percentage from 1–100.</p>\n\n<h4>Default Fill Factor</h4>\n<p>Server-level default is <strong>0</strong>, which is treated the same as <strong>100%</strong> — pages are filled completely during creation/rebuild.</p>\n\n<pre><code>-- Check server-level default\nEXEC sp_configure 'fill factor (%)';\n-- Typically returns 0 (= 100% full)\n\n-- Check fill factor on a specific index\nSELECT name, fill_factor \nFROM sys.indexes \nWHERE object_id = OBJECT_ID('Orders');</code></pre>\n\n<h4>Why would you NOT fill pages 100%?</h4>\n<p>When pages are 100% full and a new row needs to be inserted, SQL Server must perform a <strong>page split</strong> — it moves half the data to a new page. Page splits:</p>\n<ul>\n<li>Cause fragmentation</li>\n<li>Are slow (I/O heavy)</li>\n<li>Happen frequently on tables with heavy INSERT/UPDATE activity</li>\n</ul>\n\n<h4>Setting Fill Factor — Leave room for growth</h4>\n<pre><code>-- Create index with 80% fill factor (leaves 20% free space)\nCREATE INDEX IX_Orders_CustomerId ON Orders(CustomerId)\nWITH (FILLFACTOR = 80);\n\n-- Rebuild with different fill factor\nALTER INDEX IX_Orders_CustomerId ON Orders\nREBUILD WITH (FILLFACTOR = 80);</code></pre>\n\n<h4>Guidelines from real experience:</h4>\n<table>\n<tr><th>Scenario</th><th>Fill Factor</th><th>Why</th></tr>\n<tr><td>Read-heavy, rarely updated</td><td>95-100%</td><td>Minimize I/O, no splits needed</td></tr>\n<tr><td>Moderate INSERT/UPDATE activity</td><td>80-90%</td><td>Balance between space and splits</td></tr>\n<tr><td>Heavy random inserts (e.g., GUID PKs)</td><td>70-80%</td><td>Lots of page splits without free space</td></tr>\n<tr><td>Monotonically increasing PK (INT IDENTITY)</td><td>95-100%</td><td>Inserts always at end, no mid-page splits</td></tr>\n</table>\n\n<p>One important note: Fill Factor only applies <em>at rebuild/creation time</em>. As data comes in, pages fill up until the next rebuild. That's why regular index maintenance (weekly/monthly rebuilds) is part of any production DBA routine.</p>\n\n<pre><code>-- Maintain indexes (rebuild if fragmentation > 30%, reorganize if 10-30%)\nALTER INDEX ALL ON Orders REBUILD;  -- reapplies the fill factor</code></pre>",
       "followUps": [
-        "What is the difference between REBUILD and REORGANIZE for indexes?",
-        "What is a page split and why is it bad?",
-        "How does Fill Factor relate to index fragmentation?"
+        {
+          "question": "What is the difference between REBUILD and REORGANIZE for indexes?",
+          "answer": ""
+        },
+        {
+          "question": "What is a page split and why is it bad?",
+          "answer": ""
+        },
+        {
+          "question": "How does Fill Factor relate to index fragmentation?",
+          "answer": ""
+        }
       ],
       "tip": "Fill Factor 0 = 100% full. Lower value = more free space = fewer page splits = less fragmentation over time.",
       "tags": [
@@ -1549,9 +1630,18 @@
       "question": "What are the Recovery Models in SQL Server? Explain Simple, Full, and Bulk-Logged.",
       "answer": "<p>The Recovery Model controls <strong>how SQL Server manages the transaction log</strong> — specifically how much log is retained and what kinds of recovery are possible.</p>\n\n<h4>1. Simple Recovery Model</h4>\n<p>The transaction log is automatically truncated after each checkpoint. No transaction log backups possible.</p>\n<pre><code>ALTER DATABASE MyDb SET RECOVERY SIMPLE;</code></pre>\n<ul>\n<li>✅ Log file stays small, auto-managed</li>\n<li>✅ No log backup overhead</li>\n<li>❌ Can only restore to last Full or Differential backup</li>\n<li>❌ No point-in-time recovery</li>\n<li>Use for: development databases, data warehouses with full nightly backups, non-critical systems</li>\n</ul>\n\n<h4>2. Full Recovery Model</h4>\n<p>Every transaction is fully logged and log is retained until you explicitly back it up.</p>\n<pre><code>ALTER DATABASE MyDb SET RECOVERY FULL;</code></pre>\n<ul>\n<li>✅ Point-in-time recovery (restore to any specific minute)</li>\n<li>✅ Transaction log backups possible</li>\n<li>❌ Log file grows until backed up — must have regular log backup jobs</li>\n<li>Use for: production OLTP systems, any database where you can't afford to lose more than minutes of data</li>\n</ul>\n<pre><code>-- Typical job setup under Full recovery:\n-- Every 30 min: BACKUP LOG MyDb TO DISK = '...'\n-- This truncates the inactive log AND creates the log backup file</code></pre>\n\n<h4>3. Bulk-Logged Recovery Model</h4>\n<p>Like Full, but minimally logs certain bulk operations (BULK INSERT, SELECT INTO, index rebuilds). Designed for temporary use during large data loads.</p>\n<pre><code>-- Pattern: switch to Bulk-Logged during load\nALTER DATABASE MyDb SET RECOVERY BULK_LOGGED;\n\n-- Run your bulk operation\nBULK INSERT Orders FROM 'C:\\data\\orders.csv' WITH (FIELDTERMINATOR=',');\n-- SELECT INTO, CREATE INDEX also benefit here\n\n-- Switch back after load\nALTER DATABASE MyDb SET RECOVERY FULL;\nBACKUP LOG MyDb TO DISK = 'D:\\Backups\\AfterBulkLoad.bak';</code></pre>\n<ul>\n<li>✅ Dramatically faster for bulk operations</li>\n<li>✅ Much smaller log growth during bulk loads</li>\n<li>❌ Log backup containing bulk operation cannot be used for point-in-time recovery</li>\n<li>Use for: ETL windows, initial data loads, periodic large batch operations</li>\n</ul>\n\n<h4>Which one to choose in production?</h4>\n<p>OLTP production → <strong>Full</strong> always. Simple for dev/test. Bulk-Logged temporarily during large ETL jobs then switch back to Full immediately after and take a log backup.</p>",
       "followUps": [
-        "What happens to the transaction log if I forget to take log backups under Full Recovery?",
-        "Can you switch between recovery models? What are the implications?",
-        "What is a log chain and why does it matter for restore?"
+        {
+          "question": "What happens to the transaction log if I forget to take log backups under Full Recovery?",
+          "answer": ""
+        },
+        {
+          "question": "Can you switch between recovery models? What are the implications?",
+          "answer": ""
+        },
+        {
+          "question": "What is a log chain and why does it matter for restore?",
+          "answer": ""
+        }
       ],
       "tip": "Under Full Recovery, if you don't take regular log backups, the log file grows forever — set up a SQL Agent job.",
       "tags": [
@@ -1574,9 +1664,18 @@
       "question": "What are the types of SQL commands? Explain DDL, DML, DQL, DCL, and TCL.",
       "answer": "<p>SQL commands are grouped into five categories based on what they do. This is a very common first SQL interview question.</p>\n\n<h4>1. DDL — Data Definition Language</h4>\n<p>Defines and modifies the <em>structure</em> of database objects. Changes are auto-committed.</p>\n<pre><code>CREATE TABLE Orders (OrderId INT PRIMARY KEY, Total DECIMAL(10,2));\nALTER  TABLE Orders ADD Column ShippedDate DATE;\nDROP   TABLE TempOrders;\nTRUNCATE TABLE Orders;  -- also DDL (structure-level operation)\nRENAME TABLE OldOrders TO ArchivedOrders;</code></pre>\n\n<h4>2. DML — Data Manipulation Language</h4>\n<p>Manipulates the <em>data</em> inside tables. Changes can be rolled back (within a transaction).</p>\n<pre><code>INSERT INTO Orders (Total) VALUES (250.00);\nUPDATE Orders SET Total = 300.00 WHERE OrderId = 1;\nDELETE FROM Orders WHERE OrderId = 1;\nMERGE INTO Orders AS target  -- upsert (SQL Server)\n    USING @source AS source ON target.OrderId = source.OrderId\n    WHEN MATCHED THEN UPDATE ...\n    WHEN NOT MATCHED THEN INSERT ...;</code></pre>\n\n<h4>3. DQL — Data Query Language</h4>\n<p>Queries data. Some classify SELECT under DML, but many treat it separately.</p>\n<pre><code>SELECT OrderId, Total FROM Orders WHERE Status = 'pending' ORDER BY Total DESC;</code></pre>\n\n<h4>4. DCL — Data Control Language</h4>\n<p>Controls access and permissions.</p>\n<pre><code>GRANT SELECT, INSERT ON Orders TO AppUser;\nDENY  DELETE ON Orders TO ReadOnlyUser;\nREVOKE INSERT ON Orders FROM AppUser;</code></pre>\n\n<h4>5. TCL — Transaction Control Language</h4>\n<p>Manages transactions — commits or rolls back DML changes.</p>\n<pre><code>BEGIN TRANSACTION;\n    UPDATE Accounts SET Balance = Balance - 1000 WHERE AccountId = 1;\n    UPDATE Accounts SET Balance = Balance + 1000 WHERE AccountId = 2;\nCOMMIT;   -- save changes\n\n-- or\nROLLBACK; -- undo all changes in this transaction\n\nSAVEPOINT sp1;           -- mark a point within transaction\nROLLBACK TO SAVEPOINT sp1;  -- partial rollback</code></pre>\n\n<h4>Quick memory trick:</h4>\n<ul>\n<li><strong>DDL</strong> = Create/Alter/Drop <em>structure</em></li>\n<li><strong>DML</strong> = Insert/Update/Delete <em>data</em></li>\n<li><strong>DQL</strong> = Select <em>read data</em></li>\n<li><strong>DCL</strong> = Grant/Deny/Revoke <em>access</em></li>\n<li><strong>TCL</strong> = Commit/Rollback <em>transactions</em></li>\n</ul>",
       "followUps": [
-        "Why is TRUNCATE a DDL command if it removes data?",
-        "Can you roll back a DDL statement?",
-        "What is the difference between DELETE and TRUNCATE in terms of transaction logging?"
+        {
+          "question": "Why is TRUNCATE a DDL command if it removes data?",
+          "answer": ""
+        },
+        {
+          "question": "Can you roll back a DDL statement?",
+          "answer": ""
+        },
+        {
+          "question": "What is the difference between DELETE and TRUNCATE in terms of transaction logging?",
+          "answer": ""
+        }
       ],
       "tip": "DDL auto-commits (can't rollback). DML is transactional (can rollback). TRUNCATE is DDL so it's not rollbackable in most RDBMS.",
       "tags": [
@@ -1598,9 +1697,18 @@
       "question": "What is a CASE statement in SQL? Explain SIMPLE vs SEARCHED CASE with examples.",
       "answer": "<p>The CASE statement adds conditional logic to SQL queries — it's essentially an if-else block inside a SELECT, WHERE, or ORDER BY clause.</p>\n\n<h4>1. Simple CASE — compare one expression to multiple values</h4>\n<pre><code>SELECT \n    OrderId,\n    Status,\n    CASE Status\n        WHEN 'pending'   THEN 'Awaiting Processing'\n        WHEN 'shipped'   THEN 'On the Way'\n        WHEN 'delivered' THEN 'Completed'\n        WHEN 'cancelled' THEN 'Cancelled'\n        ELSE 'Unknown'\n    END AS StatusDescription\nFROM Orders;</code></pre>\n\n<h4>2. Searched CASE — evaluate different conditions</h4>\n<pre><code>SELECT \n    ProductId,\n    Price,\n    CASE \n        WHEN Price < 100    THEN 'Budget'\n        WHEN Price < 500    THEN 'Mid-Range'\n        WHEN Price < 2000   THEN 'Premium'\n        ELSE 'Luxury'\n    END AS PriceCategory,\n    CASE \n        WHEN Stock = 0      THEN 'Out of Stock'\n        WHEN Stock < 10     THEN 'Low Stock'\n        ELSE 'In Stock'\n    END AS StockStatus\nFROM Products;</code></pre>\n\n<h4>CASE in aggregate functions — pivot-style reporting:</h4>\n<pre><code>-- Count orders by status in a single row\nSELECT \n    COUNT(CASE WHEN Status = 'pending'   THEN 1 END) AS PendingCount,\n    COUNT(CASE WHEN Status = 'shipped'   THEN 1 END) AS ShippedCount,\n    COUNT(CASE WHEN Status = 'delivered' THEN 1 END) AS DeliveredCount,\n    SUM(CASE WHEN Status = 'delivered'   THEN Total ELSE 0 END) AS DeliveredRevenue\nFROM Orders;</code></pre>\n\n<h4>CASE in ORDER BY — custom sort:</h4>\n<pre><code>-- Prioritize urgent orders first\nSELECT * FROM Orders\nORDER BY \n    CASE Priority\n        WHEN 'urgent'  THEN 1\n        WHEN 'high'    THEN 2\n        WHEN 'normal'  THEN 3\n        ELSE 4\n    END,\n    CreatedDate ASC;</code></pre>\n\n<h4>CASE in UPDATE:</h4>\n<pre><code>-- Apply different discounts based on customer tier\nUPDATE Orders\nSET DiscountAmount = Total * \n    CASE CustomerTier\n        WHEN 'Gold'   THEN 0.20\n        WHEN 'Silver' THEN 0.10\n        WHEN 'Bronze' THEN 0.05\n        ELSE 0\n    END\nWHERE Status = 'pending';</code></pre>\n\n<p>I use CASE expressions frequently in reporting queries and stored procedures. The pivot-style aggregation pattern (COUNT + CASE) is very powerful for building summary dashboards without pivot tables.</p>",
       "followUps": [
-        "What is the difference between CASE and IIF() in SQL Server?",
-        "Can you use CASE in a WHERE clause?",
-        "How do you handle NULLs in CASE expressions?"
+        {
+          "question": "What is the difference between CASE and IIF() in SQL Server?",
+          "answer": ""
+        },
+        {
+          "question": "Can you use CASE in a WHERE clause?",
+          "answer": ""
+        },
+        {
+          "question": "How do you handle NULLs in CASE expressions?",
+          "answer": ""
+        }
       ],
       "tip": "CASE is evaluated left to right — first matching WHEN wins. NULLs don't match with = in CASE; use WHEN column IS NULL.",
       "tags": [
@@ -1621,9 +1729,18 @@
       "question": "What is a Self Join in SQL? When and why would you use one?",
       "answer": "<p>A self join is when a table is joined to <em>itself</em>. You use it when rows in the same table have a hierarchical or peer relationship — for example, an Employee table where each row has a ManagerId that points to another row in the same table.</p>\n\n<h4>Classic example — Employee and Manager in same table:</h4>\n<pre><code>CREATE TABLE Employee (\n    EmployeeId INT PRIMARY KEY,\n    Name       NVARCHAR(100),\n    ManagerId  INT NULL,  -- FK to same table (NULL = top of hierarchy)\n    Department NVARCHAR(50)\n);\n\n-- Self join to get employee + their manager's name\nSELECT \n    e.EmployeeId,\n    e.Name          AS EmployeeName,\n    m.Name          AS ManagerName,\n    e.Department\nFROM Employee e\nLEFT JOIN Employee m ON e.ManagerId = m.EmployeeId;\n-- LEFT JOIN ensures employees with no manager (CEO) are still returned\n\n-- Result:\n-- EmployeeId  EmployeeName  ManagerName   Department\n-- 1           Alice         NULL          Engineering   (Alice is CEO)\n-- 2           Bob           Alice         Engineering\n-- 3           Carol         Alice         Sales\n-- 4           Dave          Bob           Engineering</code></pre>\n\n<h4>Find all employees who earn more than their manager:</h4>\n<pre><code>SELECT \n    e.Name          AS Employee,\n    e.Salary        AS EmployeeSalary,\n    m.Name          AS Manager,\n    m.Salary        AS ManagerSalary\nFROM Employee e\nINNER JOIN Employee m ON e.ManagerId = m.EmployeeId\nWHERE e.Salary > m.Salary;</code></pre>\n\n<h4>Another use case — finding duplicates or related records:</h4>\n<pre><code>-- Find customers in the same city\nSELECT \n    c1.Name AS Customer1,\n    c2.Name AS Customer2,\n    c1.City\nFROM Customers c1\nINNER JOIN Customers c2 \n    ON c1.City = c2.City \n    AND c1.CustomerId < c2.CustomerId  -- avoid duplicates and self-matches\nORDER BY c1.City;</code></pre>\n\n<h4>Key point — always use aliases:</h4>\n<p>You <em>must</em> alias the table when self-joining because SQL can't tell which instance of the table you mean. Typically I use <code>e</code> for employee and <code>m</code> for manager, or <code>p</code> and <code>c</code> for parent and child.</p>\n\n<p>In EF Core, you'd model this as a navigation property pointing to the same entity, and EF generates the self-join automatically in the SQL it produces.</p>",
       "followUps": [
-        "How would you model a self-referential relationship in EF Core?",
-        "What is the difference between a self join and a recursive CTE for hierarchical data?",
-        "How do you avoid duplicate rows in a self join?"
+        {
+          "question": "How would you model a self-referential relationship in EF Core?",
+          "answer": ""
+        },
+        {
+          "question": "What is the difference between a self join and a recursive CTE for hierarchical data?",
+          "answer": ""
+        },
+        {
+          "question": "How do you avoid duplicate rows in a self join?",
+          "answer": ""
+        }
       ],
       "tip": "Always use aliases in self joins. Use LEFT JOIN to include top-level records (like CEO with no manager). Recursive CTEs are better for deep hierarchies.",
       "tags": [
@@ -1644,9 +1761,18 @@
       "question": "What is a Cursor in SQL Server? When should you use one and when should you avoid it?",
       "answer": "<p>A cursor is a database object that allows you to process query results <em>row-by-row</em>, like a loop in application code. Think of it as a pointer that moves through a result set one row at a time.</p>\n\n<h4>Basic cursor syntax:</h4>\n<pre><code>DECLARE @EmployeeId INT, @Name NVARCHAR(100), @Salary DECIMAL(10,2);\n\n-- Declare the cursor\nDECLARE emp_cursor CURSOR FOR\n    SELECT EmployeeId, Name, Salary FROM Employees WHERE Department = 'Sales';\n\n-- Open it (executes the query)\nOPEN emp_cursor;\n\n-- Fetch first row\nFETCH NEXT FROM emp_cursor INTO @EmployeeId, @Name, @Salary;\n\n-- Loop through rows\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    -- Process each row\n    PRINT 'Processing: ' + @Name + ' - Salary: ' + CAST(@Salary AS VARCHAR);\n    \n    -- Do something with this row...\n    \n    -- Fetch next row\n    FETCH NEXT FROM emp_cursor INTO @EmployeeId, @Name, @Salary;\nEND;\n\n-- Always clean up\nCLOSE emp_cursor;\nDEALLOCATE emp_cursor;</code></pre>\n\n<h4>When cursors are actually justified:</h4>\n<ul>\n<li>Row-by-row processing that truly can't be set-based (rare)</li>\n<li>Calling a stored procedure for each row</li>\n<li>Complex calculations that depend on previous row results</li>\n<li>Administrative/maintenance tasks that must be logged per-row</li>\n</ul>\n\n<h4>⚠️ When to AVOID cursors (almost always):</h4>\n<p>Cursors are slow because SQL Server is optimized for set-based operations, not row-by-row iteration. A cursor on a million rows might take minutes; the equivalent set-based UPDATE takes seconds.</p>\n\n<pre><code>-- BAD: Cursor to give 10% raise to all Sales employees\nDECLARE @Id INT\nDECLARE c CURSOR FOR SELECT EmployeeId FROM Employees WHERE Department = 'Sales'\nOPEN c\nFETCH NEXT FROM c INTO @Id\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    UPDATE Employees SET Salary = Salary * 1.10 WHERE EmployeeId = @Id\n    FETCH NEXT FROM c INTO @Id\nEND\nCLOSE c; DEALLOCATE c;\n\n-- GOOD: Set-based — one statement, much faster\nUPDATE Employees \nSET Salary = Salary * 1.10 \nWHERE Department = 'Sales';</code></pre>\n\n<h4>Cursor alternatives I use instead:</h4>\n<ul>\n<li><code>WHILE</code> loop with <code>MIN()</code> to iterate — slightly faster than cursor</li>\n<li>Set-based UPDATE/INSERT/MERGE for bulk changes</li>\n<li>Recursive CTEs for hierarchical processing</li>\n<li>Application-side processing — pull data to C#, process in memory, write back</li>\n</ul>\n\n<p>My general rule: if I find myself reaching for a cursor, I take 5 minutes to think about a set-based alternative first. 9 out of 10 times, one exists.</p>",
       "followUps": [
-        "What is the difference between STATIC, DYNAMIC, FAST_FORWARD cursor types?",
-        "How do you optimize a cursor if you absolutely must use one?",
-        "What is a WHILE loop alternative to cursors?"
+        {
+          "question": "What is the difference between STATIC, DYNAMIC, FAST_FORWARD cursor types?",
+          "answer": ""
+        },
+        {
+          "question": "How do you optimize a cursor if you absolutely must use one?",
+          "answer": ""
+        },
+        {
+          "question": "What is a WHILE loop alternative to cursors?",
+          "answer": ""
+        }
       ],
       "tip": "FAST_FORWARD cursors are the fastest type if you must use one — read-only, forward-only. But set-based is almost always better.",
       "tags": [
@@ -1668,9 +1794,18 @@
       "question": "What is the COALESCE() function in SQL Server? How is it different from ISNULL()?",
       "answer": "<p>Both handle NULL substitution, but they differ in portability, number of arguments, and how SQL Server evaluates them.</p><p><strong>COALESCE()</strong> — ANSI SQL standard. Returns the first non-NULL expression from a list of any number of arguments. Can accept multiple values.</p><p><strong>ISNULL()</strong> — SQL Server-specific. Accepts exactly two arguments. Slightly faster in SQL Server due to being a native function.</p><pre><code class=\"language-sql\">-- COALESCE: returns first non-NULL value from the list\nSELECT COALESCE(NULL, NULL, 'Third', 'Fourth') -- returns 'Third'\n\n-- ISNULL: only two arguments\nSELECT ISNULL(NULL, 'Fallback') -- returns 'Fallback'\n\n-- Practical example: show nickname if available, otherwise full name\nSELECT \n    COALESCE(NickName, FirstName + ' ' + LastName, 'Unknown') AS DisplayName\nFROM Employees;\n\n-- Phone number priority: work > mobile > home\nSELECT \n    EmployeeId,\n    COALESCE(WorkPhone, MobilePhone, HomePhone, 'No phone') AS ContactNumber\nFROM Employees;\n\n-- ISNULL equivalent — only handles single fallback\nSELECT ISNULL(WorkPhone, 'No phone') AS ContactNumber FROM Employees;\n\n-- Key difference: data type inference\n-- COALESCE returns type based on data type precedence of all args\n-- ISNULL returns the data type of the first argument (can truncate!)\nDECLARE @x NCHAR(3) = NULL;\nSELECT ISNULL(@x, 'Fallback');    -- returns 'Fal' (truncated to NCHAR(3)!)\nSELECT COALESCE(@x, 'Fallback'); -- returns 'Fallback' (uses higher precedence type)\n\n-- Common use in SUM with NULLs\nSELECT SUM(COALESCE(Discount, 0)) AS TotalDiscount FROM Orders;\n-- Same as: SUM(ISNULL(Discount, 0))\n\n-- COALESCE with NULL check in WHERE\nSELECT * FROM Products\nWHERE COALESCE(DiscontinuedDate, '9999-12-31') > GETDATE();</code></pre><p><strong>My rule:</strong> Use <code>COALESCE</code> for portability and when you need multiple fallback values. Use <code>ISNULL</code> when performance is critical in SQL Server and you have exactly two values — it's marginally faster. Watch the data type truncation trap with <code>ISNULL</code>.</p>",
       "followUps": [
-        "What is the data type truncation issue with ISNULL?",
-        "Can COALESCE cause issues with non-deterministic functions being evaluated multiple times?",
-        "How does NULLIF() differ from COALESCE?"
+        {
+          "question": "What is the data type truncation issue with ISNULL?",
+          "answer": ""
+        },
+        {
+          "question": "Can COALESCE cause issues with non-deterministic functions being evaluated multiple times?",
+          "answer": ""
+        },
+        {
+          "question": "How does NULLIF() differ from COALESCE?",
+          "answer": ""
+        }
       ],
       "tip": "COALESCE = ANSI standard, multiple args, returns first non-NULL. ISNULL = SQL Server only, 2 args, slightly faster. Watch: ISNULL uses the first argument's data type (can truncate). Use COALESCE for portability.",
       "tags": [
@@ -1691,9 +1826,18 @@
       "question": "What is the difference between DBMS and RDBMS?",
       "answer": "<p>A fundamental theory question. The key distinction is that RDBMS enforces <em>relationships between tables</em> using foreign keys and referential integrity — which a basic DBMS doesn't do.</p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th style=\"border:1px solid #444;padding:6px\">Feature</th><th style=\"border:1px solid #444;padding:6px\">DBMS</th><th style=\"border:1px solid #444;padding:6px\">RDBMS</th></tr><tr><td style=\"border:1px solid #444;padding:6px\">Full form</td><td style=\"border:1px solid #444;padding:6px\">Database Management System</td><td style=\"border:1px solid #444;padding:6px\">Relational DBMS</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Data storage</td><td style=\"border:1px solid #444;padding:6px\">Files, hierarchical, network</td><td style=\"border:1px solid #444;padding:6px\">Tables (rows and columns)</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Relationships</td><td style=\"border:1px solid #444;padding:6px\">No enforced relationships</td><td style=\"border:1px solid #444;padding:6px\">Foreign keys enforce referential integrity</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Keys</td><td style=\"border:1px solid #444;padding:6px\">No concept of primary key</td><td style=\"border:1px solid #444;padding:6px\">Primary key, foreign key, unique key</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">ACID</td><td style=\"border:1px solid #444;padding:6px\">Not necessarily ACID</td><td style=\"border:1px solid #444;padding:6px\">Full ACID compliance</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Normalization</td><td style=\"border:1px solid #444;padding:6px\">Not supported</td><td style=\"border:1px solid #444;padding:6px\">Supported (1NF, 2NF, 3NF)</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Examples</td><td style=\"border:1px solid #444;padding:6px\">XML DBMS, file systems, IMS</td><td style=\"border:1px solid #444;padding:6px\">SQL Server, MySQL, PostgreSQL, Oracle</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Query language</td><td style=\"border:1px solid #444;padding:6px\">No standard query language</td><td style=\"border:1px solid #444;padding:6px\">SQL (Structured Query Language)</td></tr></table><pre><code class=\"language-sql\">-- RDBMS enforces relationships with foreign keys\nCREATE TABLE Customers (\n    CustomerId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Orders (\n    OrderId INT PRIMARY KEY,\n    CustomerId INT NOT NULL,\n    OrderDate DATETIME,\n    FOREIGN KEY (CustomerId) REFERENCES Customers(CustomerId)\n    -- RDBMS prevents inserting an order for non-existent customer\n    -- A basic DBMS would not enforce this!\n);\n\n-- Referential integrity in action\nINSERT INTO Orders VALUES (1, 999, GETDATE()); -- ERROR if CustomerId 999 doesn't exist</code></pre><p>In practice, everything we work with as .NET developers — SQL Server, MySQL, PostgreSQL — is an RDBMS. The distinction matters in interviews as a theory question, and it's worth noting that modern NoSQL databases like MongoDB are technically DBMS (not RDBMS) because they don't enforce relational constraints.</p>",
       "followUps": [
-        "Is MongoDB a DBMS or RDBMS?",
-        "What are the Codd's 12 rules for RDBMS?",
-        "Can you use an RDBMS without normalizing your data?"
+        {
+          "question": "Is MongoDB a DBMS or RDBMS?",
+          "answer": ""
+        },
+        {
+          "question": "What are the Codd's 12 rules for RDBMS?",
+          "answer": ""
+        },
+        {
+          "question": "Can you use an RDBMS without normalizing your data?",
+          "answer": ""
+        }
       ],
       "tip": "DBMS = manages data files (no enforced relationships). RDBMS = tables + foreign keys + ACID + SQL. All SQL Server/MySQL/PostgreSQL are RDBMS. NoSQL (MongoDB, Redis) are DBMS variants. The key difference: referential integrity enforcement.",
       "tags": [
