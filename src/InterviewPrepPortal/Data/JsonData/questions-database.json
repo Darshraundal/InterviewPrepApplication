@@ -1565,6 +1565,100 @@
       ],
       "sortOrder": 58,
       "isActive": true
+    },
+    {
+      "id": "db-059",
+      "category": "database",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are the types of SQL commands? Explain DDL, DML, DQL, DCL, and TCL.",
+      "answer": "<p>SQL commands are grouped into five categories based on what they do. This is a very common first SQL interview question.</p>\n\n<h4>1. DDL — Data Definition Language</h4>\n<p>Defines and modifies the <em>structure</em> of database objects. Changes are auto-committed.</p>\n<pre><code>CREATE TABLE Orders (OrderId INT PRIMARY KEY, Total DECIMAL(10,2));\nALTER  TABLE Orders ADD Column ShippedDate DATE;\nDROP   TABLE TempOrders;\nTRUNCATE TABLE Orders;  -- also DDL (structure-level operation)\nRENAME TABLE OldOrders TO ArchivedOrders;</code></pre>\n\n<h4>2. DML — Data Manipulation Language</h4>\n<p>Manipulates the <em>data</em> inside tables. Changes can be rolled back (within a transaction).</p>\n<pre><code>INSERT INTO Orders (Total) VALUES (250.00);\nUPDATE Orders SET Total = 300.00 WHERE OrderId = 1;\nDELETE FROM Orders WHERE OrderId = 1;\nMERGE INTO Orders AS target  -- upsert (SQL Server)\n    USING @source AS source ON target.OrderId = source.OrderId\n    WHEN MATCHED THEN UPDATE ...\n    WHEN NOT MATCHED THEN INSERT ...;</code></pre>\n\n<h4>3. DQL — Data Query Language</h4>\n<p>Queries data. Some classify SELECT under DML, but many treat it separately.</p>\n<pre><code>SELECT OrderId, Total FROM Orders WHERE Status = 'pending' ORDER BY Total DESC;</code></pre>\n\n<h4>4. DCL — Data Control Language</h4>\n<p>Controls access and permissions.</p>\n<pre><code>GRANT SELECT, INSERT ON Orders TO AppUser;\nDENY  DELETE ON Orders TO ReadOnlyUser;\nREVOKE INSERT ON Orders FROM AppUser;</code></pre>\n\n<h4>5. TCL — Transaction Control Language</h4>\n<p>Manages transactions — commits or rolls back DML changes.</p>\n<pre><code>BEGIN TRANSACTION;\n    UPDATE Accounts SET Balance = Balance - 1000 WHERE AccountId = 1;\n    UPDATE Accounts SET Balance = Balance + 1000 WHERE AccountId = 2;\nCOMMIT;   -- save changes\n\n-- or\nROLLBACK; -- undo all changes in this transaction\n\nSAVEPOINT sp1;           -- mark a point within transaction\nROLLBACK TO SAVEPOINT sp1;  -- partial rollback</code></pre>\n\n<h4>Quick memory trick:</h4>\n<ul>\n<li><strong>DDL</strong> = Create/Alter/Drop <em>structure</em></li>\n<li><strong>DML</strong> = Insert/Update/Delete <em>data</em></li>\n<li><strong>DQL</strong> = Select <em>read data</em></li>\n<li><strong>DCL</strong> = Grant/Deny/Revoke <em>access</em></li>\n<li><strong>TCL</strong> = Commit/Rollback <em>transactions</em></li>\n</ul>",
+      "followUps": [
+        "Why is TRUNCATE a DDL command if it removes data?",
+        "Can you roll back a DDL statement?",
+        "What is the difference between DELETE and TRUNCATE in terms of transaction logging?"
+      ],
+      "tip": "DDL auto-commits (can't rollback). DML is transactional (can rollback). TRUNCATE is DDL so it's not rollbackable in most RDBMS.",
+      "tags": [
+        "database",
+        "ddl",
+        "dml",
+        "dcl",
+        "tcl",
+        "sql-commands"
+      ],
+      "sortOrder": 59,
+      "isActive": true
+    },
+    {
+      "id": "db-060",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is a CASE statement in SQL? Explain SIMPLE vs SEARCHED CASE with examples.",
+      "answer": "<p>The CASE statement adds conditional logic to SQL queries — it's essentially an if-else block inside a SELECT, WHERE, or ORDER BY clause.</p>\n\n<h4>1. Simple CASE — compare one expression to multiple values</h4>\n<pre><code>SELECT \n    OrderId,\n    Status,\n    CASE Status\n        WHEN 'pending'   THEN 'Awaiting Processing'\n        WHEN 'shipped'   THEN 'On the Way'\n        WHEN 'delivered' THEN 'Completed'\n        WHEN 'cancelled' THEN 'Cancelled'\n        ELSE 'Unknown'\n    END AS StatusDescription\nFROM Orders;</code></pre>\n\n<h4>2. Searched CASE — evaluate different conditions</h4>\n<pre><code>SELECT \n    ProductId,\n    Price,\n    CASE \n        WHEN Price < 100    THEN 'Budget'\n        WHEN Price < 500    THEN 'Mid-Range'\n        WHEN Price < 2000   THEN 'Premium'\n        ELSE 'Luxury'\n    END AS PriceCategory,\n    CASE \n        WHEN Stock = 0      THEN 'Out of Stock'\n        WHEN Stock < 10     THEN 'Low Stock'\n        ELSE 'In Stock'\n    END AS StockStatus\nFROM Products;</code></pre>\n\n<h4>CASE in aggregate functions — pivot-style reporting:</h4>\n<pre><code>-- Count orders by status in a single row\nSELECT \n    COUNT(CASE WHEN Status = 'pending'   THEN 1 END) AS PendingCount,\n    COUNT(CASE WHEN Status = 'shipped'   THEN 1 END) AS ShippedCount,\n    COUNT(CASE WHEN Status = 'delivered' THEN 1 END) AS DeliveredCount,\n    SUM(CASE WHEN Status = 'delivered'   THEN Total ELSE 0 END) AS DeliveredRevenue\nFROM Orders;</code></pre>\n\n<h4>CASE in ORDER BY — custom sort:</h4>\n<pre><code>-- Prioritize urgent orders first\nSELECT * FROM Orders\nORDER BY \n    CASE Priority\n        WHEN 'urgent'  THEN 1\n        WHEN 'high'    THEN 2\n        WHEN 'normal'  THEN 3\n        ELSE 4\n    END,\n    CreatedDate ASC;</code></pre>\n\n<h4>CASE in UPDATE:</h4>\n<pre><code>-- Apply different discounts based on customer tier\nUPDATE Orders\nSET DiscountAmount = Total * \n    CASE CustomerTier\n        WHEN 'Gold'   THEN 0.20\n        WHEN 'Silver' THEN 0.10\n        WHEN 'Bronze' THEN 0.05\n        ELSE 0\n    END\nWHERE Status = 'pending';</code></pre>\n\n<p>I use CASE expressions frequently in reporting queries and stored procedures. The pivot-style aggregation pattern (COUNT + CASE) is very powerful for building summary dashboards without pivot tables.</p>",
+      "followUps": [
+        "What is the difference between CASE and IIF() in SQL Server?",
+        "Can you use CASE in a WHERE clause?",
+        "How do you handle NULLs in CASE expressions?"
+      ],
+      "tip": "CASE is evaluated left to right — first matching WHEN wins. NULLs don't match with = in CASE; use WHEN column IS NULL.",
+      "tags": [
+        "database",
+        "case-statement",
+        "conditional-logic",
+        "sql-server",
+        "pivot"
+      ],
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "id": "db-061",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is a Self Join in SQL? When and why would you use one?",
+      "answer": "<p>A self join is when a table is joined to <em>itself</em>. You use it when rows in the same table have a hierarchical or peer relationship — for example, an Employee table where each row has a ManagerId that points to another row in the same table.</p>\n\n<h4>Classic example — Employee and Manager in same table:</h4>\n<pre><code>CREATE TABLE Employee (\n    EmployeeId INT PRIMARY KEY,\n    Name       NVARCHAR(100),\n    ManagerId  INT NULL,  -- FK to same table (NULL = top of hierarchy)\n    Department NVARCHAR(50)\n);\n\n-- Self join to get employee + their manager's name\nSELECT \n    e.EmployeeId,\n    e.Name          AS EmployeeName,\n    m.Name          AS ManagerName,\n    e.Department\nFROM Employee e\nLEFT JOIN Employee m ON e.ManagerId = m.EmployeeId;\n-- LEFT JOIN ensures employees with no manager (CEO) are still returned\n\n-- Result:\n-- EmployeeId  EmployeeName  ManagerName   Department\n-- 1           Alice         NULL          Engineering   (Alice is CEO)\n-- 2           Bob           Alice         Engineering\n-- 3           Carol         Alice         Sales\n-- 4           Dave          Bob           Engineering</code></pre>\n\n<h4>Find all employees who earn more than their manager:</h4>\n<pre><code>SELECT \n    e.Name          AS Employee,\n    e.Salary        AS EmployeeSalary,\n    m.Name          AS Manager,\n    m.Salary        AS ManagerSalary\nFROM Employee e\nINNER JOIN Employee m ON e.ManagerId = m.EmployeeId\nWHERE e.Salary > m.Salary;</code></pre>\n\n<h4>Another use case — finding duplicates or related records:</h4>\n<pre><code>-- Find customers in the same city\nSELECT \n    c1.Name AS Customer1,\n    c2.Name AS Customer2,\n    c1.City\nFROM Customers c1\nINNER JOIN Customers c2 \n    ON c1.City = c2.City \n    AND c1.CustomerId < c2.CustomerId  -- avoid duplicates and self-matches\nORDER BY c1.City;</code></pre>\n\n<h4>Key point — always use aliases:</h4>\n<p>You <em>must</em> alias the table when self-joining because SQL can't tell which instance of the table you mean. Typically I use <code>e</code> for employee and <code>m</code> for manager, or <code>p</code> and <code>c</code> for parent and child.</p>\n\n<p>In EF Core, you'd model this as a navigation property pointing to the same entity, and EF generates the self-join automatically in the SQL it produces.</p>",
+      "followUps": [
+        "How would you model a self-referential relationship in EF Core?",
+        "What is the difference between a self join and a recursive CTE for hierarchical data?",
+        "How do you avoid duplicate rows in a self join?"
+      ],
+      "tip": "Always use aliases in self joins. Use LEFT JOIN to include top-level records (like CEO with no manager). Recursive CTEs are better for deep hierarchies.",
+      "tags": [
+        "database",
+        "self-join",
+        "hierarchy",
+        "sql",
+        "employee-manager"
+      ],
+      "sortOrder": 61,
+      "isActive": true
+    },
+    {
+      "id": "db-062",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is a Cursor in SQL Server? When should you use one and when should you avoid it?",
+      "answer": "<p>A cursor is a database object that allows you to process query results <em>row-by-row</em>, like a loop in application code. Think of it as a pointer that moves through a result set one row at a time.</p>\n\n<h4>Basic cursor syntax:</h4>\n<pre><code>DECLARE @EmployeeId INT, @Name NVARCHAR(100), @Salary DECIMAL(10,2);\n\n-- Declare the cursor\nDECLARE emp_cursor CURSOR FOR\n    SELECT EmployeeId, Name, Salary FROM Employees WHERE Department = 'Sales';\n\n-- Open it (executes the query)\nOPEN emp_cursor;\n\n-- Fetch first row\nFETCH NEXT FROM emp_cursor INTO @EmployeeId, @Name, @Salary;\n\n-- Loop through rows\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    -- Process each row\n    PRINT 'Processing: ' + @Name + ' - Salary: ' + CAST(@Salary AS VARCHAR);\n    \n    -- Do something with this row...\n    \n    -- Fetch next row\n    FETCH NEXT FROM emp_cursor INTO @EmployeeId, @Name, @Salary;\nEND;\n\n-- Always clean up\nCLOSE emp_cursor;\nDEALLOCATE emp_cursor;</code></pre>\n\n<h4>When cursors are actually justified:</h4>\n<ul>\n<li>Row-by-row processing that truly can't be set-based (rare)</li>\n<li>Calling a stored procedure for each row</li>\n<li>Complex calculations that depend on previous row results</li>\n<li>Administrative/maintenance tasks that must be logged per-row</li>\n</ul>\n\n<h4>⚠️ When to AVOID cursors (almost always):</h4>\n<p>Cursors are slow because SQL Server is optimized for set-based operations, not row-by-row iteration. A cursor on a million rows might take minutes; the equivalent set-based UPDATE takes seconds.</p>\n\n<pre><code>-- BAD: Cursor to give 10% raise to all Sales employees\nDECLARE @Id INT\nDECLARE c CURSOR FOR SELECT EmployeeId FROM Employees WHERE Department = 'Sales'\nOPEN c\nFETCH NEXT FROM c INTO @Id\nWHILE @@FETCH_STATUS = 0\nBEGIN\n    UPDATE Employees SET Salary = Salary * 1.10 WHERE EmployeeId = @Id\n    FETCH NEXT FROM c INTO @Id\nEND\nCLOSE c; DEALLOCATE c;\n\n-- GOOD: Set-based — one statement, much faster\nUPDATE Employees \nSET Salary = Salary * 1.10 \nWHERE Department = 'Sales';</code></pre>\n\n<h4>Cursor alternatives I use instead:</h4>\n<ul>\n<li><code>WHILE</code> loop with <code>MIN()</code> to iterate — slightly faster than cursor</li>\n<li>Set-based UPDATE/INSERT/MERGE for bulk changes</li>\n<li>Recursive CTEs for hierarchical processing</li>\n<li>Application-side processing — pull data to C#, process in memory, write back</li>\n</ul>\n\n<p>My general rule: if I find myself reaching for a cursor, I take 5 minutes to think about a set-based alternative first. 9 out of 10 times, one exists.</p>",
+      "followUps": [
+        "What is the difference between STATIC, DYNAMIC, FAST_FORWARD cursor types?",
+        "How do you optimize a cursor if you absolutely must use one?",
+        "What is a WHILE loop alternative to cursors?"
+      ],
+      "tip": "FAST_FORWARD cursors are the fastest type if you must use one — read-only, forward-only. But set-based is almost always better.",
+      "tags": [
+        "database",
+        "cursor",
+        "sql-server",
+        "performance",
+        "row-by-row",
+        "set-based"
+      ],
+      "sortOrder": 62,
+      "isActive": true
     }
   ]
 }

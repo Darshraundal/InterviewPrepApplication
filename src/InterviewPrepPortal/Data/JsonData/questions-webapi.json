@@ -902,6 +902,123 @@
       ],
       "sortOrder": 34,
       "isActive": true
+    },
+    {
+      "id": "webapi-035",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is HATEOAS and how does it relate to REST API design?",
+      "answer": "<p>HATEOAS stands for <strong>Hypermedia As The Engine Of Application State</strong>. It's one of Roy Fielding's original REST constraints — the idea that API responses should include links to related actions, so clients can navigate the API dynamically without hard-coding URLs.</p>\n\n<h4>What it looks like in practice:</h4>\n<pre><code>// Without HATEOAS — client must know all URLs upfront\nGET /api/orders/123\n{\n  \"orderId\": 123,\n  \"status\": \"pending\",\n  \"total\": 250.00\n}\n\n// With HATEOAS — response tells client what it can do next\nGET /api/orders/123\n{\n  \"orderId\": 123,\n  \"status\": \"pending\",\n  \"total\": 250.00,\n  \"_links\": {\n    \"self\":    { \"href\": \"/api/orders/123\",        \"method\": \"GET\"    },\n    \"cancel\":  { \"href\": \"/api/orders/123/cancel\", \"method\": \"DELETE\" },\n    \"pay\":     { \"href\": \"/api/orders/123/pay\",    \"method\": \"POST\"   },\n    \"customer\":{ \"href\": \"/api/customers/456\",     \"method\": \"GET\"    }\n  }\n}</code></pre>\n\n<h4>Implementing in ASP.NET Core:</h4>\n<pre><code>public class OrderDto\n{\n    public int OrderId { get; set; }\n    public string Status { get; set; }\n    public decimal Total { get; set; }\n    public List&lt;Link&gt; Links { get; set; } = new();\n}\n\npublic class Link\n{\n    public string Href { get; set; }\n    public string Rel { get; set; }\n    public string Method { get; set; }\n}\n\n// In controller:\n[HttpGet(\"{id}\")]\npublic ActionResult&lt;OrderDto&gt; GetOrder(int id)\n{\n    var order = _orderService.GetById(id);\n    var dto = _mapper.Map&lt;OrderDto&gt;(order);\n    \n    dto.Links.Add(new Link { Href = $\"/api/orders/{id}\", Rel = \"self\", Method = \"GET\" });\n    \n    if (order.Status == \"pending\")\n    {\n        dto.Links.Add(new Link { Href = $\"/api/orders/{id}/cancel\", Rel = \"cancel\", Method = \"DELETE\" });\n        dto.Links.Add(new Link { Href = $\"/api/orders/{id}/pay\", Rel = \"pay\", Method = \"POST\" });\n    }\n    \n    return Ok(dto);\n}</code></pre>\n\n<h4>Honest take:</h4>\n<p>HATEOAS is theoretically elegant but rarely fully implemented in practice. Most real-world REST APIs are \"REST-like\" and skip HATEOAS. The value is highest when building public APIs consumed by clients you don't control. For internal APIs within a company, the overhead usually isn't worth it. I've seen it used in payment APIs (where the available actions change based on order state) and banking APIs.</p>",
+      "followUps": [
+        "Is HATEOAS required for a truly RESTful API?",
+        "What is Richardson Maturity Model?",
+        "Which .NET libraries help implement HATEOAS?"
+      ],
+      "tip": "Richardson Maturity Model: Level 0=RPC, Level 1=Resources, Level 2=HTTP verbs, Level 3=HATEOAS. Most real APIs are at Level 2.",
+      "tags": [
+        "webapi",
+        "hateoas",
+        "rest",
+        "hypermedia",
+        "api-design"
+      ],
+      "sortOrder": 35,
+      "isActive": true
+    },
+    {
+      "id": "webapi-036",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is idempotency in REST? Which HTTP methods are idempotent and why does it matter?",
+      "answer": "<p>An operation is <strong>idempotent</strong> if making the same request multiple times produces the same result as making it once. This concept is crucial for building reliable APIs, especially when handling retries after network failures.</p>\n\n<h4>Which methods are idempotent?</h4>\n<table>\n<tr><th>Method</th><th>Idempotent?</th><th>Safe?</th><th>Why</th></tr>\n<tr><td>GET</td><td>✅ Yes</td><td>✅ Yes</td><td>Read-only, same result every time</td></tr>\n<tr><td>PUT</td><td>✅ Yes</td><td>❌ No</td><td>Replace resource — calling twice with same data = same state</td></tr>\n<tr><td>DELETE</td><td>✅ Yes</td><td>❌ No</td><td>First call deletes, subsequent calls still return 404 — end state is \"deleted\"</td></tr>\n<tr><td>PATCH</td><td>⚠️ Depends</td><td>❌ No</td><td>Can be idempotent if absolute values, not if relative (+10 to balance)</td></tr>\n<tr><td>POST</td><td>❌ No</td><td>❌ No</td><td>Creates a new resource each time — calling POST twice creates two records</td></tr>\n<tr><td>HEAD, OPTIONS</td><td>✅ Yes</td><td>✅ Yes</td><td>Read-only metadata</td></tr>\n</table>\n\n<h4>Why it matters — Retry logic:</h4>\n<pre><code>// Client makes PUT /api/orders/123 — network drops\n// Client retries the same PUT — SAFE because PUT is idempotent\n// The order is updated once, regardless of how many retries\n\n// Client makes POST /api/orders — network drops  \n// Client retries — DANGEROUS — creates a duplicate order!\n// Solution: use idempotency keys\n\n// POST with idempotency key header:\nPOST /api/orders\nIdempotency-Key: uuid-abc-123-def\n\n// Server stores processed idempotency keys:\n// If same key arrives again, return the cached response — don't re-process</code></pre>\n\n<h4>Implementing idempotency keys for POST in ASP.NET Core:</h4>\n<pre><code>[HttpPost]\npublic async Task&lt;IActionResult&gt; CreateOrder(\n    [FromBody] CreateOrderRequest request,\n    [FromHeader(Name = \"Idempotency-Key\")] string? idempotencyKey)\n{\n    if (idempotencyKey != null)\n    {\n        var cached = await _cache.GetAsync&lt;OrderDto&gt;($\"idem:{idempotencyKey}\");\n        if (cached != null) return Ok(cached); // replay cached response\n    }\n    \n    var order = await _orderService.CreateAsync(request);\n    \n    if (idempotencyKey != null)\n        await _cache.SetAsync($\"idem:{idempotencyKey}\", order, TimeSpan.FromHours(24));\n    \n    return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);\n}</code></pre>\n\n<p>Payment APIs like Stripe use idempotency keys extensively. I've used the same pattern in financial transaction APIs where duplicate charges are catastrophic.</p>",
+      "followUps": [
+        "What is the difference between safe and idempotent?",
+        "How would you implement idempotency keys in a distributed system?",
+        "Is PATCH always idempotent?"
+      ],
+      "tip": "POST is not idempotent. For safe POST retries, use idempotency keys — Stripe pioneered this pattern.",
+      "tags": [
+        "webapi",
+        "idempotency",
+        "http-methods",
+        "rest",
+        "reliability"
+      ],
+      "sortOrder": 36,
+      "isActive": true
+    },
+    {
+      "id": "webapi-037",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the difference between REST and GraphQL? When would you choose one over the other?",
+      "answer": "<p>Both REST and GraphQL are ways to expose data over HTTP. The key difference is in how clients request data.</p>\n\n<h4>REST</h4>\n<ul>\n<li>Multiple endpoints, each returns a fixed shape of data</li>\n<li>Client has no control over what fields are returned</li>\n<li>Can lead to <strong>over-fetching</strong> (getting fields you don't need) or <strong>under-fetching</strong> (needing multiple calls)</li>\n</ul>\n<pre><code>// REST — client gets everything, even if it only needs name and email\nGET /api/users/123\n// Returns: id, name, email, address, phone, createdAt, roles, preferences...\n\n// REST — need 3 calls to build a dashboard\nGET /api/users/123\nGET /api/orders?userId=123\nGET /api/notifications?userId=123</code></pre>\n\n<h4>GraphQL</h4>\n<ul>\n<li>Single endpoint (<code>/graphql</code>), client specifies exactly what fields it needs</li>\n<li>Eliminates over-fetching and under-fetching</li>\n<li>Strongly typed schema</li>\n</ul>\n<pre><code>// GraphQL — client asks for exactly what it needs\nPOST /graphql\n{\n  user(id: 123) {\n    name\n    email\n    orders(last: 5) {\n      id\n      total\n    }\n    unreadNotifications {\n      count\n    }\n  }\n}\n// One request, exactly the data needed</code></pre>\n\n<h4>In ASP.NET Core — Hot Chocolate library:</h4>\n<pre><code>// GraphQL in .NET with Hot Chocolate\nbuilder.Services.AddGraphQLServer()\n    .AddQueryType&lt;Query&gt;()\n    .AddMutationType&lt;Mutation&gt;();\n\npublic class Query\n{\n    public User GetUser([Service] IUserService svc, int id) \n        => svc.GetById(id);\n}</code></pre>\n\n<h4>When to choose:</h4>\n<table>\n<tr><th>Use REST when...</th><th>Use GraphQL when...</th></tr>\n<tr><td>Simple CRUD operations</td><td>Complex data with many relationships</td></tr>\n<tr><td>Public API (easier to document and consume)</td><td>Multiple clients need different data shapes (mobile vs web)</td></tr>\n<tr><td>Caching matters (HTTP caching works natively)</td><td>Reducing network round-trips is critical</td></tr>\n<tr><td>Team familiar with REST</td><td>Aggregating data from multiple services</td></tr>\n</table>\n\n<p>In most .NET projects I've worked on, REST is the default choice — simpler to implement, Swagger integration is mature, and most teams know it well. I'd reach for GraphQL if I had multiple client types (mobile, web, partner APIs) each needing different slices of the same data.</p>",
+      "followUps": [
+        "What is the N+1 problem in GraphQL and how do you solve it with DataLoader?",
+        "How does HTTP caching work with GraphQL?",
+        "What is gRPC and when would you use it over REST or GraphQL?"
+      ],
+      "tip": "REST has better HTTP caching, simpler tooling. GraphQL solves over-fetching/under-fetching. Pick based on client diversity and data complexity.",
+      "tags": [
+        "webapi",
+        "graphql",
+        "rest",
+        "api-design",
+        "hot-chocolate"
+      ],
+      "sortOrder": 37,
+      "isActive": true
+    },
+    {
+      "id": "webapi-038",
+      "category": "webapi",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between query parameters and path parameters in REST API? When do you use each?",
+      "answer": "<p>This comes up constantly in API design discussions. The rule is simple once you understand the intent.</p>\n\n<h4>Path Parameters — identify a specific resource</h4>\n<p>Embedded in the URL path itself. Used when the parameter <em>identifies which resource</em> you're accessing. They are mandatory.</p>\n<pre><code>// Path parameter: {id} identifies the specific order\nGET /api/orders/456        → Get order with ID 456\nDELETE /api/orders/456     → Delete order 456\nPUT /api/orders/456        → Update order 456\n\n// Nested resource\nGET /api/customers/123/orders/456  → Order 456 belonging to customer 123\n\n// In ASP.NET Core:\n[HttpGet(\"{id}\")]\npublic IActionResult GetOrder(int id) { ... }\n\n[HttpGet(\"{customerId}/orders/{orderId}\")]\npublic IActionResult GetCustomerOrder(int customerId, int orderId) { ... }</code></pre>\n\n<h4>Query Parameters — filter, sort, paginate, search</h4>\n<p>Appended after <code>?</code> in the URL. Used for <em>optional modifiers</em> on the resource collection. They are optional.</p>\n<pre><code>// Filtering\nGET /api/orders?status=pending&customerId=123\n\n// Pagination\nGET /api/orders?page=2&pageSize=20\n\n// Sorting\nGET /api/products?sort=price&order=asc\n\n// Searching\nGET /api/customers?search=john&city=Mumbai\n\n// Multiple filters combined\nGET /api/orders?status=delivered&dateFrom=2024-01-01&dateTo=2024-12-31\n\n// In ASP.NET Core:\n[HttpGet]\npublic IActionResult GetOrders(\n    [FromQuery] string? status,\n    [FromQuery] int page = 1,\n    [FromQuery] int pageSize = 20,\n    [FromQuery] string? sort = \"createdAt\"\n) { ... }</code></pre>\n\n<h4>Common mistake to avoid:</h4>\n<pre><code>// BAD — don't use path params for optional filters\nGET /api/orders/pending/page/2/sort/date  ❌\n\n// GOOD — path param for ID, query params for everything else\nGET /api/orders/456?includeItems=true     ✅\nGET /api/orders?status=pending&page=2     ✅</code></pre>\n\n<h4>Decision rule:</h4>\n<ul>\n<li><strong>Path param</strong> → \"Which resource?\" (required, identifies the entity)</li>\n<li><strong>Query param</strong> → \"How do you want it?\" (optional, filters/modifies the response)</li>\n</ul>",
+      "followUps": [
+        "When would you use a request body instead of query parameters?",
+        "Can you use query parameters with DELETE or PUT?",
+        "What is the maximum URL length and does it affect query parameter usage?"
+      ],
+      "tip": "Path params = identity (required). Query params = filtering/sorting/pagination (optional). Never put sensitive data like passwords in query params — they appear in server logs.",
+      "tags": [
+        "webapi",
+        "path-parameter",
+        "query-parameter",
+        "rest",
+        "api-design",
+        "routing"
+      ],
+      "sortOrder": 38,
+      "isActive": true
+    },
+    {
+      "id": "webapi-039",
+      "category": "webapi",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "What are REST API best practices? What are the key design principles you follow?",
+      "answer": "<p>After building and consuming many APIs, here are the principles I apply consistently:</p>\n\n<h4>1. Use nouns for resources, not verbs</h4>\n<pre><code>// BAD — verbs in URL\nPOST /api/createOrder\nGET  /api/getOrders\nPOST /api/deleteOrder/123\n\n// GOOD — nouns + HTTP method conveys the action\nPOST   /api/orders          // create\nGET    /api/orders          // list\nGET    /api/orders/123      // get one\nPUT    /api/orders/123      // update\nDELETE /api/orders/123      // delete</code></pre>\n\n<h4>2. Use proper HTTP status codes</h4>\n<pre><code>200 OK          → successful GET, PUT, PATCH\n201 Created     → successful POST (include Location header)\n204 No Content  → successful DELETE (no response body)\n400 Bad Request → validation failures\n401 Unauthorized→ not authenticated\n403 Forbidden   → authenticated but no permission\n404 Not Found   → resource doesn't exist\n409 Conflict    → duplicate or state conflict\n422 Unprocessable → business rule violation\n429 Too Many    → rate limit exceeded\n500 Server Error→ something we didn't handle</code></pre>\n\n<h4>3. Version your API from day one</h4>\n<pre><code>// URL versioning (most visible, easiest to route)\nGET /api/v1/orders\nGET /api/v2/orders\n\n// Header versioning\nGET /api/orders\nApi-Version: 2.0</code></pre>\n\n<h4>4. Return consistent error responses</h4>\n<pre><code>// Consistent error envelope (use ProblemDetails in ASP.NET Core)\n{\n  \"type\": \"https://tools.ietf.org/html/rfc7231#section-6.5.1\",\n  \"title\": \"Validation failed\",\n  \"status\": 400,\n  \"errors\": {\n    \"Email\": [\"Email is required\"],\n    \"Age\": [\"Age must be 18 or older\"]\n  }\n}</code></pre>\n\n<h4>5. Pagination on collections</h4>\n<pre><code>GET /api/orders?page=1&pageSize=20\n\n// Response includes pagination metadata\n{\n  \"data\": [...],\n  \"pagination\": {\n    \"page\": 1,\n    \"pageSize\": 20,\n    \"totalCount\": 847,\n    \"totalPages\": 43\n  }\n}</code></pre>\n\n<h4>6. Other rules I follow</h4>\n<ul>\n<li>Use plural nouns: <code>/orders</code> not <code>/order</code></li>\n<li>Use kebab-case for URLs: <code>/order-items</code> not <code>/orderItems</code></li>\n<li>Always use HTTPS in production</li>\n<li>Support filtering, sorting, searching via query params</li>\n<li>Use <code>ETag</code> + <code>If-None-Match</code> for caching GET responses</li>\n<li>Document with Swagger/OpenAPI — in ASP.NET Core this is just a NuGet package away</li>\n<li>Implement rate limiting on public endpoints</li>\n<li>Log request/response with correlation IDs for tracing</li>\n</ul>",
+      "followUps": [
+        "What is the ProblemDetails standard in ASP.NET Core?",
+        "What is HATEOAS and do you use it?",
+        "How do you handle breaking vs non-breaking API changes?"
+      ],
+      "tip": "The most common mistake I see: using POST for everything. Proper HTTP verbs + meaningful status codes = self-documenting API.",
+      "tags": [
+        "webapi",
+        "rest",
+        "best-practices",
+        "api-design",
+        "http-status",
+        "versioning"
+      ],
+      "sortOrder": 39,
+      "isActive": true
     }
   ]
 }
