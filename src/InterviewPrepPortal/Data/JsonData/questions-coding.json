@@ -372,6 +372,121 @@
       ],
       "sortOrder": 14,
       "isActive": true
+    },
+    {
+      "id": "coding-015",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Find the largest number in an array in C#.",
+      "answer": "<p>A classic warm-up question. Three approaches — pick based on context:</p><pre><code class=\"language-csharp\">int[] arr = { 10, 25, 5, 40, 15 };\n\n// Approach 1: LINQ — clean, idiomatic C#\nint maxLinq = arr.Max();\nConsole.WriteLine($\"LINQ: {maxLinq}\"); // 40\n\n// Approach 2: Manual foreach — shows understanding of iteration\nint max = arr[0]; // start with first element, not int.MinValue\nforeach (int num in arr)\n{\n    if (num > max)\n        max = num;\n}\nConsole.WriteLine($\"Manual: {max}\"); // 40\n\n// Approach 3: Array.Sort / Array.Max — if you need sorted too\nint maxSort = arr.OrderByDescending(x => x).First();\n\n// Edge case: empty array\nif (arr.Length == 0) throw new InvalidOperationException(\"Array is empty\");\n\n// For custom objects: use MaxBy() (LINQ in .NET 6+)\nvar employees = new[] { new { Name = \"A\", Salary = 50000 }, new { Name = \"B\", Salary = 80000 } };\nvar topEarner = employees.MaxBy(e => e.Salary);\nConsole.WriteLine(topEarner.Name); // B</code></pre><p>In a real codebase I'd use <code>arr.Max()</code> — it's clear and handles the empty case with a meaningful exception. I'd only write the manual loop if asked to avoid LINQ or if I needed to track the index along with the value.</p>",
+      "followUps": [
+        "How do you find both the max value and its index simultaneously?",
+        "What happens if you call arr.Max() on an empty array?",
+        "How would you find the top N largest numbers?"
+      ],
+      "tip": "Use arr.Max() in production. For interviews, demonstrate the manual foreach approach to show you understand the logic, then mention LINQ as the idiomatic choice.",
+      "tags": [
+        "array",
+        "max",
+        "LINQ",
+        "iteration",
+        "coding problem"
+      ],
+      "sortOrder": 15,
+      "isActive": true
+    },
+    {
+      "id": "coding-016",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Check whether a number is prime in C#.",
+      "answer": "<p>A number is prime if it's greater than 1 and has no divisors other than 1 and itself. The key optimization: you only need to check up to √n, not n/2 or n itself.</p><pre><code class=\"language-csharp\">// Basic implementation — O(√n) time\npublic static bool IsPrime(int n)\n{\n    if (n &lt; 2) return false; // 0 and 1 are not prime\n    if (n == 2) return true;  // 2 is the only even prime\n    if (n % 2 == 0) return false; // eliminate even numbers early\n\n    // Only check odd divisors up to √n\n    for (int i = 3; i * i &lt;= n; i += 2)\n    {\n        if (n % i == 0) return false;\n    }\n    return true;\n}\n\n// Usage\nConsole.WriteLine(IsPrime(7));   // True\nConsole.WriteLine(IsPrime(10));  // False\nConsole.WriteLine(IsPrime(97));  // True\n\n// Print all primes up to 50\nvar primes = Enumerable.Range(2, 49).Where(IsPrime);\nConsole.WriteLine(string.Join(\", \", primes));\n// 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47\n\n// For large ranges, use Sieve of Eratosthenes\npublic static bool[] SieveOfEratosthenes(int limit)\n{\n    bool[] isPrime = new bool[limit + 1];\n    Array.Fill(isPrime, true);\n    isPrime[0] = isPrime[1] = false;\n\n    for (int i = 2; i * i &lt;= limit; i++)\n    {\n        if (isPrime[i])\n            for (int j = i * i; j &lt;= limit; j += i)\n                isPrime[j] = false;\n    }\n    return isPrime;\n}</code></pre><p><strong>Why i * i &lt;= n instead of i &lt;= n/2?</strong> If n has a factor larger than √n, the corresponding co-factor must be smaller than √n, so we'd already have found it. This cuts iterations roughly in half compared to checking up to n/2.</p>",
+      "followUps": [
+        "Why do you only need to check up to √n?",
+        "What is the Sieve of Eratosthenes and when is it better?",
+        "How would you find all prime numbers up to 1 million efficiently?"
+      ],
+      "tip": "Loop up to i * i <= n (not n/2). Skip even numbers after checking n==2. The Sieve of Eratosthenes is better when you need to find ALL primes in a range.",
+      "tags": [
+        "prime number",
+        "algorithm",
+        "math",
+        "coding problem",
+        "Sieve of Eratosthenes"
+      ],
+      "sortOrder": 16,
+      "isActive": true
+    },
+    {
+      "id": "coding-017",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Count occurrences of each character in a string in C#.",
+      "answer": "<p>This is a standard Dictionary-based frequency counting problem. It tests whether you know to use a hash map for O(1) lookups.</p><pre><code class=\"language-csharp\">string input = \"dotnetdeveloper\";\n\n// Approach 1: Dictionary (explicit) — shows the logic clearly\nvar freq = new Dictionary&lt;char, int&gt;();\nforeach (char c in input)\n{\n    if (freq.ContainsKey(c))\n        freq[c]++;\n    else\n        freq[c] = 1;\n}\n\n// Modern C# shorthand using GetValueOrDefault\nvar freq2 = new Dictionary&lt;char, int&gt;();\nforeach (char c in input)\n    freq2[c] = freq2.GetValueOrDefault(c) + 1;\n\n// Print results\nforeach (var kv in freq2.OrderBy(x => x.Key))\n    Console.WriteLine($\"'{kv.Key}': {kv.Value}\");\n\n// Approach 2: LINQ GroupBy — one-liner\nvar charCounts = input\n    .GroupBy(c => c)\n    .ToDictionary(g => g.Key, g => g.Count());\n\nforeach (var kv in charCounts.OrderByDescending(x => x.Value))\n    Console.WriteLine($\"'{kv.Key}': {kv.Value}\");\n\n// Approach 3: Handle case-insensitive counting\nvar caseInsensitive = input.ToLower()\n    .GroupBy(c => c)\n    .ToDictionary(g => g.Key, g => g.Count());\n\n// Approach 4: Check if all characters are unique\nbool allUnique = input.Length == input.Distinct().Count();\nConsole.WriteLine($\"All unique: {allUnique}\");</code></pre><p>In real code I use the LINQ <code>GroupBy</code> approach for readability. In a performance-critical loop I'd use the manual Dictionary with <code>GetValueOrDefault</code> to avoid double-lookup. For ASCII strings, a <code>int[128]</code> array indexed by char gives even faster performance.</p>",
+      "followUps": [
+        "How would you optimize this for ASCII-only strings?",
+        "How do you find the most frequent character using this approach?",
+        "How does this differ from finding the first non-repeating character?"
+      ],
+      "tip": "Dictionary<char, int> for O(n) solution. Use freq[c] = freq.GetValueOrDefault(c) + 1 as a clean one-liner. LINQ GroupBy().ToDictionary() is the idiomatic C# approach.",
+      "tags": [
+        "Dictionary",
+        "frequency counting",
+        "string manipulation",
+        "LINQ",
+        "coding problem"
+      ],
+      "sortOrder": 17,
+      "isActive": true
+    },
+    {
+      "id": "coding-018",
+      "category": "coding",
+      "difficulty": "Medium",
+      "frequency": "Medium",
+      "question": "Find the missing numbers from a sorted integer array in C#.",
+      "answer": "<p>Given a sorted array that should be a complete sequence (e.g., 1 to N), find which numbers are missing. Key insight: the expected value at index i is arr[0] + i, so any deviation means a gap.</p><pre><code class=\"language-csharp\">// Approach 1: Expected vs actual comparison — O(n) time\npublic static List&lt;int&gt; FindMissingNumbers(int[] arr)\n{\n    var missing = new List&lt;int&gt;();\n    if (arr.Length == 0) return missing;\n\n    int expected = arr[0]; // start from first element\n    foreach (int num in arr)\n    {\n        while (expected &lt; num) // fill gap between expected and actual\n        {\n            missing.Add(expected);\n            expected++;\n        }\n        expected++; // move past current number\n    }\n    return missing;\n}\n\nint[] arr = { 1, 2, 4, 6, 7 };\nvar missing = FindMissingNumbers(arr);\nConsole.WriteLine(string.Join(\", \", missing)); // 3, 5\n\n// Approach 2: HashSet for unsorted arrays — O(n) time+space\npublic static List&lt;int&gt; FindMissingUnsorted(int[] arr, int min, int max)\n{\n    var set = new HashSet&lt;int&gt;(arr);\n    return Enumerable.Range(min, max - min + 1)\n                     .Where(n => !set.Contains(n))\n                     .ToList();\n}\n\n// Approach 3: Math formula (only if exactly ONE number missing, 1 to N)\n// Sum of 1..N = N*(N+1)/2, missing = expectedSum - actualSum\npublic static int FindSingleMissing(int[] arr)\n{\n    int n = arr.Length + 1; // because one is missing\n    int expectedSum = n * (n + 1) / 2;\n    int actualSum = arr.Sum();\n    return expectedSum - actualSum;\n}\n\nint[] oneGap = { 1, 2, 3, 5 };\nConsole.WriteLine(FindSingleMissing(oneGap)); // 4</code></pre><p>The math formula approach for single missing number is elegant and O(n) with O(1) space — interviewers love it. The HashSet approach works for any range and handles multiple missing values efficiently.</p>",
+      "followUps": [
+        "How would you find the missing number in 1..N using XOR?",
+        "What if the array isn't sorted?",
+        "How does the math sum formula break down if multiple numbers are missing?"
+      ],
+      "tip": "For single missing in 1..N: use expectedSum = N*(N+1)/2, then missing = expectedSum - arr.Sum(). For multiple missing: HashSet for unsorted, or walk with expected counter for sorted arrays.",
+      "tags": [
+        "array",
+        "missing numbers",
+        "HashSet",
+        "algorithm",
+        "coding problem"
+      ],
+      "sortOrder": 18,
+      "isActive": true
+    },
+    {
+      "id": "coding-019",
+      "category": "coding",
+      "difficulty": "Medium",
+      "frequency": "High",
+      "question": "Find the second highest number in an array in C#.",
+      "answer": "<p>A common array question with several edge cases. The trick is handling duplicates and arrays with fewer than 2 distinct values.</p><pre><code class=\"language-csharp\">int[] arr = { 7, 2, 9, 4, 9, 3 };\n\n// Approach 1: LINQ — clean but O(n log n)\nint? secondHighest = arr.Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefault();\nConsole.WriteLine(secondHighest); // 7\n\n// Approach 2: Single pass O(n) — two variables, handles duplicates\npublic static int? SecondHighest(int[] arr)\n{\n    if (arr.Length &lt; 2) return null;\n\n    int first = int.MinValue;\n    int second = int.MinValue;\n\n    foreach (int n in arr)\n    {\n        if (n > first)\n        {\n            second = first; // old first becomes second\n            first = n;\n        }\n        else if (n > second &amp;&amp; n != first) // != first handles duplicates\n        {\n            second = n;\n        }\n    }\n\n    return second == int.MinValue ? null : second;\n}\n\n// Test cases\nConsole.WriteLine(SecondHighest(new[] { 7, 2, 9, 4, 9, 3 })); // 7\nConsole.WriteLine(SecondHighest(new[] { 5, 5, 5 }));           // null (no second distinct)\nConsole.WriteLine(SecondHighest(new[] { 1 }));                  // null (only one element)\nConsole.WriteLine(SecondHighest(new[] { 3, 1 }));              // 1\n\n// Approach 3: Using sorted set for top-N generalization\npublic static int? SecondHighestSortedSet(int[] arr)\n{\n    var sorted = new SortedSet&lt;int&gt;(arr); // removes duplicates, O(n log n)\n    if (sorted.Count &lt; 2) return null;\n    sorted.Remove(sorted.Max);\n    return sorted.Max;\n}</code></pre><p>In interviews, the O(n) two-variable approach gets the best marks because it's efficient and forces you to handle duplicate values explicitly. The <code>n != first</code> check is the key detail that trips people up.</p>",
+      "followUps": [
+        "How would you generalize this to find the Kth highest element?",
+        "What happens if all elements in the array are the same?",
+        "How would you use a min-heap to find the top-K elements?"
+      ],
+      "tip": "O(n) two-variable approach is optimal. Key detail: use n != first to handle duplicates (otherwise {9,9,7} would return 9 as the second highest instead of 7). Handle the case where second stays int.MinValue.",
+      "tags": [
+        "array",
+        "second highest",
+        "algorithm",
+        "sorting",
+        "coding problem"
+      ],
+      "sortOrder": 19,
+      "isActive": true
     }
   ]
 }

@@ -1132,6 +1132,99 @@
       ],
       "sortOrder": 43,
       "isActive": true
+    },
+    {
+      "id": "oops-044",
+      "category": "oops",
+      "difficulty": "Medium",
+      "frequency": "High",
+      "question": "What is the difference between Dispose() and Finalize() in C#?",
+      "answer": "<p>This comes up in any mid-level interview, and getting it wrong signals a misunderstanding of .NET memory management. Here's how I explain it:</p><p><strong>Dispose()</strong> is deterministic cleanup — you call it explicitly (or via <code>using</code>), and it runs immediately. It's part of the <code>IDisposable</code> interface. Use it for unmanaged resources like file handles, DB connections, HTTP clients.</p><p><strong>Finalize()</strong> (the <code>~ClassName()</code> destructor syntax) is non-deterministic — the GC calls it at some unknown future point. It's a last-resort safety net when someone forgets to call Dispose(). The problem: objects with finalizers get promoted to Gen1/Gen2 instead of being collected immediately, hurting performance.</p><p>In practice I always implement the full dispose pattern — implement IDisposable, call <code>GC.SuppressFinalize(this)</code> from Dispose() so the GC skips the finalizer when it's already cleaned up:</p><pre><code class=\"language-csharp\">public class FileHandler : IDisposable\n{\n    private FileStream _fs;\n    private bool _disposed = false;\n\n    public FileHandler(string path)\n    {\n        _fs = File.OpenRead(path);\n    }\n\n    public void Dispose()\n    {\n        Dispose(true);\n        GC.SuppressFinalize(this); // skip finalizer — already cleaned up\n    }\n\n    protected virtual void Dispose(bool disposing)\n    {\n        if (_disposed) return;\n        if (disposing)\n        {\n            _fs?.Dispose(); // managed cleanup\n        }\n        // unmanaged cleanup here if any\n        _disposed = true;\n    }\n\n    ~FileHandler() // finalizer — safety net only\n    {\n        Dispose(false);\n    }\n}\n\n// Usage — 'using' guarantees Dispose() is called\nusing (var fh = new FileHandler(\"data.txt\"))\n{\n    // work with file\n} // Dispose() called here even if exception thrown</code></pre><p><strong>Rule of thumb:</strong> If you're wrapping anything disposable, implement <code>IDisposable</code>. Only add a finalizer if you're wrapping raw unmanaged handles. Prefer <code>SafeHandle</code> over raw finalizers in modern .NET.</p>",
+      "followUps": [
+        "When do you actually need a finalizer vs just IDisposable?",
+        "What is SafeHandle and how does it simplify finalization?",
+        "What is the cost of finalizers on GC performance?"
+      ],
+      "tip": "Key interview point: Dispose() is deterministic and explicit; Finalize() is non-deterministic and GC-driven. Always call GC.SuppressFinalize(this) inside Dispose() to avoid double-cleanup.",
+      "tags": [
+        "IDisposable",
+        "GC",
+        "memory management",
+        "dispose pattern",
+        "finalizer"
+      ],
+      "sortOrder": 44,
+      "isActive": true
+    },
+    {
+      "id": "oops-045",
+      "category": "oops",
+      "difficulty": "Medium",
+      "frequency": "Medium",
+      "question": "What is yield return in C#? When do you use it?",
+      "answer": "<p><code>yield return</code> is one of those C# features that looks magical until you understand what the compiler does behind the scenes. It turns a method into a lazy iterator — the method produces values one at a time on demand instead of building a full collection first.</p><p>When you use <code>yield return</code>, the compiler generates a state machine class. Each time the caller asks for the next element (via <code>foreach</code> or <code>MoveNext()</code>), execution resumes from exactly where it left off.</p><pre><code class=\"language-csharp\">// Without yield — builds entire list in memory first\npublic List&lt;int&gt; GetEvenNumbers(int max)\n{\n    var result = new List&lt;int&gt;();\n    for (int i = 0; i &lt;= max; i++)\n        if (i % 2 == 0) result.Add(i);\n    return result; // all 1 million items before caller gets any\n}\n\n// With yield — lazy, streams one at a time\npublic IEnumerable&lt;int&gt; GetEvenNumbersLazy(int max)\n{\n    for (int i = 0; i &lt;= max; i++)\n        if (i % 2 == 0)\n            yield return i; // pauses here, resumes next iteration\n}\n\n// Works great for large datasets\nforeach (var n in GetEvenNumbersLazy(1_000_000))\n{\n    if (n > 100) break; // stops iteration early — no wasted work\n}\n\n// yield break — exit the iterator early\npublic IEnumerable&lt;string&gt; ReadLines(string path)\n{\n    if (!File.Exists(path)) yield break; // exits without error\n    foreach (var line in File.ReadLines(path))\n        yield return line;\n}</code></pre><p>I use <code>yield return</code> when building custom enumerators, processing large files line-by-line, or implementing pagination helpers. It's also the foundation for LINQ's deferred execution — that's why <code>Where()</code> and <code>Select()</code> don't execute until you iterate.</p><p><strong>Watch out:</strong> the state machine means exceptions thrown inside a <code>yield</code> method behave differently in try/catch blocks — you can't yield inside a <code>catch</code> block.</p>",
+      "followUps": [
+        "What happens to the state machine the compiler generates for yield?",
+        "Can you use yield return inside a try/catch block?",
+        "How is yield return different from returning a List<T>?"
+      ],
+      "tip": "yield return = lazy iteration via compiler-generated state machine. Best for large data streams where you don't need all results at once. The method pauses and resumes on each MoveNext() call.",
+      "tags": [
+        "yield return",
+        "iterator",
+        "IEnumerable",
+        "lazy evaluation",
+        "state machine"
+      ],
+      "sortOrder": 45,
+      "isActive": true
+    },
+    {
+      "id": "oops-046",
+      "category": "oops",
+      "difficulty": "Easy",
+      "frequency": "Medium",
+      "question": "What are anonymous types in C#? When would you use them?",
+      "answer": "<p>Anonymous types are compiler-generated classes with read-only properties that you create inline without naming the type. You use them when you need a temporary shape to hold data — especially in LINQ projections — without creating a named class.</p><pre><code class=\"language-csharp\">// Anonymous type — compiler generates a class with Name and Age properties\nvar person = new { Name = \"Darshan\", Age = 30, City = \"Mumbai\" };\nConsole.WriteLine(person.Name); // \"Darshan\"\n// person.Name = \"other\"; // ERROR — properties are read-only\n\n// Most common use: LINQ Select() projections\nvar employees = dbContext.Employees\n    .Where(e => e.IsActive)\n    .Select(e => new { e.Name, e.Department, e.Salary })\n    .OrderBy(e => e.Name)\n    .ToList();\n\nforeach (var emp in employees)\n    Console.WriteLine($\"{emp.Name} - {emp.Department}\");\n\n// The compiler infers type: anonymous { string Name, string Department, decimal Salary }\n// Two anonymous types with same property names/types/order are the same type\nvar a = new { X = 1, Y = 2 };\nvar b = new { X = 3, Y = 4 };\n// a.GetType() == b.GetType() — true! Same compiler-generated class</code></pre><p>The limitations: anonymous types are local to the method — you can't return them from a public method (the return type would be <code>object</code>) and you can't pass them across API boundaries. For anything that needs to cross method boundaries or be reused, I create a proper DTO class or use a C# record.</p><p>In modern C# (9+), I prefer <code>record</code> types for immutable data shapes since they're named and can be returned from methods:</p><pre><code class=\"language-csharp\">record EmployeeSummary(string Name, string Department, decimal Salary);\n\npublic IEnumerable&lt;EmployeeSummary&gt; GetSummaries() =&gt;\n    employees.Select(e =&gt; new EmployeeSummary(e.Name, e.Department, e.Salary));</code></pre>",
+      "followUps": [
+        "Why can't you return an anonymous type from a public method?",
+        "How do anonymous types differ from C# records?",
+        "When would you use dynamic vs anonymous type for holding ad-hoc data?"
+      ],
+      "tip": "Anonymous types = read-only, compiler-generated, scope-limited. Great for LINQ projections. For anything leaving a method, use a named DTO or record instead.",
+      "tags": [
+        "anonymous types",
+        "LINQ",
+        "record",
+        "DTO",
+        "projection"
+      ],
+      "sortOrder": 46,
+      "isActive": true
+    },
+    {
+      "id": "oops-047",
+      "category": "oops",
+      "difficulty": "Medium",
+      "frequency": "Medium",
+      "question": "What causes memory leaks in C#? How do you detect and fix them?",
+      "answer": "<p>The GC handles most memory for you in .NET, but memory leaks still happen. The key is understanding: <strong>the GC can only collect objects with no live references</strong>. A leak means some root is holding a reference longer than needed.</p><p><strong>Most common causes in .NET applications:</strong></p><p><strong>1. Event handler subscriptions not unsubscribed</strong> — the most common leak I've seen in production:</p><pre><code class=\"language-csharp\">// LEAK: publisher holds reference to subscriber via event\npublic class Publisher\n{\n    public event EventHandler DataReceived;\n}\n\npublic class Subscriber\n{\n    public Subscriber(Publisher pub)\n    {\n        pub.DataReceived += OnData; // subscriber can't be GC'd as long as pub lives\n    }\n    private void OnData(object sender, EventArgs e) { }\n}\n\n// FIX: unsubscribe when done\npublic class Subscriber : IDisposable\n{\n    private Publisher _pub;\n    public Subscriber(Publisher pub)\n    {\n        _pub = pub;\n        _pub.DataReceived += OnData;\n    }\n    public void Dispose() =&gt; _pub.DataReceived -= OnData; // critical\n}</code></pre><p><strong>2. Static collections that grow forever</strong> — caches with no eviction policy:</p><pre><code class=\"language-csharp\">// LEAK: static dictionary never cleaned up\nprivate static Dictionary&lt;string, byte[]&gt; _cache = new();\n// FIX: use IMemoryCache with expiration instead\nservices.AddMemoryCache();\n// _cache.Set(key, value, TimeSpan.FromMinutes(30));</code></pre><p><strong>3. Not disposing IDisposable objects</strong> — HttpClient, DbContext, FileStream, etc.:</p><pre><code class=\"language-csharp\">// LEAK: connection never closed\nvar conn = new SqlConnection(connectionString); \nconn.Open();\n// ... forgot to close\n\n// FIX: always use 'using'\nusing var conn = new SqlConnection(connectionString);\nconn.Open();</code></pre><p><strong>Detection:</strong> I use dotMemory, PerfView, or the VS Diagnostic Tools memory profiler to take heap snapshots and look for objects that grow over time. In production I rely on Application Insights metrics for memory trends.</p>",
+      "followUps": [
+        "How do you use dotMemory or PerfView to find a memory leak?",
+        "What is a WeakReference and when does it help with caching?",
+        "Can async methods cause memory leaks? How?"
+      ],
+      "tip": "The #1 memory leak in C# is unsubscribed event handlers. Always implement IDisposable if your class subscribes to events, and unsubscribe in Dispose(). Use using statements for everything IDisposable.",
+      "tags": [
+        "memory leak",
+        "GC",
+        "IDisposable",
+        "event handler",
+        "WeakReference",
+        "performance"
+      ],
+      "sortOrder": 47,
+      "isActive": true
     }
   ]
 }

@@ -168,6 +168,30 @@
       ],
       "sortOrder": 7,
       "isActive": true
+    },
+    {
+      "id": "linq-008",
+      "category": "linq",
+      "difficulty": "Medium",
+      "frequency": "High",
+      "question": "What is the difference between Select() and SelectMany() in LINQ?",
+      "answer": "<p>This question trips up a lot of mid-level developers. The difference is about flattening nested sequences.</p><p><strong>Select()</strong> projects each element to a new form — it's a 1-to-1 transformation. Input: N elements → Output: N elements.</p><p><strong>SelectMany()</strong> projects each element to a <em>sequence</em>, then flattens all those sequences into one — it's a 1-to-many flattening. Input: N elements → Output: sum of all inner sequence lengths.</p><pre><code class=\"language-csharp\">var customers = new[]\n{\n    new { Name = \"Alice\", Orders = new[] { \"Laptop\", \"Phone\" } },\n    new { Name = \"Bob\",   Orders = new[] { \"Tablet\" } },\n    new { Name = \"Carol\", Orders = new[] { \"Monitor\", \"Keyboard\", \"Mouse\" } }\n};\n\n// Select — each customer maps to their orders array (gives IEnumerable&lt;string[]&gt;)\nvar nestedOrders = customers.Select(c => c.Orders);\n// Result: [ [\"Laptop\",\"Phone\"], [\"Tablet\"], [\"Monitor\",\"Keyboard\",\"Mouse\"] ]\n// 3 elements, each is an array\n\n// SelectMany — flattens all orders into ONE sequence (gives IEnumerable&lt;string&gt;)\nvar allOrders = customers.SelectMany(c => c.Orders);\n// Result: [\"Laptop\", \"Phone\", \"Tablet\", \"Monitor\", \"Keyboard\", \"Mouse\"]\n// 6 elements, flat\n\nConsole.WriteLine(string.Join(\", \", allOrders));\n\n// Real use case: get all tags across all blog posts\nvar allTags = blogPosts.SelectMany(p => p.Tags).Distinct();\n\n// SelectMany with result selector — pairing parent with each child\nvar orderDetails = customers.SelectMany(\n    c => c.Orders,\n    (customer, order) => new { customer.Name, Order = order }\n);\n// Result: (Alice, Laptop), (Alice, Phone), (Bob, Tablet), ...\n\n// SQL equivalent of SelectMany:\n// SELECT c.Name, o.Order FROM Customers c\n// CROSS JOIN UNNEST(c.Orders) AS o(Order)\n\n// Common mistake: using Select when you need SelectMany\nvar wrong = customers.Select(c => c.Orders); // IEnumerable&lt;string[]&gt;\nvar right = customers.SelectMany(c => c.Orders); // IEnumerable&lt;string&gt;</code></pre><p>I use <code>SelectMany</code> whenever I have a collection of collections that I need to flatten — tags, order lines, phone numbers — anything where each parent has a list of children.</p>",
+      "followUps": [
+        "How does SelectMany relate to a SQL CROSS JOIN or JOIN with a collection?",
+        "When would SelectMany with a result selector be useful?",
+        "What is the query syntax equivalent of SelectMany?"
+      ],
+      "tip": "Select = 1-to-1 transform (N→N). SelectMany = 1-to-many flatten (N→sum of inner counts). Think of it as 'flatten'. Any time you find yourself doing .Select().SelectMany(x=>x) to flatten — just use SelectMany directly.",
+      "tags": [
+        "LINQ",
+        "SelectMany",
+        "Select",
+        "flatten",
+        "projection",
+        "deferred execution"
+      ],
+      "sortOrder": 8,
+      "isActive": true
     }
   ]
 }

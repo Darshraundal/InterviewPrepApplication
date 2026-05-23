@@ -1659,6 +1659,53 @@
       ],
       "sortOrder": 62,
       "isActive": true
+    },
+    {
+      "id": "db-063",
+      "category": "database",
+      "difficulty": "Easy",
+      "frequency": "Medium",
+      "question": "What is the COALESCE() function in SQL Server? How is it different from ISNULL()?",
+      "answer": "<p>Both handle NULL substitution, but they differ in portability, number of arguments, and how SQL Server evaluates them.</p><p><strong>COALESCE()</strong> — ANSI SQL standard. Returns the first non-NULL expression from a list of any number of arguments. Can accept multiple values.</p><p><strong>ISNULL()</strong> — SQL Server-specific. Accepts exactly two arguments. Slightly faster in SQL Server due to being a native function.</p><pre><code class=\"language-sql\">-- COALESCE: returns first non-NULL value from the list\nSELECT COALESCE(NULL, NULL, 'Third', 'Fourth') -- returns 'Third'\n\n-- ISNULL: only two arguments\nSELECT ISNULL(NULL, 'Fallback') -- returns 'Fallback'\n\n-- Practical example: show nickname if available, otherwise full name\nSELECT \n    COALESCE(NickName, FirstName + ' ' + LastName, 'Unknown') AS DisplayName\nFROM Employees;\n\n-- Phone number priority: work > mobile > home\nSELECT \n    EmployeeId,\n    COALESCE(WorkPhone, MobilePhone, HomePhone, 'No phone') AS ContactNumber\nFROM Employees;\n\n-- ISNULL equivalent — only handles single fallback\nSELECT ISNULL(WorkPhone, 'No phone') AS ContactNumber FROM Employees;\n\n-- Key difference: data type inference\n-- COALESCE returns type based on data type precedence of all args\n-- ISNULL returns the data type of the first argument (can truncate!)\nDECLARE @x NCHAR(3) = NULL;\nSELECT ISNULL(@x, 'Fallback');    -- returns 'Fal' (truncated to NCHAR(3)!)\nSELECT COALESCE(@x, 'Fallback'); -- returns 'Fallback' (uses higher precedence type)\n\n-- Common use in SUM with NULLs\nSELECT SUM(COALESCE(Discount, 0)) AS TotalDiscount FROM Orders;\n-- Same as: SUM(ISNULL(Discount, 0))\n\n-- COALESCE with NULL check in WHERE\nSELECT * FROM Products\nWHERE COALESCE(DiscontinuedDate, '9999-12-31') > GETDATE();</code></pre><p><strong>My rule:</strong> Use <code>COALESCE</code> for portability and when you need multiple fallback values. Use <code>ISNULL</code> when performance is critical in SQL Server and you have exactly two values — it's marginally faster. Watch the data type truncation trap with <code>ISNULL</code>.</p>",
+      "followUps": [
+        "What is the data type truncation issue with ISNULL?",
+        "Can COALESCE cause issues with non-deterministic functions being evaluated multiple times?",
+        "How does NULLIF() differ from COALESCE?"
+      ],
+      "tip": "COALESCE = ANSI standard, multiple args, returns first non-NULL. ISNULL = SQL Server only, 2 args, slightly faster. Watch: ISNULL uses the first argument's data type (can truncate). Use COALESCE for portability.",
+      "tags": [
+        "COALESCE",
+        "ISNULL",
+        "NULL",
+        "SQL Server",
+        "functions"
+      ],
+      "sortOrder": 63,
+      "isActive": true
+    },
+    {
+      "id": "db-064",
+      "category": "database",
+      "difficulty": "Easy",
+      "frequency": "Medium",
+      "question": "What is the difference between DBMS and RDBMS?",
+      "answer": "<p>A fundamental theory question. The key distinction is that RDBMS enforces <em>relationships between tables</em> using foreign keys and referential integrity — which a basic DBMS doesn't do.</p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th style=\"border:1px solid #444;padding:6px\">Feature</th><th style=\"border:1px solid #444;padding:6px\">DBMS</th><th style=\"border:1px solid #444;padding:6px\">RDBMS</th></tr><tr><td style=\"border:1px solid #444;padding:6px\">Full form</td><td style=\"border:1px solid #444;padding:6px\">Database Management System</td><td style=\"border:1px solid #444;padding:6px\">Relational DBMS</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Data storage</td><td style=\"border:1px solid #444;padding:6px\">Files, hierarchical, network</td><td style=\"border:1px solid #444;padding:6px\">Tables (rows and columns)</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Relationships</td><td style=\"border:1px solid #444;padding:6px\">No enforced relationships</td><td style=\"border:1px solid #444;padding:6px\">Foreign keys enforce referential integrity</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Keys</td><td style=\"border:1px solid #444;padding:6px\">No concept of primary key</td><td style=\"border:1px solid #444;padding:6px\">Primary key, foreign key, unique key</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">ACID</td><td style=\"border:1px solid #444;padding:6px\">Not necessarily ACID</td><td style=\"border:1px solid #444;padding:6px\">Full ACID compliance</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Normalization</td><td style=\"border:1px solid #444;padding:6px\">Not supported</td><td style=\"border:1px solid #444;padding:6px\">Supported (1NF, 2NF, 3NF)</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Examples</td><td style=\"border:1px solid #444;padding:6px\">XML DBMS, file systems, IMS</td><td style=\"border:1px solid #444;padding:6px\">SQL Server, MySQL, PostgreSQL, Oracle</td></tr><tr><td style=\"border:1px solid #444;padding:6px\">Query language</td><td style=\"border:1px solid #444;padding:6px\">No standard query language</td><td style=\"border:1px solid #444;padding:6px\">SQL (Structured Query Language)</td></tr></table><pre><code class=\"language-sql\">-- RDBMS enforces relationships with foreign keys\nCREATE TABLE Customers (\n    CustomerId INT PRIMARY KEY,\n    Name NVARCHAR(100)\n);\n\nCREATE TABLE Orders (\n    OrderId INT PRIMARY KEY,\n    CustomerId INT NOT NULL,\n    OrderDate DATETIME,\n    FOREIGN KEY (CustomerId) REFERENCES Customers(CustomerId)\n    -- RDBMS prevents inserting an order for non-existent customer\n    -- A basic DBMS would not enforce this!\n);\n\n-- Referential integrity in action\nINSERT INTO Orders VALUES (1, 999, GETDATE()); -- ERROR if CustomerId 999 doesn't exist</code></pre><p>In practice, everything we work with as .NET developers — SQL Server, MySQL, PostgreSQL — is an RDBMS. The distinction matters in interviews as a theory question, and it's worth noting that modern NoSQL databases like MongoDB are technically DBMS (not RDBMS) because they don't enforce relational constraints.</p>",
+      "followUps": [
+        "Is MongoDB a DBMS or RDBMS?",
+        "What are the Codd's 12 rules for RDBMS?",
+        "Can you use an RDBMS without normalizing your data?"
+      ],
+      "tip": "DBMS = manages data files (no enforced relationships). RDBMS = tables + foreign keys + ACID + SQL. All SQL Server/MySQL/PostgreSQL are RDBMS. NoSQL (MongoDB, Redis) are DBMS variants. The key difference: referential integrity enforcement.",
+      "tags": [
+        "DBMS",
+        "RDBMS",
+        "relational database",
+        "SQL Server",
+        "foreign key",
+        "ACID"
+      ],
+      "sortOrder": 64,
+      "isActive": true
     }
   ]
 }

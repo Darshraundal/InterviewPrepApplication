@@ -1019,6 +1019,79 @@
       ],
       "sortOrder": 39,
       "isActive": true
+    },
+    {
+      "id": "webapi-040",
+      "category": "webapi",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "What is Swagger/OpenAPI? How do you implement it in ASP.NET Core?",
+      "answer": "<p>Swagger (now standardized as OpenAPI Specification) is a tool that automatically generates interactive API documentation from your code. It gives developers a UI where they can see all endpoints, request/response schemas, and even test the API directly in the browser — essential for any team.</p><p><strong>Implementation in ASP.NET Core using Swashbuckle:</strong></p><pre><code class=\"language-csharp\">// 1. Install NuGet package\n// Swashbuckle.AspNetCore\n\n// 2. Register in Program.cs\nbuilder.Services.AddEndpointsApiExplorer(); // required for minimal APIs\nbuilder.Services.AddSwaggerGen(options =&gt;\n{\n    options.SwaggerDoc(\"v1\", new OpenApiInfo\n    {\n        Title = \"My API\",\n        Version = \"v1\",\n        Description = \"Interview Prep Application API\",\n        Contact = new OpenApiContact { Name = \"Darshan\", Email = \"dev@company.com\" }\n    });\n\n    // Include XML comments from controller actions\n    var xmlFile = $\"{Assembly.GetExecutingAssembly().GetName().Name}.xml\";\n    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);\n    options.IncludeXmlComments(xmlPath);\n\n    // Add JWT auth support in Swagger UI\n    options.AddSecurityDefinition(\"Bearer\", new OpenApiSecurityScheme\n    {\n        Type = SecuritySchemeType.Http,\n        Scheme = \"bearer\",\n        BearerFormat = \"JWT\",\n        Description = \"Enter JWT token\"\n    });\n    options.AddSecurityRequirement(new OpenApiSecurityRequirement\n    {\n        [\n            new OpenApiSecurityScheme\n            {\n                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = \"Bearer\" }\n            }\n        ] = Array.Empty&lt;string&gt;()\n    });\n});\n\n// 3. Add middleware — usually only in development\nif (app.Environment.IsDevelopment())\n{\n    app.UseSwagger();       // generates /swagger/v1/swagger.json\n    app.UseSwaggerUI(c =&gt;  // serves the UI at /swagger\n    {\n        c.SwaggerEndpoint(\"/swagger/v1/swagger.json\", \"My API V1\");\n        c.RoutePrefix = string.Empty; // serve at root URL\n    });\n}\n\n// 4. Decorate controllers with XML docs for rich descriptions\n/// &lt;summary&gt;Get a product by ID&lt;/summary&gt;\n/// &lt;param name=\"id\"&gt;Product identifier&lt;/param&gt;\n/// &lt;response code=\"200\"&gt;Returns the product&lt;/response&gt;\n/// &lt;response code=\"404\"&gt;Product not found&lt;/response&gt;\n[HttpGet(\"{id}\")]\n[ProducesResponseType(typeof(ProductDto), 200)]\n[ProducesResponseType(404)]\npublic async Task&lt;IActionResult&gt; GetProduct(int id) { ... }</code></pre><p><strong>Security tip for production:</strong> Don't expose Swagger publicly. Either disable it in production or protect the <code>/swagger</code> route with auth middleware:</p><pre><code class=\"language-csharp\">// Only enable in Development OR with an explicit feature flag\nif (app.Environment.IsDevelopment() || config.GetValue&lt;bool&gt;(\"EnableSwagger\"))\n{\n    app.UseSwagger();\n    app.UseSwaggerUI();\n}</code></pre>",
+      "followUps": [
+        "How do you version your API and expose multiple Swagger documents for each version?",
+        "What is the difference between Swashbuckle and NSwag?",
+        "How do you secure Swagger UI in non-development environments?"
+      ],
+      "tip": "Swashbuckle auto-generates from controller attributes and XML docs. Always add [ProducesResponseType] attributes for accurate schemas. In production, either disable Swagger or protect it with auth — never leave it open.",
+      "tags": [
+        "Swagger",
+        "OpenAPI",
+        "Swashbuckle",
+        "API documentation",
+        "ASP.NET Core"
+      ],
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "id": "webapi-041",
+      "category": "webapi",
+      "difficulty": "Medium",
+      "frequency": "Medium",
+      "question": "What is IHostedService in ASP.NET Core? How do you use BackgroundService?",
+      "answer": "<p><code>IHostedService</code> is the interface for running background work tied to the ASP.NET Core application lifecycle. It starts when the app starts and stops (cleanly) when the app shuts down. Think of it as the .NET Core equivalent of Windows Services.</p><p><strong>IHostedService</strong> has two methods: <code>StartAsync(CancellationToken)</code> and <code>StopAsync(CancellationToken)</code>. For long-running loops, you'd typically fire off a background task in StartAsync.</p><p><strong>BackgroundService</strong> is the abstract base class that handles the boilerplate — you just override <code>ExecuteAsync(CancellationToken)</code> and write your loop:</p><pre><code class=\"language-csharp\">// Long-running background worker — queue processor\npublic class OrderProcessingService : BackgroundService\n{\n    private readonly ILogger&lt;OrderProcessingService&gt; _logger;\n    private readonly IServiceScopeFactory _scopeFactory; // for scoped services\n\n    public OrderProcessingService(ILogger&lt;OrderProcessingService&gt; logger,\n        IServiceScopeFactory scopeFactory)\n    {\n        _logger = logger;\n        _scopeFactory = scopeFactory;\n    }\n\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        _logger.LogInformation(\"Order processor started\");\n\n        while (!stoppingToken.IsCancellationRequested)\n        {\n            try\n            {\n                await ProcessPendingOrdersAsync(stoppingToken);\n            }\n            catch (Exception ex) when (ex is not OperationCanceledException)\n            {\n                _logger.LogError(ex, \"Error processing orders\");\n            }\n\n            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken); // wait 30s\n        }\n\n        _logger.LogInformation(\"Order processor stopped\");\n    }\n\n    private async Task ProcessPendingOrdersAsync(CancellationToken ct)\n    {\n        // IMPORTANT: BackgroundService is Singleton — can't inject Scoped services directly\n        // Use IServiceScopeFactory to create a scope per execution\n        using var scope = _scopeFactory.CreateScope();\n        var dbContext = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();\n\n        var pending = await dbContext.Orders\n            .Where(o => o.Status == OrderStatus.Pending)\n            .ToListAsync(ct);\n\n        foreach (var order in pending)\n        {\n            order.Status = OrderStatus.Processing;\n            _logger.LogInformation(\"Processing order {Id}\", order.Id);\n        }\n        await dbContext.SaveChangesAsync(ct);\n    }\n}\n\n// Register in Program.cs\nbuilder.Services.AddHostedService&lt;OrderProcessingService&gt;();\n\n// For fire-and-forget one-time startup tasks, use IHostedService directly\npublic class DatabaseSeedService : IHostedService\n{\n    public async Task StartAsync(CancellationToken ct)\n    {\n        // Run once at startup — seed data, warm cache, etc.\n        await SeedDatabaseAsync(ct);\n    }\n    public Task StopAsync(CancellationToken ct) =&gt; Task.CompletedTask;\n}</code></pre><p><strong>Key gotcha:</strong> BackgroundService is registered as <strong>Singleton</strong>. You can't inject Scoped services (like DbContext) directly into its constructor. Always use <code>IServiceScopeFactory</code> to create a scope per execution.</p>",
+      "followUps": [
+        "Why can't you inject a Scoped service directly into BackgroundService?",
+        "How do you gracefully stop a BackgroundService during app shutdown?",
+        "What is the difference between IHostedService and a Windows Service?"
+      ],
+      "tip": "BackgroundService = abstract base class for long-running loops. Register with AddHostedService<T>(). Critical: it's Singleton — use IServiceScopeFactory to resolve Scoped services like DbContext per execution cycle.",
+      "tags": [
+        "IHostedService",
+        "BackgroundService",
+        "background jobs",
+        "IServiceScopeFactory",
+        "CancellationToken"
+      ],
+      "sortOrder": 41,
+      "isActive": true
+    },
+    {
+      "id": "webapi-042",
+      "category": "webapi",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "What are HTTP status codes? Explain the main categories and common codes.",
+      "answer": "<p>HTTP status codes tell the client what happened with their request. Every API developer needs to know these — using the wrong code (e.g., returning 200 for an error) makes your API confusing to consume.</p><p><strong>5 categories:</strong></p><table style=\"width:100%;font-size:.85rem;border-collapse:collapse;\"><tr><th style=\"border:1px solid #444;padding:4px\">Range</th><th style=\"border:1px solid #444;padding:4px\">Category</th><th style=\"border:1px solid #444;padding:4px\">Meaning</th></tr><tr><td style=\"border:1px solid #444;padding:4px\">1xx</td><td style=\"border:1px solid #444;padding:4px\">Informational</td><td style=\"border:1px solid #444;padding:4px\">Request received, processing continues</td></tr><tr><td style=\"border:1px solid #444;padding:4px\">2xx</td><td style=\"border:1px solid #444;padding:4px\">Success</td><td style=\"border:1px solid #444;padding:4px\">Request completed successfully</td></tr><tr><td style=\"border:1px solid #444;padding:4px\">3xx</td><td style=\"border:1px solid #444;padding:4px\">Redirection</td><td style=\"border:1px solid #444;padding:4px\">Further action needed</td></tr><tr><td style=\"border:1px solid #444;padding:4px\">4xx</td><td style=\"border:1px solid #444;padding:4px\">Client Error</td><td style=\"border:1px solid #444;padding:4px\">Problem with the request</td></tr><tr><td style=\"border:1px solid #444;padding:4px\">5xx</td><td style=\"border:1px solid #444;padding:4px\">Server Error</td><td style=\"border:1px solid #444;padding:4px\">Server failed to process valid request</td></tr></table><p><strong>Most important codes in practice:</strong></p><pre><code class=\"language-csharp\">// ASP.NET Core — returning appropriate status codes\n\n// 200 OK — request succeeded with data\nreturn Ok(product); // GET returns 200\n\n// 201 Created — resource created, include Location header\nreturn CreatedAtAction(nameof(GetProduct), new { id = product.Id }, product);\n\n// 204 No Content — success but nothing to return (PUT, DELETE)\nreturn NoContent();\n\n// 400 Bad Request — invalid input/validation failed\nif (!ModelState.IsValid) return BadRequest(ModelState);\n\n// 401 Unauthorized — not authenticated (missing/invalid token)\n// Returned automatically by [Authorize] when no token present\n\n// 403 Forbidden — authenticated but not authorized\n// Returned by [Authorize(Roles = \"Admin\")] when user lacks the role\n\n// 404 Not Found — resource doesn't exist\nif (product == null) return NotFound(new { message = \"Product not found\" });\n\n// 405 Method Not Allowed — wrong HTTP verb\n// ASP.NET Core handles this automatically based on [HttpGet]/[HttpPost]\n\n// 409 Conflict — business rule violation (duplicate, optimistic concurrency)\nreturn Conflict(new { message = \"Username already taken\" });\n\n// 422 Unprocessable Entity — syntactically valid but semantically wrong\nreturn UnprocessableEntity(new { message = \"Age cannot be negative\" });\n\n// 429 Too Many Requests — rate limit exceeded\n// Return with Retry-After header\n\n// 500 Internal Server Error — unexpected server failure\n// Never return this intentionally — let global exception handler emit it\n\n// 503 Service Unavailable — server down/overloaded\n// Used in health check endpoints</code></pre><p><strong>Common mistake:</strong> Don't return 200 with an <code>{ \"success\": false }</code> body for errors. Use the right 4xx code — it makes your API predictable and tools like Swagger and API clients handle it correctly.</p>",
+      "followUps": [
+        "What is the difference between 401 Unauthorized and 403 Forbidden?",
+        "When should you use 422 Unprocessable Entity vs 400 Bad Request?",
+        "What HTTP status code should a DELETE return if the resource doesn't exist?"
+      ],
+      "tip": "401 = not authenticated (who are you?). 403 = authenticated but not allowed (I know who you are, but no). 404 = resource not found. 409 = conflict/business rule. Never wrap errors in 200 OK responses.",
+      "tags": [
+        "HTTP status codes",
+        "REST API",
+        "200",
+        "400",
+        "401",
+        "403",
+        "404",
+        "500",
+        "ASP.NET Core"
+      ],
+      "sortOrder": 42,
+      "isActive": true
     }
   ]
 }
