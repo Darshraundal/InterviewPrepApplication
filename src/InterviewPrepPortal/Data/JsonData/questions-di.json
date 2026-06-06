@@ -427,6 +427,24 @@
       "tags": ["di", "scrutor", "assembly-scanning", "auto-registration"],
       "sortOrder": 12,
       "isActive": true
+    },
+    {
+      "id": "di-013",
+      "category": "di",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "Where does an injected dependency reside in memory? How does the DI container manage its lifetime?",
+      "answer": "<p>When the DI container resolves a dependency, the resulting object lives in <strong>heap memory</strong> (like all reference type objects in .NET). What varies is <em>how long</em> the container holds a reference to it — which is what 'lifetime' means.</p><h4>How the container manages memory by lifetime:</h4><h4>Singleton</h4><ul><li>The container creates one instance on first resolution and stores a reference to it in a root-level dictionary.</li><li>That reference keeps the object alive for the <strong>entire application lifetime</strong> — the GC cannot collect it.</li><li>All requests and scopes receive the same instance (same memory address).</li></ul><pre><code class=\"language-csharp\">// Container's internal structure (simplified)\nprivate readonly Dictionary&lt;Type, object&gt; _singletons = new();\n\n// On first resolve:\n_singletons[typeof(ICacheService)] = new CacheService();\n\n// On subsequent resolves:\nreturn _singletons[typeof(ICacheService)]; // same instance, forever</code></pre><h4>Scoped</h4><ul><li>The container creates one instance per <strong>scope</strong> (one per HTTP request in ASP.NET Core).</li><li>The scope object (created at request start by middleware) holds a reference to each scoped service it creates.</li><li>When the scope is disposed at request end, it releases its references — the GC can then collect those objects.</li></ul><pre><code class=\"language-csharp\">// ASP.NET Core creates a scope per request via IServiceScopeFactory\nusing var scope = serviceScopeFactory.CreateScope();\nvar dbContext = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();\n// dbContext lives as long as 'scope' is alive\n// scope.Dispose() at end of request → dbContext eligible for GC</code></pre><h4>Transient</h4><ul><li>A new instance is created on every <code>GetService&lt;T&gt;()</code> call.</li><li>The container does <strong>not</strong> hold a reference to transient instances.</li><li>The caller is responsible — the object lives until no references remain.</li><li><strong>Warning:</strong> If a transient IDisposable is resolved from the root container (not a scope), it is tracked by the root and lives forever — a common memory leak.</li></ul><h4>Captive dependency problem:</h4><pre><code class=\"language-csharp\">// PROBLEM: Singleton holds a Scoped dependency\npublic class MySingleton(AppDbContext db) // AppDbContext is Scoped\n{\n    // db was resolved once when MySingleton was first created\n    // It now lives in the Singleton — it's captured across ALL requests\n    // The original scope is long gone — db context state is stale/reused unsafely\n}\n\n// FIX: inject IServiceScopeFactory and create a scope when needed\npublic class MySingleton(IServiceScopeFactory scopeFactory)\n{\n    public async Task DoWork()\n    {\n        using var scope = scopeFactory.CreateScope();\n        var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();\n        // db is properly scoped to this operation, disposed after\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What happens to IDisposable services when their scope ends?",
+          "answer": "<p>When a scope (or the root container) is disposed, it calls <code>Dispose()</code> on all <code>IDisposable</code> instances it created — in reverse order of creation.</p><ul><li><strong>Scoped IDisposable</strong> — disposed when the request scope ends. Safe — connection is returned to pool, DbContext is flushed.</li><li><strong>Singleton IDisposable</strong> — disposed when the root IServiceProvider is disposed (app shutdown). Fine for truly app-lifetime resources.</li><li><strong>Transient IDisposable from a scope</strong> — the scope tracks transient IDisposables and disposes them at scope end. Safe.</li><li><strong>Transient IDisposable from the root container</strong> — tracked forever by the root, never disposed until app shutdown. Memory leak! ASP.NET Core logs a warning for this.</li></ul>"
+        }
+      ],
+      "tip": "Injected objects live on the heap. The container controls lifetime by keeping (or releasing) its reference. Singleton = reference held by root forever. Scoped = reference held by scope, released at request end. Transient = no reference held by container (unless IDisposable — then tracked by enclosing scope).",
+      "tags": ["di", "lifetime", "singleton", "scoped", "transient", "memory", "idisposable"],
+      "sortOrder": 13,
+      "isActive": true
     }
   ]
 }

@@ -592,6 +592,24 @@
       ],
       "sortOrder": 23,
       "isActive": true
+    },
+    {
+      "id": "mvc-024",
+      "category": "mvc",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Can multiple controllers share the same view? Can one controller use multiple views?",
+      "answer": "<p>Yes to both — ASP.NET Core MVC is flexible about view resolution. Understanding how the view engine searches for views helps you organise shared content properly.</p><h4>One controller → multiple views:</h4><p>A controller can return any view by name — not just the default (which matches the action name).</p><pre><code class=\"language-csharp\">public class OrdersController : Controller\n{\n    // Default: looks for Views/Orders/Index.cshtml\n    public IActionResult Index() => View();\n\n    // Explicit view name — looks for Views/Orders/OrderList.cshtml\n    public IActionResult ListAll() => View(\"OrderList\");\n\n    // Full path — any view, anywhere\n    public IActionResult Dashboard() => View(\"~/Views/Shared/Dashboard.cshtml\");\n\n    // Different view based on condition\n    public IActionResult Detail(int id)\n    {\n        var order = _service.GetById(id);\n        return order.IsPremium\n            ? View(\"PremiumDetail\", order)\n            : View(\"StandardDetail\", order);\n    }\n}</code></pre><h4>Multiple controllers → same shared view:</h4><p>Place the shared view in <code>Views/Shared/</code> — this folder is searched by all controllers.</p><pre><code class=\"language-csharp\">// Views/Shared/StatusBadge.cshtml — shared between controllers\n\n// OrdersController\npublic IActionResult Status() => View(\"~/Views/Shared/StatusBadge.cshtml\", model);\n\n// ProductsController — same view\npublic IActionResult Status() => View(\"~/Views/Shared/StatusBadge.cshtml\", model);</code></pre><h4>View resolution order:</h4><p>When you call <code>View()</code> without a path, the view engine searches in this order:</p><ol><li><code>Views/{ControllerName}/{ActionName}.cshtml</code></li><li><code>Views/Shared/{ActionName}.cshtml</code></li></ol><p>So placing a view in <code>Views/Shared/</code> makes it automatically available to all controllers without specifying a full path.</p><h4>Partial views and View Components for truly shared UI:</h4><pre><code class=\"language-csharp\">// Shared partial view — can be rendered from any view\n@await Html.PartialAsync(\"_OrderSummary\", model)\n// File: Views/Shared/_OrderSummary.cshtml\n\n// View Components — more powerful, supports DI and async\n@await Component.InvokeAsync(\"OrderSummary\", new { orderId = Model.Id })\n// Class: ViewComponents/OrderSummaryViewComponent.cs</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between a partial view and a view component in ASP.NET Core MVC?",
+          "answer": "<p><strong>Partial View</strong> — a reusable Razor file fragment. Rendered inline with <code>@await Html.PartialAsync()</code> or <code>&lt;partial /&gt;</code> tag helper. Receives data from the calling view (model or ViewData). No independent logic — pure presentation.</p><p><strong>View Component</strong> — more powerful. Has a C# class with an <code>InvokeAsync</code> method that can take dependencies (via DI), query services/DB, and return a view. Like a mini-controller + view pair. Use when the component needs to fetch its own data.</p><pre><code class=\"language-csharp\">// View Component with its own data fetching\npublic class CartSummaryViewComponent(ICartService cartService) : ViewComponent\n{\n    public async Task&lt;IViewComponentResult&gt; InvokeAsync()\n    {\n        var items = await cartService.GetItemsAsync(UserClaimsPrincipal);\n        return View(items); // Views/Shared/Components/CartSummary/Default.cshtml\n    }\n}\n\n// In view: @await Component.InvokeAsync(\"CartSummary\")</code></pre>"
+        }
+      ],
+      "tip": "Put shared views in <code>Views/Shared/</code> for automatic discovery. Prefix partial view names with underscore (<code>_OrderSummary.cshtml</code>) by convention — it signals they're not directly routable.",
+      "tags": ["mvc", "views", "shared-views", "partial-views", "view-components", "razor"],
+      "sortOrder": 24,
+      "isActive": true
     }
   ]
 }
