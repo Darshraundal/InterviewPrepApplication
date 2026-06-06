@@ -1850,6 +1850,78 @@
       ],
       "sortOrder": 64,
       "isActive": true
+    },
+    {
+      "id": "db-065",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you find the Nth highest salary from an Employee table?",
+      "answer": "<p>This is one of the most common SQL interview questions. There are multiple approaches — know all of them.</p><h4>Approach 1 — Using DENSE_RANK() window function (best approach):</h4><pre><code class=\"language-sql\">-- Find the 5th highest salary\nSELECT DISTINCT Salary\nFROM (\n    SELECT Salary,\n           DENSE_RANK() OVER (ORDER BY Salary DESC) AS Rnk\n    FROM Employee\n) ranked\nWHERE Rnk = 5;\n\n-- Return the employee(s) with the 5th highest salary\nSELECT EmployeeId, Name, Salary\nFROM (\n    SELECT EmployeeId, Name, Salary,\n           DENSE_RANK() OVER (ORDER BY Salary DESC) AS Rnk\n    FROM Employee\n) ranked\nWHERE Rnk = 5;</code></pre><h4>Approach 2 — Using OFFSET-FETCH (SQL Server 2012+):</h4><pre><code class=\"language-sql\">SELECT DISTINCT Salary\nFROM Employee\nORDER BY Salary DESC\nOFFSET 4 ROWS          -- skip top 4 (0-indexed, so N-1 = 4 for 5th)\nFETCH NEXT 1 ROWS ONLY; -- take 1 row</code></pre><h4>Approach 3 — Correlated subquery (works on all SQL versions):</h4><pre><code class=\"language-sql\">-- N = 5: find salary where exactly 4 distinct salaries are higher\nSELECT MIN(Salary) AS FifthHighest\nFROM (\n    SELECT DISTINCT TOP 5 Salary\n    FROM Employee\n    ORDER BY Salary DESC\n) top5;\n\n-- Generic N using correlated subquery\nSELECT DISTINCT Salary\nFROM Employee e1\nWHERE (N - 1) = (\n    SELECT COUNT(DISTINCT Salary)\n    FROM Employee e2\n    WHERE e2.Salary > e1.Salary\n);\n-- Replace (N-1) with 4 for 5th highest</code></pre><h4>Difference between RANK, DENSE_RANK, ROW_NUMBER for salary ranking:</h4><pre><code class=\"language-sql\">-- Salaries: 90k, 85k, 85k, 80k, 75k\n-- ROW_NUMBER:  1, 2, 3, 4, 5   (unique row numbers, no ties)\n-- RANK:        1, 2, 2, 4, 5   (ties get same rank, gap after tie)\n-- DENSE_RANK:  1, 2, 2, 3, 4   (ties get same rank, NO gap)\n\n-- Use DENSE_RANK for salary ranking — ties shouldn't skip a rank\n-- (both 85k employees are 2nd highest, 80k is 3rd, not 4th)</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between RANK(), DENSE_RANK(), and ROW_NUMBER()?",
+          "answer": "<p>All three are window functions that assign a number to each row within a partition:</p><ul><li><strong>ROW_NUMBER()</strong> — always unique, sequential. Rows with equal values get different numbers (arbitrary tiebreak). Use for pagination, deduplication.</li><li><strong>RANK()</strong> — tied rows get the same rank, the next rank is skipped (1, 2, 2, 4). Like Olympic medals — two gold medals, no silver.</li><li><strong>DENSE_RANK()</strong> — tied rows get the same rank, next rank is consecutive (1, 2, 2, 3). Use for salary ranking, leader boards where skipping ranks makes no sense.</li></ul><pre><code class=\"language-sql\">SELECT Name, Salary,\n       ROW_NUMBER()  OVER (ORDER BY Salary DESC) AS RowNum,\n       RANK()        OVER (ORDER BY Salary DESC) AS Rnk,\n       DENSE_RANK()  OVER (ORDER BY Salary DESC) AS DenseRnk\nFROM Employee;</code></pre>"
+        }
+      ],
+      "tip": "<strong>Interview answer:</strong> Lead with DENSE_RANK() — it handles ties correctly and works on all modern SQL Server/MySQL/PostgreSQL versions. The correlated subquery approach is a classic but slow on large tables.",
+      "tags": ["sql", "nth-highest", "rank", "dense-rank", "window-functions", "salary"],
+      "sortOrder": 65,
+      "isActive": true
+    },
+    {
+      "id": "db-066",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Write a SQL query to find departments that have zero employees.",
+      "answer": "<p>This tests knowledge of LEFT JOIN / NOT EXISTS / NOT IN patterns. There are multiple approaches.</p><h4>Approach 1 — LEFT JOIN + IS NULL (most common):</h4><pre><code class=\"language-sql\">-- Return departments with no employees\nSELECT d.DepartmentId, d.DepartmentName\nFROM Department d\nLEFT JOIN Employee e ON d.DepartmentId = e.DepartmentId\nWHERE e.DepartmentId IS NULL;\n-- LEFT JOIN includes all departments; IS NULL filters to those with no matching employee</code></pre><h4>Approach 2 — NOT EXISTS (often better performance):</h4><pre><code class=\"language-sql\">SELECT d.DepartmentId, d.DepartmentName\nFROM Department d\nWHERE NOT EXISTS (\n    SELECT 1\n    FROM Employee e\n    WHERE e.DepartmentId = d.DepartmentId\n);\n-- NOT EXISTS stops scanning employees as soon as one is found per department</code></pre><h4>Approach 3 — NOT IN (avoid with NULLs):</h4><pre><code class=\"language-sql\">SELECT DepartmentId, DepartmentName\nFROM Department\nWHERE DepartmentId NOT IN (\n    SELECT DepartmentId\n    FROM Employee\n    WHERE DepartmentId IS NOT NULL -- CRITICAL: without this, NOT IN returns nothing if any DepartmentId is NULL\n);\n-- Risky if Employee.DepartmentId allows NULLs — NOT IN with NULLs always returns empty result</code></pre><h4>Approach 4 — GROUP BY with HAVING COUNT = 0 (does NOT work without RIGHT JOIN):</h4><pre><code class=\"language-sql\">-- WRONG: GroupBy only produces rows for departments that have employees\nSELECT DepartmentId, COUNT(*) AS Cnt\nFROM Employee\nGROUP BY DepartmentId\nHAVING COUNT(*) = 0; -- never returns anything!\n\n-- CORRECT: use RIGHT JOIN or the LEFT JOIN approach above</code></pre>",
+      "followUps": [
+        {
+          "question": "Why is NOT IN dangerous when the subquery can return NULLs?",
+          "answer": "<p>SQL uses three-valued logic (TRUE, FALSE, UNKNOWN). Comparing any value to NULL returns UNKNOWN, not FALSE.</p><pre><code class=\"language-sql\">-- If Employee table has any row where DepartmentId IS NULL:\n-- NOT IN (1, 2, NULL) → for any dept, the comparison with NULL is UNKNOWN\n-- Predicate: DepartmentId NOT IN (1, 2, NULL) = TRUE AND TRUE AND UNKNOWN = UNKNOWN\n-- UNKNOWN rows are filtered out → result is empty!\n\n-- Always add WHERE column IS NOT NULL inside NOT IN subqueries\nWHERE DepartmentId NOT IN (\n    SELECT DepartmentId FROM Employee WHERE DepartmentId IS NOT NULL\n);</code></pre><p>This is why <code>NOT EXISTS</code> is generally preferred over <code>NOT IN</code> — it handles NULLs correctly.</p>"
+        }
+      ],
+      "tip": "<strong>Best practice:</strong> Use LEFT JOIN + IS NULL or NOT EXISTS. Avoid NOT IN unless you are certain the subquery column has no NULLs. NOT EXISTS is often the fastest option as the query optimizer can short-circuit on the first match.",
+      "tags": ["sql", "join", "left-join", "not-exists", "department", "zero-employees"],
+      "sortOrder": 66,
+      "isActive": true
+    },
+    {
+      "id": "db-067",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "How do you identify missing indexes in SQL Server?",
+      "answer": "<p>SQL Server tracks 'missing index' suggestions at runtime through Dynamic Management Views (DMVs). When the query optimizer decides an index would have helped a query, it records that information.</p><h4>Method 1 — sys.dm_db_missing_index DMVs:</h4><pre><code class=\"language-sql\">SELECT TOP 20\n    mig.index_group_handle,\n    mid.index_handle,\n    mid.database_id,\n    DB_NAME(mid.database_id) AS DatabaseName,\n    mid.object_id,\n    OBJECT_NAME(mid.object_id, mid.database_id) AS TableName,\n    mid.equality_columns,         -- columns used in = predicates\n    mid.inequality_columns,       -- columns used in &lt;, &gt;, BETWEEN\n    mid.included_columns,         -- columns to include for covering index\n    migs.avg_total_user_cost * migs.avg_user_impact * (migs.user_seeks + migs.user_scans)\n        AS ImpactScore,           -- higher = more impactful\n    migs.user_seeks,\n    migs.user_scans,\n    migs.avg_user_impact          -- estimated % improvement\nFROM sys.dm_db_missing_index_groups mig\nJOIN sys.dm_db_missing_index_group_stats migs\n    ON mig.index_group_handle = migs.group_handle\nJOIN sys.dm_db_missing_index_details mid\n    ON mig.index_handle = mid.index_handle\nWHERE mid.database_id = DB_ID() -- current database\nORDER BY ImpactScore DESC;\n\n-- Create index suggestion from the results:\n-- CREATE INDEX IX_TableName_EqualityCols_IncludingCols\n-- ON TableName (equality_columns) INCLUDE (included_columns)</code></pre><h4>Method 2 — Execution Plan:</h4><ul><li>Run a slow query with actual execution plan enabled (Ctrl+M in SSMS).</li><li>Look for a green 'Missing Index' hint at the top of the plan. SQL Server shows the exact CREATE INDEX statement.</li><li>The plan also shows estimated improvement percentage.</li></ul><h4>Method 3 — Query Store (SQL Server 2016+):</h4><ul><li>Enable: <code>ALTER DATABASE [MyDb] SET QUERY_STORE = ON;</code></li><li>SSMS reports: Top Resource Consuming Queries, Regressed Queries, Query Wait Statistics.</li><li>Drill into slow queries to see execution plans and identify index opportunities.</li></ul><h4>Method 4 — Index usage statistics (find unused indexes):</h4><pre><code class=\"language-sql\">-- Find indexes that are never used (costly to maintain, safe to drop)\nSELECT OBJECT_NAME(i.object_id) AS TableName,\n       i.name AS IndexName,\n       i.type_desc,\n       s.user_seeks, s.user_scans, s.user_lookups,\n       s.user_updates -- maintenance cost\nFROM sys.indexes i\nLEFT JOIN sys.dm_db_index_usage_stats s\n    ON i.object_id = s.object_id AND i.index_id = s.index_id\n    AND s.database_id = DB_ID()\nWHERE i.type &gt; 0\n  AND OBJECT_NAME(i.object_id) NOT LIKE 'sys%'\n  AND (s.user_seeks = 0 OR s.user_seeks IS NULL)\n  AND (s.user_scans = 0 OR s.user_scans IS NULL)\nORDER BY s.user_updates DESC;</code></pre>",
+      "followUps": [
+        {
+          "question": "What should you consider before blindly adding a missing index suggested by SQL Server?",
+          "answer": "<p>Don't blindly create every suggested index. Consider:</p><ol><li><strong>Write overhead</strong> — every index must be updated on INSERT, UPDATE, DELETE. Tables with heavy writes can't afford many indexes.</li><li><strong>Duplicate/overlapping indexes</strong> — check if an existing index already covers the need with a small adjustment (add included columns to existing index vs. creating a new one).</li><li><strong>Impact score</strong> — focus on high-impact (high ImpactScore) indexes first.</li><li><strong>Index fragmentation</strong> — a new index may fragment quickly on write-heavy tables, requiring frequent maintenance.</li><li><strong>Statistics</strong> — sometimes updating statistics on existing indexes is enough to fix poor query plans.</li><li><strong>Test in staging</strong> — always test the index under realistic load. Adding the wrong index can actually slow queries by confusing the optimizer.</li></ol>"
+        }
+      ],
+      "tip": "<strong>Important caveat:</strong> The missing index DMVs are reset on SQL Server restart. They only reflect queries run since the last restart. For a full picture, capture data over several days under production-like load.",
+      "tags": ["sql", "index", "missing-index", "dmv", "performance", "query-store", "ssms"],
+      "sortOrder": 67,
+      "isActive": true
+    },
+    {
+      "id": "db-068",
+      "category": "database",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "Can a SQL function return multiple result types? What are the types of SQL Server functions?",
+      "answer": "<p>SQL Server functions are categorised by what they return. No single function returns 'multiple result types' — but there are different function categories, each returning a different kind of result.</p><h4>1. Scalar Functions — return a single value:</h4><pre><code class=\"language-sql\">CREATE FUNCTION dbo.GetFullName(@FirstName NVARCHAR(50), @LastName NVARCHAR(50))\nRETURNS NVARCHAR(100)  -- single scalar value\nAS\nBEGIN\n    RETURN @FirstName + ' ' + @LastName;\nEND;\n\n-- Usage\nSELECT dbo.GetFullName(FirstName, LastName) AS FullName FROM Employees;</code></pre><h4>2. Inline Table-Valued Functions (ITVF) — return a table (single SELECT):</h4><pre><code class=\"language-sql\">CREATE FUNCTION dbo.GetEmployeesByDept(@DeptId INT)\nRETURNS TABLE  -- returns a result set\nAS\nRETURN\n(\n    SELECT EmployeeId, Name, Salary\n    FROM Employee\n    WHERE DepartmentId = @DeptId\n);\n\n-- Usage (treated like a parameterized view)\nSELECT * FROM dbo.GetEmployeesByDept(3) WHERE Salary > 50000;</code></pre><h4>3. Multi-Statement Table-Valued Functions (MSTVF) — return a table, multiple statements:</h4><pre><code class=\"language-sql\">CREATE FUNCTION dbo.GetEmployeeHierarchy(@ManagerId INT)\nRETURNS @Result TABLE (EmployeeId INT, Name NVARCHAR(100), Level INT)\nAS\nBEGIN\n    -- Can have multiple statements, loops, conditionals\n    INSERT INTO @Result\n    SELECT EmployeeId, Name, 1 FROM Employee WHERE ManagerId = @ManagerId;\n    -- ... more complex logic ...\n    RETURN;\nEND;</code></pre><h4>Key restrictions of SQL functions (vs Stored Procedures):</h4><ul><li>Functions <strong>cannot modify database state</strong> — no INSERT, UPDATE, DELETE, TRUNCATE on permanent tables.</li><li>Functions cannot call stored procedures.</li><li>Functions cannot use TRY/CATCH.</li><li>Functions can only return ONE value type (scalar) or ONE table (TVF) — not multiple result sets.</li><li>Stored procedures CAN return multiple result sets, have output parameters, and modify data.</li></ul><h4>Performance note:</h4><p>Inline TVFs are treated as parameterised views — the optimizer can see through them and create an optimal execution plan. Multi-statement TVFs are black boxes to the optimizer — they often produce poor execution plans. Prefer ITVFs over MSTVFs when possible.</p>",
+      "followUps": [
+        {
+          "question": "Can you use DML (INSERT/UPDATE/DELETE) inside a SQL function?",
+          "answer": "<p><strong>On permanent tables: No.</strong> SQL functions are designed to be side-effect free — they should only read data and return a result. Allowing writes would make functions non-deterministic and unsafe to use in SELECT statements (which can be called multiple times by the optimizer).</p><p><strong>Exception:</strong> You can INSERT/UPDATE/DELETE on <strong>table variables</strong> declared within the function (like the MSTVF @Result table above). These are local to the function execution and have no permanent side effects.</p><p>If you need DML inside your logic, use a <strong>stored procedure</strong> instead — procedures can read and write data, return multiple result sets, and handle errors with TRY/CATCH.</p>"
+        }
+      ],
+      "tip": "<strong>Quick rule:</strong> Scalar function = one value. Inline TVF = one table (best performance). MSTVF = one table (slower). No function can do DML on real tables or return multiple result sets — that's what stored procedures are for.",
+      "tags": ["sql", "function", "scalar-function", "table-valued-function", "tvf", "stored-procedure"],
+      "sortOrder": 68,
+      "isActive": true
     }
   ]
 }

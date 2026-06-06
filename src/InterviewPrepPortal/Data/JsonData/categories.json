@@ -285,6 +285,24 @@
         "coverage"
       ],
       "isActive": true
+    },
+    {
+      "id": "azure",
+      "name": "Azure & Cloud",
+      "slug": "azure",
+      "emoji": "☁️",
+      "description": "Azure services, Key Vault, Blob Storage, Azure Functions, CI/CD, cloud troubleshooting",
+      "sortOrder": 18,
+      "tags": [
+        "azure",
+        "cloud",
+        "keyvault",
+        "blob-storage",
+        "azure-functions",
+        "devops",
+        "cicd"
+      ],
+      "isActive": true
     }
   ]
 }

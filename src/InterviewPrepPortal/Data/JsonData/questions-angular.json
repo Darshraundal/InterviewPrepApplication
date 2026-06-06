@@ -469,6 +469,24 @@
       ],
       "sortOrder": 6,
       "isActive": true
+    },
+    {
+      "id": "angular-018",
+      "category": "angular",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is Angular and what are its core features?",
+      "answer": "<p><strong>Angular</strong> is a TypeScript-based open-source front-end framework developed and maintained by Google. It is a complete, opinionated platform for building web applications — not just a library, but a full framework with routing, forms, HTTP client, testing utilities, and a CLI built-in.</p><h4>Key characteristics:</h4><ul><li><strong>TypeScript-first</strong> — Angular is built with and requires TypeScript. This brings static typing, interfaces, and generics to frontend code.</li><li><strong>Component-based architecture</strong> — UIs are built from self-contained components, each with its own template (HTML), styles (CSS), and logic (TypeScript).</li><li><strong>Two-way data binding</strong> — synchronises data between the model (component class) and the view (template) automatically using <code>[(ngModel)]</code>.</li><li><strong>Dependency Injection</strong> — a built-in DI system (similar to .NET) for managing service instances and their lifetimes.</li><li><strong>Reactive programming</strong> — built-in support for RxJS Observables for async operations (HTTP calls, event streams).</li><li><strong>Angular CLI</strong> — command-line tool for generating components, services, running builds, tests, and dev server.</li></ul><h4>Core building blocks:</h4><ul><li><strong>Components</strong> — the primary UI building block. <code>@Component</code> decorator with selector, template, styles.</li><li><strong>Modules (NgModule)</strong> — logical groupings of components, directives, pipes, and services. Being phased out in favour of standalone components (Angular 15+).</li><li><strong>Services</strong> — injectable classes for shared business logic, HTTP calls, state management.</li><li><strong>Directives</strong> — extend HTML. Structural (<code>*ngIf</code>, <code>*ngFor</code>) modify DOM structure; attribute directives modify element behaviour.</li><li><strong>Pipes</strong> — transform data in templates (<code>{{ date | date:'short' }}</code>).</li><li><strong>Router</strong> — client-side navigation with lazy loading, guards, resolvers.</li></ul><h4>Angular versions:</h4><ul><li><strong>AngularJS (Angular 1.x)</strong> — original JavaScript framework (2010). Not the same as Angular.</li><li><strong>Angular (2+)</strong> — complete rewrite in TypeScript (2016). Versions 2–18 are all just 'Angular'.</li><li><strong>Current (Angular 18+)</strong> — standalone components default, signals for reactivity, no-zone.js option.</li></ul><pre><code class=\"language-typescript\">// Minimal Angular component (standalone, Angular 15+)\nimport { Component } from '@angular/core';\nimport { CommonModule } from '@angular/common';\n\n@Component({\n  selector: 'app-greeting',\n  standalone: true,\n  imports: [CommonModule],\n  template: `\n    &lt;h1&gt;Hello, {{ name }}!&lt;/h1&gt;\n    &lt;button (click)=\"greet()\"&gt;Greet&lt;/button&gt;\n  `\n})\nexport class GreetingComponent {\n  name = 'Angular';\n  greet() { alert(`Hello, ${this.name}!`); }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How is Angular different from React and Vue?",
+          "answer": "<p><strong>Angular</strong> — full framework. Opinionated. TypeScript required. Built-in routing, forms, HTTP client. Steeper learning curve but consistent structure across teams. Best for large enterprise apps with many developers.</p><p><strong>React</strong> — UI library, not a framework. JavaScript/JSX. You choose your own routing (React Router), state management (Redux, Zustand), etc. Very flexible. Huge ecosystem. Dominant in the industry.</p><p><strong>Vue</strong> — progressive framework. Easier learning curve than Angular. HTML-based templates. Can be used as a library or full framework. Popular in Asia, growing elsewhere.</p><p>Key Angular advantage for .NET developers: the DI system, TypeScript, and component architecture feel familiar coming from C#/.NET patterns.</p>"
+        }
+      ],
+      "tip": "<strong>Interview tip:</strong> Angular ≠ AngularJS. Always clarify you mean Angular 2+ (TypeScript). AngularJS is the legacy framework and a completely different architecture. Getting this wrong signals inexperience.",
+      "tags": ["angular", "framework", "typescript", "component", "spa", "google"],
+      "sortOrder": 18,
+      "isActive": true
     }
   ]
 }
