@@ -1,0 +1,37 @@
+{
+  "projectId": "service-selection",
+  "architectureSummary": {
+    "overview": "ServiceSelection is an Angular 12 Web Component (Angular Elements) embedded in a legacy HTML page. The component communicates with a versioned ASP.NET Core API — v1 endpoints for existing clients, v2 with richer responses for the Angular component."
+  },
+  "sections": [
+    {
+      "name": "Angular Elements & Web Components",
+      "questions": [
+        {
+          "id": "ss-001",
+          "projectId": "service-selection",
+          "sectionName": "Angular Elements & Web Components",
+          "questionText": "What is an Angular Web Component and how did you implement it in ServiceSelection?",
+          "answer": "<p>Angular Elements wraps an Angular component as a native Web Component (Custom Element). The resulting web component can be used in any HTML page with a simple script include — no Angular knowledge required by the host page.</p><pre><code class=\"language-typescript\">// app.module.ts (Angular 12 — pre-standalone)\n@NgModule({\n  declarations: [ServiceSelectorComponent],\n  imports: [BrowserModule, ReactiveFormsModule, HttpClientModule],\n  entryComponents: [ServiceSelectorComponent]  // needed for elements\n})\nexport class AppModule implements DoBootstrap {\n  constructor(private injector: Injector) {}\n\n  ngDoBootstrap() {\n    // Convert Angular component to Custom Element\n    const serviceSelector = createCustomElement(\n      ServiceSelectorComponent,\n      { injector: this.injector });\n\n    // Register as a custom HTML element\n    customElements.define('service-selector', serviceSelector);\n  }\n}</code></pre><p><strong>Host page usage (no Angular needed):</strong></p><pre><code class=\"language-html\">&lt;!-- Legacy HTML page --&gt;\n&lt;service-selector\n  api-base-url=\"https://api.example.com\"\n  theme=\"dark\"\n  locale=\"en-IN\"&gt;\n&lt;/service-selector&gt;\n\n&lt;!-- Include the Angular bundle --&gt;\n&lt;script src=\"service-selector-element.js\"&gt;&lt;/script&gt;</code></pre><p>Input properties become HTML attributes (<code>api-base-url</code>). Output events become DOM CustomEvents that the host page can listen to with <code>addEventListener</code>.</p>",
+          "followUpQuestions": ["How do you pass data from the host page to the Angular element?", "How do you handle Angular element updates when host page changes an attribute?"],
+          "importantForInterview": "Web Component attributes are always strings. To pass complex objects, use JavaScript to set the element's property directly: <code>element.config = { ... }</code> (property binding, not attribute binding)."
+        }
+      ]
+    },
+    {
+      "name": "API Versioning",
+      "questions": [
+        {
+          "id": "ss-002",
+          "projectId": "service-selection",
+          "sectionName": "API Versioning",
+          "questionText": "How did you implement API versioning for the ServiceSelection project?",
+          "answer": "<p>ServiceSelection had two API consumers: legacy HTML pages (using v1) and the new Angular element (using v2). V2 returned richer responses without breaking existing v1 clients.</p><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddApiVersioning(options =>\n{\n    options.DefaultApiVersion = new ApiVersion(1, 0);\n    options.AssumeDefaultVersionWhenUnspecified = true;\n    options.ReportApiVersions = true;\n}).AddMvc();\n\n// Controller\n[ApiController]\n[ApiVersion(\"1.0\")]\n[ApiVersion(\"2.0\")]\n[Route(\"api/v{version:apiVersion}/services\")]\npublic class ServicesController : ControllerBase\n{\n    [HttpGet]\n    [MapToApiVersion(\"1.0\")]\n    public async Task&lt;ActionResult&lt;IEnumerable&lt;ServiceDto&gt;&gt;&gt; GetV1()\n    {\n        // Legacy: flat list of services\n        return Ok(await _service.GetFlatListAsync());\n    }\n\n    [HttpGet]\n    [MapToApiVersion(\"2.0\")]\n    public async Task&lt;ActionResult&lt;ServiceGroupedDto&gt;&gt; GetV2()\n    {\n        // V2: grouped by category, with additional metadata\n        return Ok(await _service.GetGroupedWithMetadataAsync());\n    }\n}</code></pre><p>V1 URL: <code>/api/v1/services</code> (unchanged, existing clients keep working)<br>V2 URL: <code>/api/v2/services</code> (Angular element uses this)</p>",
+          "followUpQuestions": ["How do you deprecate an API version?", "What happens when a client hits a deprecated endpoint?"],
+          "importantForInterview": "Mark deprecated versions with <code>[ApiVersion(\"1.0\", Deprecated = true)]</code>. The api-deprecated-versions response header warns clients. Document the sunset date. Never remove a version without a long deprecation period — you don't control all clients."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

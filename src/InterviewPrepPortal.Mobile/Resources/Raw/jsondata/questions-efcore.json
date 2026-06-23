@@ -1,0 +1,357 @@
+{
+  "categoryId": "efcore",
+  "questions": [
+    {
+      "id": "efcore-001",
+      "category": "efcore",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is Entity Framework Core and how does it differ from Dapper?",
+      "answer": "<p><strong>Entity Framework Core (EF Core)</strong> is a full ORM — it maps C# classes to database tables, tracks changes, generates SQL, and handles migrations. You mostly write LINQ instead of SQL.</p><p><strong>Dapper</strong> is a micro-ORM — it extends <code>IDbConnection</code> with extension methods (<code>Query&lt;T&gt;</code>, <code>Execute</code>) that map SQL results to C# objects. You write the SQL yourself.</p><p><strong>When I use which:</strong></p><ul><li><strong>EF Core</strong> — standard CRUD, complex object graphs (Include/navigation properties), migrations, where the ORM's generated SQL is fine. FolioTrack used EF Core for all entity management.</li><li><strong>Dapper</strong> — performance-critical queries, complex joins the ORM generates poorly, reporting queries, stored procedures. The offline invoice project used Dapper for all its batch processing queries because we had complex multi-table joins that EF Core over-complicated.</li></ul><p>They're not mutually exclusive — in WalletVerification I used EF Core for standard CRUD and injected Dapper (via <code>IDbConnection</code>) for the complex balance calculation queries.</p>",
+      "followUps": [
+        {
+          "question": "Can you use EF Core and Dapper together?",
+          "answer": "<p>Yes — they share the same database connection. Get the underlying connection from EF Core with <code>_db.Database.GetDbConnection()</code> and pass it to Dapper's extension methods. Both operate on the same transaction if needed. This hybrid approach is a recognized pattern: use EF Core for CRUD where change tracking and migrations are valuable, and drop to Dapper for complex reporting queries or stored procedure calls where EF Core's SQL generation would be suboptimal. I used this in WalletVerification — EF Core for wallet entity management, Dapper for the complex balance reconciliation query.</p>"
+        },
+        {
+          "question": "What is an ORM?",
+          "answer": "<p>An <strong>ORM (Object-Relational Mapper)</strong> bridges the mismatch between object-oriented code (C# classes with inheritance, navigation properties) and relational databases (tables, foreign keys, joins). It maps C# class properties to table columns, translates LINQ or query builder calls into SQL, and maps result rows back to objects. Full ORMs like EF Core also handle change tracking (detecting which properties changed for UPDATE statements) and schema migrations. The benefit is that you write mostly C# rather than SQL — the cost is that the generated SQL may not always be optimal.</p>"
+        },
+        {
+          "question": "When would you avoid EF Core?",
+          "answer": "<p>Avoid EF Core (or supplement with Dapper/raw SQL) when: (1) <strong>Complex reporting queries</strong> with many joins, aggregations, and CTEs — EF Core's SQL generation becomes awkward. (2) <strong>Bulk operations</strong> — inserting or updating thousands of rows, use <code>ExecuteUpdateAsync</code>/<code>ExecuteDeleteAsync</code> (EF Core 7+) or Dapper's <code>Execute</code> with a stored proc. (3) <strong>Performance-critical paths</strong> where you need to control the exact SQL. (4) <strong>Database-specific features</strong> (full-text search hints, specific index hints) that EF Core doesn't expose. (5) <strong>Simple lookup/read-only services</strong> where Dapper's less overhead is worth the explicit SQL.</p>"
+        }
+      ],
+      "tip": "<strong>EF Core vs Dapper isn't religious — it's contextual.</strong> EF Core productivity wins for simple CRUD. Dapper wins for complex queries. Use both in the same project without guilt.",
+      "tags": [
+        "efcore",
+        "dapper",
+        "orm"
+      ],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "efcore-002",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is DbContext and how should it be used?",
+      "answer": "<p><code>DbContext</code> is the main entry point for EF Core. It represents a session with the database — it tracks entity changes, manages transactions, and translates LINQ to SQL.</p><p><strong>Lifetime:</strong> DbContext is designed to be <strong>short-lived (Scoped)</strong>. Register it as <code>AddDbContext&lt;T&gt;</code> which defaults to Scoped (one instance per HTTP request). Don't make it Singleton — the change tracker accumulates state and it's not thread-safe.</p><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddDbContext&lt;AppDbContext&gt;(options =>\n    options.UseSqlServer(connectionString));\n\n// AppDbContext\npublic class AppDbContext : DbContext\n{\n    public AppDbContext(DbContextOptions&lt;AppDbContext&gt; options)\n        : base(options) { }\n\n    public DbSet&lt;Portfolio&gt; Portfolios { get; set; }\n    public DbSet&lt;Holding&gt; Holdings { get; set; }\n\n    protected override void OnModelCreating(ModelBuilder builder)\n    {\n        // Fluent API configuration\n        builder.Entity&lt;Portfolio&gt;()\n            .HasMany(p => p.Holdings)\n            .WithOne(h => h.Portfolio)\n            .HasForeignKey(h => h.PortfolioId)\n            .OnDelete(DeleteBehavior.Cascade);\n    }\n}</code></pre><p><strong>Don't share DbContext across threads.</strong> If you need it in a Singleton or BackgroundService, use <code>IServiceScopeFactory</code> to create a scope and resolve a fresh DbContext per operation.</p>",
+      "followUps": [
+        {
+          "question": "What is the Unit of Work pattern in EF Core?",
+          "answer": "<p>The Unit of Work pattern groups multiple database operations into a single transaction that either all succeed or all fail. EF Core's <code>DbContext</code> naturally implements Unit of Work — you make multiple changes to tracked entities, and a single <code>SaveChangesAsync()</code> call wraps them in a transaction. You don't need to implement a separate UoW class on top of DbContext unless you need to coordinate multiple DbContexts. The Scoped lifetime of DbContext means one UoW per HTTP request — all service operations in the same request share the same change tracker and transaction boundary.</p>"
+        },
+        {
+          "question": "How do you use DbContext in a BackgroundService?",
+          "answer": "<p>Never inject <code>DbContext</code> directly into a <code>BackgroundService</code> — the service is Singleton but DbContext is Scoped, causing a captive dependency exception. Instead, inject <code>IServiceScopeFactory</code>, then in <code>ExecuteAsync</code> create a scope per iteration: <code>using var scope = _scopeFactory.CreateScope(); var db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();</code>. This gives a fresh DbContext (new change tracker, new connection) per execution cycle. Dispose the scope when done, which disposes the DbContext and releases the connection.</p>"
+        }
+      ],
+      "tip": "<strong>DbContext is NOT thread-safe.</strong> Never share one instance across async operations that may run in parallel. Each scope gets its own instance. This is why it must be Scoped, not Singleton.",
+      "tags": [
+        "efcore",
+        "dbcontext",
+        "lifetime"
+      ],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "efcore-003",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the difference between eager loading, lazy loading, and explicit loading?",
+      "answer": "<p>These control how EF Core loads related entities (navigation properties):</p><p><strong>Eager loading</strong> — load related data in the same query using <code>Include()</code>. SQL JOIN is generated. Best performance when you always need the related data.</p><pre><code class=\"language-csharp\">var portfolios = await _db.Portfolios\n    .Include(p => p.Holdings)\n        .ThenInclude(h => h.Stock)\n    .ToListAsync();</code></pre><p><strong>Lazy loading</strong> — related data is loaded on first access of the navigation property, transparently. Requires proxies (<code>UseLazyLoadingProxies()</code>). The classic N+1 trap — access <code>portfolio.Holdings</code> in a loop = N separate queries.</p><pre><code class=\"language-csharp\">// DANGER: lazy loading N+1\nforeach (var p in portfolios)\n{\n    var count = p.Holdings.Count;  // fires a query per portfolio!\n}</code></pre><p><strong>Explicit loading</strong> — manually load related data when needed using <code>Entry().Collection().LoadAsync()</code>. Good for conditional loading (only load holdings if user requests them).</p><pre><code class=\"language-csharp\">await _db.Entry(portfolio)\n    .Collection(p => p.Holdings)\n    .LoadAsync();</code></pre><p>I disable lazy loading by default — it hides N+1 problems until production. Use eager or explicit loading deliberately.</p>",
+      "followUps": [
+        {
+          "question": "How do you detect N+1 queries?",
+          "answer": "<p>Enable EF Core SQL logging in development: <code>optionsBuilder.LogTo(Console.WriteLine, LogLevel.Information)</code> or set <code>\"Microsoft.EntityFrameworkCore\": \"Information\"</code> in appsettings. Watch for the same query repeated N times in the output — that's N+1. In staging, <strong>MiniProfiler</strong> shows a per-request SQL count and duration, making N+1 immediately visible. In production, Application Insights or Serilog structured logging with SQL details can detect query explosion. The metric to watch is \"queries per request\" — if it scales with data volume, you have N+1.</p>"
+        },
+        {
+          "question": "What is AsSplitQuery()?",
+          "answer": "<p><code>AsSplitQuery()</code> tells EF Core to issue separate SQL queries for each <code>Include</code> instead of one large JOIN query. Without it, including multiple collections (e.g., Portfolio → Holdings AND Portfolio → Transactions) generates a JOIN that creates a Cartesian product — if a portfolio has 50 holdings and 100 transactions, the JOIN produces 5,000 rows. <code>AsSplitQuery()</code> fires three separate queries (portfolios, then holdings, then transactions) and EF Core stitches them together in memory. Use it when including multiple collection navigation properties causes Cartesian explosion.</p>"
+        }
+      ],
+      "tip": "<strong>AsSplitQuery()</strong> tells EF Core to issue separate SQL queries per Include instead of one large JOIN. Avoids Cartesian explosion for multiple collection Includes (joining Portfolios→Holdings→Transactions produces millions of rows if each has many).",
+      "tags": [
+        "efcore",
+        "loading",
+        "n+1",
+        "performance"
+      ],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "efcore-004",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are EF Core migrations and how do they work?",
+      "answer": "<p>Migrations track schema changes as C# code that can be applied to a database. Each migration has an <code>Up()</code> (apply change) and <code>Down()</code> (roll back) method.</p><p><strong>Workflow:</strong></p><pre><code class=\"language-bash\"># 1. Create a migration after changing your model\ndotnet ef migrations add AddPortfolioDescription\n\n# 2. Review the generated migration file in Migrations/\n# EF compares current model to the last snapshot and generates the diff\n\n# 3. Apply to database\ndotnet ef database update\n\n# 4. Roll back to previous migration\ndotnet ef database update PreviousMigrationName</code></pre><p><strong>Auto-apply on startup (for SQLite/small apps):</strong></p><pre><code class=\"language-csharp\">// Program.cs\nusing var scope = app.Services.CreateScope();\nscope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;().Database.Migrate();</code></pre><p><strong>Production pattern:</strong> Generate SQL script (<code>dotnet ef migrations script</code>), review it, run via DBA or CI pipeline. Never auto-apply migrations in production for SQL Server — you lose control over deployment timing.</p>",
+      "followUps": [
+        {
+          "question": "How do you squash migrations?",
+          "answer": "<p>Squashing consolidates many small migration files into one. In EF Core, delete all existing migration files, update the model snapshot to reflect the current schema, and create a single new migration that represents the current state. This is done by running <code>dotnet ef migrations add InitialCreate</code> after clearing the Migrations folder — EF Core diffs the current model against an empty baseline and generates a full-schema migration. Squash when migration history has grown to dozens of files and the history isn't needed for rollbacks. Never squash if the database already has data — existing environments need the original migrations to migrate forward.</p>"
+        },
+        {
+          "question": "What is the difference between Migrate() and EnsureCreated()?",
+          "answer": "<p><code>EnsureCreated()</code> creates the database schema from the current model if the database doesn't exist — without creating a migration history table. It's fast and useful for testing/prototyping, but it cannot be used with migrations. If you later try to add migrations to a database created with <code>EnsureCreated()</code>, EF Core fails because there's no migration history. <code>Migrate()</code> applies pending migrations in order and tracks applied migrations in the <code>__EFMigrationsHistory</code> table. Always use <code>Migrate()</code> for real applications so you can evolve the schema over time.</p>"
+        }
+      ],
+      "tip": "<strong>EnsureCreated() vs Migrate():</strong> <code>EnsureCreated()</code> creates the schema from the current model snapshot but doesn't track migration history — you can never add migrations to a DB created this way. Always use <code>Migrate()</code> in real applications.",
+      "tags": [
+        "efcore",
+        "migrations",
+        "database"
+      ],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "efcore-005",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is the Repository pattern with EF Core? Should you use it?",
+      "answer": "<p>The <strong>Repository pattern</strong> wraps data access behind an abstraction (<code>IPortfolioRepository</code>) so the rest of your application doesn't depend on EF Core directly.</p><pre><code class=\"language-csharp\">public interface IPortfolioRepository\n{\n    Task&lt;Portfolio?&gt; GetByIdAsync(int id, CancellationToken ct = default);\n    Task&lt;List&lt;Portfolio&gt;&gt; GetByUserAsync(string userId, CancellationToken ct = default);\n    Task AddAsync(Portfolio portfolio);\n    Task UpdateAsync(Portfolio portfolio);\n    Task DeleteAsync(int id);\n}\n\npublic class EfPortfolioRepository : IPortfolioRepository\n{\n    private readonly AppDbContext _db;\n    public EfPortfolioRepository(AppDbContext db) => _db = db;\n    // ...implementations using _db.Portfolios...\n}</code></pre><p><strong>The controversy:</strong> EF Core's <code>DbContext</code> already IS a Unit of Work and <code>DbSet&lt;T&gt;</code> already IS a repository. Adding another layer can be over-engineering.</p><p><strong>When I use it:</strong> When I need to switch data sources (EF Core today, Dapper tomorrow for perf), or for unit testing without hitting the DB (mock the repository). When I don't: simple applications where the extra abstraction adds no value.</p>",
+      "followUps": [
+        {
+          "question": "What is the Unit of Work pattern?",
+          "answer": "<p>Unit of Work tracks changes to objects during a business transaction and flushes them all to the database in a single operation. EF Core's <code>DbContext</code> naturally implements this: you manipulate tracked entities throughout a request, then call <code>SaveChangesAsync()</code> once to commit all changes atomically. A separate UoW wrapper around DbContext (<code>IUnitOfWork</code> with <code>CommitAsync()</code>) is redundant unless you need to coordinate multiple DbContexts or want to make the commit explicit in your repository API design. For most apps, DbContext's built-in UoW is sufficient.</p>"
+        },
+        {
+          "question": "How do you unit test code that uses EF Core?",
+          "answer": "<p>Three approaches: (1) <strong>InMemory provider</strong> — <code>options.UseInMemoryDatabase(\"TestDb\")</code>. Fast but doesn't enforce foreign keys or SQL constraints. (2) <strong>SQLite in-memory</strong> — <code>options.UseSqlite(\"Data Source=:memory:\")</code>. Better — SQLite enforces more relational semantics and supports migrations. Preferred for integration testing. (3) <strong>Mock the repository interface</strong> — if using the repository pattern, mock <code>IPortfolioRepository</code> with Moq/NSubstitute. Fastest for pure unit tests but doesn't test data access logic. Use InMemory for speed, SQLite for fidelity, mocks for isolating business logic.</p>"
+        }
+      ],
+      "tip": "<strong>EF Core InMemory or SQLite in-memory</strong> lets you test without mocking the repository at all. This is often simpler than setting up mocks. Only use repository mocks when you specifically want to test business logic in isolation from all data access.",
+      "tags": [
+        "efcore",
+        "repository",
+        "patterns",
+        "design"
+      ],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "efcore-006",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is AsNoTracking() and when should you use it?",
+      "answer": "<p>By default, EF Core tracks every entity it loads — the change tracker stores the original values so it can detect what changed for <code>SaveChanges()</code>. <code>AsNoTracking()</code> disables this.</p><p><strong>When to use AsNoTracking():</strong></p><ul><li>Read-only queries (API GET endpoints that return data without modifying it)</li><li>Reporting/dashboard queries loading many rows</li><li>Any query where you won't call SaveChanges() on the loaded entities</li></ul><pre><code class=\"language-csharp\">// READ-ONLY: no tracking needed, faster and less memory\nvar portfolios = await _db.Portfolios\n    .AsNoTracking()\n    .Include(p => p.Holdings)\n    .Where(p => p.UserId == userId)\n    .ToListAsync();\n\n// READ-WRITE: tracking needed\nvar portfolio = await _db.Portfolios\n    .FirstOrDefaultAsync(p => p.Id == id);  // tracked\nportfolio!.Name = \"New Name\";\nawait _db.SaveChangesAsync();  // change detector knows Name changed</code></pre><p><strong>Performance impact:</strong> AsNoTracking() is measurably faster for large result sets — no identity map lookups, no snapshot storage. In FolioTrack's dashboard query (200+ portfolio items), it cut query time by ~30%.</p>",
+      "followUps": [
+        {
+          "question": "What is AsNoTrackingWithIdentityResolution()?",
+          "answer": "<p><code>AsNoTrackingWithIdentityResolution()</code> is a middle ground between full tracking and no tracking. It loads entities without change tracking (no snapshot, no modification detection) but still maintains an identity map — if the same entity appears multiple times in a query result (e.g., the same <code>Stock</code> referenced by multiple <code>Holdings</code>), you get the same C# object instance for each occurrence rather than duplicate objects. Use it when you need consistent object graphs (avoiding duplicates) but don't need change tracking. Regular <code>AsNoTracking()</code> may create duplicate C# objects for the same DB row when using Includes.</p>"
+        },
+        {
+          "question": "What happens if you modify an AsNoTracking entity and SaveChanges?",
+          "answer": "<p>Nothing gets saved. EF Core's change tracker is unaware of the entity — it was loaded without tracking. Calling <code>SaveChangesAsync()</code> won't generate any UPDATE statement for it. To save a modified no-tracking entity, you must explicitly tell EF Core about it: either call <code>_db.Update(entity)</code> (marks all properties as modified), or <code>_db.Attach(entity)</code> then set specific properties (only those are marked modified). Alternatively, load the entity with tracking, apply changes, then save — the change tracker handles the rest automatically.</p>"
+        }
+      ],
+      "tip": "<strong>Configure AsNoTracking globally for read-heavy apps:</strong> <code>optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)</code> in OnConfiguring, then use <code>AsTracking()</code> only for the write operations. Flips the default.",
+      "tags": [
+        "efcore",
+        "performance",
+        "tracking"
+      ],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "efcore-007",
+      "category": "efcore",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "How do you handle concurrency conflicts in EF Core?",
+      "answer": "<p>EF Core supports optimistic concurrency via <strong>rowversion</strong> (timestamp) columns. When you update an entity, EF Core adds a <code>WHERE RowVersion = @originalVersion</code> clause. If another request modified the row since you read it, 0 rows are affected and EF Core throws <code>DbUpdateConcurrencyException</code>.</p><pre><code class=\"language-csharp\">// Model\npublic class Wallet\n{\n    public int Id { get; set; }\n    public decimal Balance { get; set; }\n\n    [Timestamp]  // maps to SQL rowversion column\n    public byte[] RowVersion { get; set; } = [];\n}\n\n// Service\npublic async Task DeductBalanceAsync(int walletId, decimal amount, CancellationToken ct)\n{\n    var wallet = await _db.Wallets.FindAsync([walletId], ct);\n    wallet!.Balance -= amount;\n\n    try\n    {\n        await _db.SaveChangesAsync(ct);\n    }\n    catch (DbUpdateConcurrencyException ex)\n    {\n        // Reload and retry or throw a domain exception\n        var entry = ex.Entries.Single();\n        await entry.ReloadAsync(ct);  // reload with current DB values\n        throw new BusinessException(\"Concurrent modification — please retry.\");\n    }\n}</code></pre>",
+      "projectExample": {
+        "source": "WalletVerification",
+        "code": "[Timestamp]\npublic byte[] RowVersion { get; set; } = [];\n\n// Migration generates: RowVersion rowversion NOT NULL",
+        "explanation": "WalletVerification used timestamp-based optimistic concurrency on the Wallet entity to prevent double top-up from rapid button taps."
+      },
+      "followUps": [
+        {
+          "question": "What is the difference between optimistic and pessimistic concurrency?",
+          "answer": "<p><strong>Optimistic concurrency</strong> — don't lock at read time. Trust that conflicts are rare. At save time, check if the data changed (via rowversion/timestamp). If changed, throw an exception and retry. Best for: infrequent conflicts, high read volume, good user experience (no blocking). EF Core's <code>[Timestamp]</code> attribute implements this. <strong>Pessimistic concurrency</strong> — acquire an exclusive lock when you read the data, hold it until you update. No conflicts possible, but blocks other readers/writers. Best for: high-conflict scenarios (inventory decrement, financial debit). Requires <code>WITH (UPDLOCK)</code> hints via raw SQL in EF Core — no built-in API.</p>"
+        },
+        {
+          "question": "How do you do pessimistic locking with EF Core?",
+          "answer": "<p>EF Core has no built-in pessimistic locking API. Drop to raw SQL with database-specific lock hints: <code>_db.Database.ExecuteSqlRawAsync(\"SELECT Id, Balance FROM Wallets WITH (UPDLOCK, ROWLOCK) WHERE Id = {0}\", walletId)</code> inside an explicit transaction. The <code>UPDLOCK</code> hint acquires an update lock that prevents other readers from also taking update locks (preventing lost updates), and <code>ROWLOCK</code> limits locking to the specific row. Wrap in <code>await _db.Database.BeginTransactionAsync()</code> and commit after your update. This is SQL Server-specific — other databases have different syntax.</p>"
+        }
+      ],
+      "tip": "<strong>Pessimistic locking with EF Core:</strong> Use raw SQL with <code>WITH (UPDLOCK, ROWLOCK)</code> hint inside a transaction: <code>_db.Database.ExecuteSqlRawAsync(\"SELECT... WITH (UPDLOCK)\")</code>. EF Core has no built-in API for lock hints — you have to drop down to raw SQL.",
+      "tags": [
+        "efcore",
+        "concurrency",
+        "rowversion",
+        "database"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "efcore-008",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you use raw SQL in EF Core?",
+      "answer": "<p>Sometimes EF Core's LINQ translator doesn't generate optimal SQL, or you need DB-specific features. EF Core provides safe ways to drop to raw SQL:</p><pre><code class=\"language-csharp\">// 1. FromSqlInterpolated: for queries returning entities\n//    Uses parameterized SQL (safe from injection)\nvar invoices = await _db.Invoices\n    .FromSqlInterpolated(\n        $\"SELECT * FROM Invoices WHERE ClientId = {clientId} AND Year = {year}\")\n    .Include(i => i.LineItems)  // can still chain LINQ!\n    .ToListAsync();\n\n// 2. ExecuteSqlInterpolatedAsync: for non-query commands\nint rows = await _db.Database.ExecuteSqlInterpolatedAsync(\n    $\"UPDATE Invoices SET Status = 'Archived' WHERE DueDate < {cutoffDate}\");\n\n// 3. Dapper alongside EF Core: for complex reporting queries\nvar connection = _db.Database.GetDbConnection();\nvar report = await connection.QueryAsync&lt;InvoiceSummaryDto&gt;(\n    \"EXEC sp_InvoiceSummary @year\", new { year = 2024 });</code></pre><p><strong>NEVER use <code>FromSqlRaw</code> with string concatenation</strong> — it's injection-vulnerable. Always use <code>FromSqlInterpolated</code> or explicit <code>SqlParameter</code> objects with <code>FromSqlRaw</code>.</p>",
+      "followUps": [
+        {
+          "question": "What is SqlParameter vs interpolated strings?",
+          "answer": "<p><code>FromSqlRaw</code> with <code>SqlParameter</code> objects explicitly creates parameterized queries: <code>_db.Invoices.FromSqlRaw(\"SELECT * FROM Invoices WHERE ClientId = @id\", new SqlParameter(\"@id\", clientId))</code>. <code>FromSqlInterpolated</code> is safer and more readable — EF Core intercepts the C# interpolated string (<code>$\"... {clientId} ...\"</code>) and automatically converts interpolated variables to <code>SqlParameter</code>s. Both produce identical parameterized SQL. The interpolation syntax just looks cleaner. Never use <code>FromSqlRaw($\"... {clientId} ...\")</code> — that concatenates the value directly into the SQL string, bypassing parameterization.</p>"
+        },
+        {
+          "question": "How do you call a stored procedure with EF Core?",
+          "answer": "<p>For stored procedures returning entities: <code>_db.Invoices.FromSqlInterpolated($\"EXEC GetInvoices {clientId}\")</code>. For non-query procs: <code>_db.Database.ExecuteSqlInterpolatedAsync($\"EXEC ArchiveInvoices {cutoffDate}\")</code>. For scalar results or complex DTOs not in your model, use Dapper via <code>_db.Database.GetDbConnection().QueryAsync&lt;MyDto&gt;(\"EXEC sp_Report @year\", new { year })</code>. EF Core 7+ also has <code>SqlQuery&lt;T&gt;</code> for arbitrary SQL returning non-entity types. The Dapper approach gives more flexibility for stored procedures with output parameters.</p>"
+        }
+      ],
+      "tip": "<strong>FromSqlInterpolated is NOT the same as $\"...\" string interpolation.</strong> EF Core intercepts the FormattableString and converts <code>{clientId}</code> into a parameterized <code>@p0</code> — the value is never concatenated into the SQL string. This is safe from injection.",
+      "tags": [
+        "efcore",
+        "raw-sql",
+        "security",
+        "dapper"
+      ],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "efcore-009",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is the difference between Add(), Attach(), and Update() in EF Core?",
+      "answer": "<p>These methods set the entity state in EF Core's change tracker:</p><ul><li><strong><code>Add(entity)</code></strong> — marks as <code>EntityState.Added</code>. SaveChanges generates an INSERT. For new entities the DB hasn't seen.</li><li><strong><code>Attach(entity)</code></strong> — marks as <code>EntityState.Unchanged</code>. No SQL generated unless you then modify properties. Use when you have a disconnected entity (e.g., from a DTO) that you know exists in DB but was loaded outside this DbContext.</li><li><strong><code>Update(entity)</code></strong> — marks as <code>EntityState.Modified</code>. SaveChanges generates an UPDATE for all columns (not just changed ones). For disconnected scenarios where you want to overwrite everything.</li></ul><pre><code class=\"language-csharp\">// Disconnected update pattern (common in APIs)\n[HttpPut(\"{id}\")]\npublic async Task&lt;IActionResult&gt; Update(int id, UpdatePortfolioRequest req)\n{\n    var exists = await _db.Portfolios.AnyAsync(p => p.Id == id);\n    if (!exists) return NotFound();\n\n    var entity = new Portfolio { Id = id, Name = req.Name, ... };\n    _db.Update(entity);  // marks Modified, generates UPDATE all columns\n    await _db.SaveChangesAsync();\n    return NoContent();\n}\n\n// Better: load, modify, save (only changed columns updated)\nvar entity = await _db.Portfolios.FindAsync(id);\nentity!.Name = req.Name;  // only Name is Modified\nawait _db.SaveChangesAsync();  // UPDATE Portfolios SET Name = ... WHERE Id = ...</code></pre>",
+      "followUps": [
+        {
+          "question": "What are all EF Core EntityState values?",
+          "answer": "<p>EF Core has five entity states: <strong>Detached</strong> — not tracked by the context (default for new objects or AsNoTracking results). <strong>Unchanged</strong> — tracked, no changes detected. <strong>Added</strong> — will be INSERTed on SaveChanges. <strong>Modified</strong> — will be UPDATEd on SaveChanges. <strong>Deleted</strong> — will be DELETEd on SaveChanges. You can read an entity's state via <code>_db.Entry(entity).State</code> and set it directly: <code>_db.Entry(entity).State = EntityState.Modified</code>. This is useful for disconnected update scenarios where you want fine-grained control.</p>"
+        },
+        {
+          "question": "What is ExecuteUpdateAsync (EF Core 7)?",
+          "answer": "<p><code>ExecuteUpdateAsync</code> (EF Core 7+) performs a bulk UPDATE directly on the database without loading entities into memory: <code>await _db.Portfolios.Where(p => p.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false))</code>. This generates a single <code>UPDATE ... WHERE ...</code> SQL statement. No entities are loaded, no change tracker is involved. Similarly, <code>ExecuteDeleteAsync</code> performs bulk DELETEs. These are dramatically more efficient than the load-modify-save pattern for batch operations on large numbers of rows.</p>"
+        }
+      ],
+      "tip": "<strong>EF Core 7's ExecuteUpdateAsync</strong>: <code>_db.Portfolios.Where(p => p.UserId == userId).ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, false))</code> — bulk update without loading entities. Much more efficient than load-modify-save for batch operations.",
+      "tags": [
+        "efcore",
+        "change-tracker",
+        "entity-state"
+      ],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "efcore-010",
+      "category": "efcore",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "How do you configure EF Core using Fluent API vs Data Annotations?",
+      "answer": "<p>Both configure the EF Core model, but they differ in placement and capability:</p><p><strong>Data Annotations</strong> — attributes on the model class. Simple but pollutes domain models with infrastructure concerns.</p><pre><code class=\"language-csharp\">[Table(\"Portfolios\")]\npublic class Portfolio\n{\n    [Key]\n    public int Id { get; set; }\n\n    [Required]\n    [MaxLength(200)]\n    public string Name { get; set; } = string.Empty;\n\n    [Column(TypeName = \"decimal(18,4)\")]\n    public decimal InitialValue { get; set; }\n}</code></pre><p><strong>Fluent API</strong> — in <code>OnModelCreating</code>. More powerful, doesn't touch domain models (keeps them clean), better for complex configurations.</p><pre><code class=\"language-csharp\">protected override void OnModelCreating(ModelBuilder builder)\n{\n    builder.Entity&lt;Portfolio&gt;(e =>\n    {\n        e.ToTable(\"Portfolios\");\n        e.HasKey(p => p.Id);\n        e.Property(p => p.Name).IsRequired().HasMaxLength(200);\n        e.Property(p => p.InitialValue).HasColumnType(\"decimal(18,4)\");\n        e.HasIndex(p => p.UserId).HasDatabaseName(\"IX_Portfolios_UserId\");\n        e.HasQueryFilter(p => !p.IsDeleted);  // global soft-delete filter\n    });\n}</code></pre><p>I use Fluent API for all configuration — cleaner separation of infrastructure from domain. I split configuration into <code>IEntityTypeConfiguration&lt;T&gt;</code> classes per entity and register with <code>builder.ApplyConfigurationsFromAssembly()</code>.</p>",
+      "followUps": [
+        {
+          "question": "What is IEntityTypeConfiguration?",
+          "answer": "<p><code>IEntityTypeConfiguration&lt;T&gt;</code> is an interface that lets you move a specific entity's Fluent API configuration out of <code>OnModelCreating</code> into its own class. Implement <code>Configure(EntityTypeBuilder&lt;T&gt; builder)</code> in a class like <code>PortfolioConfiguration : IEntityTypeConfiguration&lt;Portfolio&gt;</code>. Then register all configurations at once: <code>builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly())</code>. This keeps <code>OnModelCreating</code> clean (one line) and each entity's configuration in a focused, discoverable file — the standard clean architecture approach.</p>"
+        },
+        {
+          "question": "What is a global query filter?",
+          "answer": "<p>A global query filter is a LINQ predicate applied automatically to every query on a specific entity: <code>e.HasQueryFilter(p => p.TenantId == _tenantId && !p.IsDeleted)</code>. EF Core appends the filter to every query involving that entity — you never need to add <code>Where(!p.IsDeleted)</code> manually. This is the standard implementation of soft-delete and multi-tenancy in EF Core. Override the filter for specific queries with <code>.IgnoreQueryFilters()</code>. The filter receives the DbContext instance so it can access injected values like the current tenant ID from a scoped service.</p>"
+        }
+      ],
+      "tip": "<strong>Global query filters</strong> are powerful for soft delete and multi-tenancy: <code>e.HasQueryFilter(p => p.TenantId == _tenantId && !p.IsDeleted)</code>. Every query on that entity automatically includes the filter. Override with <code>.IgnoreQueryFilters()</code> when needed.",
+      "tags": [
+        "efcore",
+        "fluent-api",
+        "data-annotations",
+        "configuration"
+      ],
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "efcore-011",
+      "category": "efcore",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "What is the difference between Code First and Database First approaches in Entity Framework Core?",
+      "answer": "<p>These are two different workflows for creating and managing the relationship between your C# classes and your database schema.</p><p><strong>Code First (recommended for new projects):</strong></p><ul><li>You write C# entity classes first</li><li>EF Core generates the database schema from your classes using migrations</li><li>The database is created and updated by your code — version-controlled migrations track every schema change</li><li>Team-friendly: schema changes go through code review like any other code</li></ul><pre><code class=\"language-csharp\">// 1. Define entity\npublic class UserProgress\n{\n    public int Id { get; set; }\n    public string UserId { get; set; } = \"\";\n    public string QuestionId { get; set; } = \"\";\n    public string Status { get; set; } = \"not-started\";\n    public int ConfidenceLevel { get; set; }\n}\n\n// 2. Add to DbContext\npublic class ApplicationDbContext : DbContext\n{\n    public DbSet&lt;UserProgress&gt; UserProgress =&gt; Set&lt;UserProgress&gt;();\n}\n\n// 3. Generate migration\n// dotnet ef migrations add AddUserProgress\n\n// 4. Apply migration (or auto-apply on startup)\n// dotnet ef database update\n// or: db.Database.Migrate() in Program.cs</code></pre><p><strong>Database First:</strong></p><ul><li>Database schema already exists (legacy DB, DBA-designed schema)</li><li>EF Core generates C# entity classes by reading the existing database</li><li>Command: <code>dotnet ef dbcontext scaffold \"ConnectionString\" Microsoft.EntityFrameworkCore.SqlServer</code></li><li>Scaffolded code is auto-generated and gets overwritten if re-run — harder to customise</li></ul><p>InterviewPrepPortal uses <strong>Code First</strong>: all entities are defined in C#, migrations are version-controlled, and <code>db.Database.Migrate()</code> runs on startup.</p>",
+      "followUps": [
+        {
+          "question": "How do EF Core migrations work under the hood?",
+          "answer": "<p>When you run <code>dotnet ef migrations add MigrationName</code>, EF Core: (1) inspects your current DbContext and entity classes to build a model snapshot, (2) compares it against the last recorded model snapshot (stored in <code>Migrations/ApplicationDbContextModelSnapshot.cs</code>), (3) generates a migration file with two methods — <code>Up()</code> (what to apply) and <code>Down()</code> (how to undo). The migration file contains <code>MigrationBuilder</code> calls: <code>migrationBuilder.CreateTable()</code>, <code>AddColumn()</code>, <code>CreateIndex()</code>, etc. When you run <code>dotnet ef database update</code> (or <code>db.Database.Migrate()</code>), EF Core: checks the <code>__EFMigrationsHistory</code> table in the DB, identifies which migrations haven't been applied, runs their <code>Up()</code> methods in order, and records each in <code>__EFMigrationsHistory</code>. Rolling back: <code>dotnet ef database update PreviousMigrationName</code> calls <code>Down()</code> for all migrations after the target.</p>"
+        },
+        {
+          "question": "When would you choose Database First over Code First?",
+          "answer": "<p>Choose Database First when: (1) <strong>Legacy database</strong> — an existing production database that predates your .NET app and was designed by DBAs. Changing the schema is not in scope. (2) <strong>DBA-owned schema</strong> — the database is managed by a separate DBA team using SQL scripts, not .NET developers. The .NET code just consumes it. (3) <strong>Complex stored procedures and views</strong> — the database has heavy use of stored procedures, functions, and views that EF Core can scaffold as methods and model types. (4) <strong>Multiple applications share one DB</strong> — schema changes must go through a separate change management process. In these cases, use Database First scaffolding to generate entity classes and then use Dapper for complex queries rather than fighting EF Core's change tracking. In the CS_PM_Service and CSInvoice projects, a pre-existing SQL Server database owned by DBAs was the source of truth — Database First (or Dapper without EF at all) was the correct choice.</p>"
+        }
+      ],
+      "tip": "<strong>Default choice:</strong> Code First for any greenfield project. Migrations in version control mean database changes go through code review. Auto-migrate on startup (<code>db.Database.Migrate()</code>) is fine for small apps; for production scale use a dedicated migration step in CI/CD. Database First when you inherit a legacy schema you can't own.",
+      "tags": [
+        "efcore",
+        "code-first",
+        "database-first",
+        "migrations",
+        "orm"
+      ],
+      "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "efcore-012",
+      "category": "efcore",
+      "difficulty": "Medium",
+      "frequency": "Low",
+      "question": "What are shadow properties in EF Core? When would you use them?",
+      "answer": "<p>Shadow properties are properties that exist in the EF Core model and database schema but are <strong>not</strong> defined as a C# property on the entity class. EF tracks them internally via <code>ChangeTracker</code> — you can query and set them using the <code>EF.Property&lt;T&gt;</code> method.</p><pre><code class=\"language-csharp\">// Entity without shadow property defined on it\npublic class Product\n{\n    public int Id { get; set; }\n    public string Name { get; set; }\n    // No 'CreatedAt' property here!\n}\n\n// Configure shadow property in OnModelCreating\nprotected override void OnModelCreating(ModelBuilder modelBuilder)\n{\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;DateTime&gt;(\"CreatedAt\") // shadow property\n        .HasDefaultValueSql(\"GETUTCDATE()\");\n\n    modelBuilder.Entity&lt;Product&gt;()\n        .Property&lt;string&gt;(\"LastModifiedBy\"); // another shadow property\n}\n\n// Querying with shadow property\nvar recentProducts = context.Products\n    .Where(p => EF.Property&lt;DateTime&gt;(p, \"CreatedAt\") > DateTime.UtcNow.AddDays(-7))\n    .ToList();\n\n// Setting a shadow property before SaveChanges\nvar product = new Product { Name = \"Widget\" };\ncontext.Products.Add(product);\ncontext.Entry(product).Property(\"LastModifiedBy\").CurrentValue = \"darshan@company.com\";\nawait context.SaveChangesAsync();\n\n// Useful pattern: set audit fields globally via SaveChanges override\npublic override Task&lt;int&gt; SaveChangesAsync(CancellationToken ct = default)\n{\n    var entries = ChangeTracker.Entries&lt;Product&gt;()\n        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);\n    foreach (var entry in entries)\n    {\n        entry.Property(\"UpdatedAt\").CurrentValue = DateTime.UtcNow;\n    }\n    return base.SaveChangesAsync(ct);\n}</code></pre><p><strong>When I actually use shadow properties:</strong></p><ul><li><strong>Audit columns</strong> (CreatedAt, UpdatedAt, CreatedBy) that I want in the DB but not cluttering every entity class</li><li><strong>Foreign key columns</strong> that EF creates automatically for navigation properties without a corresponding FK property on the class</li><li><strong>Soft-delete flags</strong> on a base class without exposing them to all consumers</li></ul>",
+      "followUps": [
+        {
+          "question": "How do shadow properties differ from owned entity types?",
+          "answer": ""
+        },
+        {
+          "question": "Can you index a shadow property?",
+          "answer": ""
+        },
+        {
+          "question": "How do you access shadow properties outside of a LINQ query?",
+          "answer": ""
+        }
+      ],
+      "tip": "Shadow properties = DB columns tracked by EF but not on the C# class. Best use: audit columns (CreatedAt, UpdatedBy) that you want in every table without polluting your domain model. Access via EF.Property<T>() or ChangeTracker.",
+      "tags": [
+        "shadow property",
+        "EF Core",
+        "ChangeTracker",
+        "audit",
+        "Fluent API"
+      ],
+      "sortOrder": 12,
+      "isActive": true
+    },
+    {
+      "id": "efcore-013",
+      "category": "efcore",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "How do you use Stored Procedures with ADO.NET? What is the difference vs inline SQL in ADO.NET?",
+      "answer": "<p>ADO.NET is the low-level .NET data access library that communicates directly with databases without an ORM layer. Both stored procedures and inline SQL are supported.</p><h4>Executing a Stored Procedure with ADO.NET:</h4><pre><code class=\"language-csharp\">// 1. Create the stored procedure in SQL Server\n// CREATE PROCEDURE GetEmployeesByDept @DeptId INT\n// AS SELECT EmployeeId, Name, Salary FROM Employee WHERE DepartmentId = @DeptId;\n\n// 2. Call it from C# via ADO.NET\npublic List&lt;Employee&gt; GetByDepartment(int deptId)\n{\n    var employees = new List&lt;Employee&gt;();\n\n    using var connection = new SqlConnection(_connectionString);\n    using var command = new SqlCommand(\"GetEmployeesByDept\", connection);\n    command.CommandType = CommandType.StoredProcedure; // IMPORTANT!\n\n    // Add parameter — always use parameters to prevent SQL injection\n    command.Parameters.Add(\"@DeptId\", SqlDbType.Int).Value = deptId;\n    // Or: command.Parameters.AddWithValue(\"@DeptId\", deptId);\n\n    connection.Open();\n\n    using var reader = command.ExecuteReader();\n    while (reader.Read())\n    {\n        employees.Add(new Employee\n        {\n            Id = reader.GetInt32(0),\n            Name = reader.GetString(1),\n            Salary = reader.GetDecimal(2)\n        });\n    }\n\n    return employees;\n}\n\n// For non-query SPs (INSERT/UPDATE/DELETE)\npublic void UpdateSalary(int empId, decimal salary)\n{\n    using var conn = new SqlConnection(_connectionString);\n    using var cmd = new SqlCommand(\"UpdateEmployeeSalary\", conn);\n    cmd.CommandType = CommandType.StoredProcedure;\n    cmd.Parameters.Add(\"@EmpId\", SqlDbType.Int).Value = empId;\n    cmd.Parameters.Add(\"@Salary\", SqlDbType.Decimal).Value = salary;\n    conn.Open();\n    cmd.ExecuteNonQuery(); // no result set\n}\n\n// Output parameters from SP\npublic int InsertEmployee(string name)\n{\n    using var conn = new SqlConnection(_connectionString);\n    using var cmd = new SqlCommand(\"InsertEmployee\", conn);\n    cmd.CommandType = CommandType.StoredProcedure;\n    cmd.Parameters.Add(\"@Name\", SqlDbType.NVarChar, 100).Value = name;\n    var outputParam = cmd.Parameters.Add(\"@NewId\", SqlDbType.Int);\n    outputParam.Direction = ParameterDirection.Output;\n    conn.Open();\n    cmd.ExecuteNonQuery();\n    return (int)outputParam.Value; // read output after execution\n}</code></pre><h4>Executing Inline SQL with ADO.NET:</h4><pre><code class=\"language-csharp\">// Inline SQL — CommandType.Text (default)\npublic List&lt;Employee&gt; GetHighEarners(decimal minSalary)\n{\n    var employees = new List&lt;Employee&gt;();\n    using var conn = new SqlConnection(_connectionString);\n    using var cmd = new SqlCommand(\n        \"SELECT EmployeeId, Name, Salary FROM Employee WHERE Salary > @MinSalary\",\n        conn);\n    cmd.CommandType = CommandType.Text; // default — can omit\n    cmd.Parameters.AddWithValue(\"@MinSalary\", minSalary);\n    conn.Open();\n    using var reader = cmd.ExecuteReader();\n    while (reader.Read())\n        employees.Add(Map(reader));\n    return employees;\n}</code></pre><h4>Stored Procedure vs Inline SQL in ADO.NET:</h4><table><tr><th>Aspect</th><th>Stored Procedure</th><th>Inline SQL</th></tr><tr><td>SQL location</td><td>Compiled in DB — changes don't require app redeployment</td><td>In C# code — app redeployment required</td></tr><tr><td>Performance</td><td>Execution plan cached by SQL Server</td><td>Plan cached too (parameterized), similar performance</td></tr><tr><td>Security</td><td>Can grant EXECUTE without table access; reduces attack surface</td><td>Requires table-level permissions</td></tr><tr><td>Maintainability</td><td>Logic split between DB and app code</td><td>All logic in one codebase</td></tr><tr><td>Testability</td><td>Must test via DB — harder to unit test</td><td>Can mock the DB layer; easier to test</td></tr><tr><td>CommandType</td><td>CommandType.StoredProcedure</td><td>CommandType.Text</td></tr></table>",
+      "followUps": [
+        {
+          "question": "What is the difference between ADO.NET and Dapper?",
+          "answer": "<p><strong>ADO.NET</strong> — low-level. You write all the mapping code (SqlDataReader, reader.GetInt32(0), etc.). Maximum control, most verbose.</p><p><strong>Dapper</strong> — a lightweight 'micro-ORM' NuGet package that extends IDbConnection. It handles mapping SQL results to C# objects automatically using reflection and naming conventions. Much less boilerplate than raw ADO.NET but no expression-tree query building like EF Core.</p><pre><code class=\"language-csharp\">// Raw ADO.NET — verbose mapping\nvar emp = new Employee { Id = reader.GetInt32(0), Name = reader.GetString(1) };\n\n// Dapper — automatic mapping to Employee properties by column name\nusing var conn = new SqlConnection(connectionString);\nvar employees = conn.Query&lt;Employee&gt;(\n    \"SELECT * FROM Employee WHERE DeptId = @DeptId\",\n    new { DeptId = 3 }).ToList();\n\n// Dapper with stored procedure\nvar result = conn.Query&lt;Employee&gt;(\n    \"GetEmployeesByDept\",\n    new { DeptId = 3 },\n    commandType: CommandType.StoredProcedure).ToList();</code></pre><p>Use ADO.NET for maximum control or when avoiding dependencies. Use Dapper when you want SQL control with automatic mapping. Use EF Core when you want full ORM with migrations, change tracking, and LINQ.</p>"
+        }
+      ],
+      "tip": "<strong>Key difference for interview:</strong> The only syntactic difference between SP and inline SQL in ADO.NET is <code>CommandType.StoredProcedure</code> vs <code>CommandType.Text</code> and the command text (SP name vs SQL string). Always use parameterized queries — never concatenate user input into SQL.",
+      "tags": ["adonet", "stored-procedure", "inline-sql", "sqldatareader", "sqlcommand", "dapper"],
+      "sortOrder": 13,
+      "isActive": true
+    }
+  ]
+}

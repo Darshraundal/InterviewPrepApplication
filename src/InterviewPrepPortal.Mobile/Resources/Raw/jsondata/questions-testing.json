@@ -1,0 +1,125 @@
+{
+  "categoryId": "testing",
+  "questions": [
+    {
+      "id": "testing-001",
+      "category": "testing",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you write unit tests in .NET with xUnit? What makes a good unit test?",
+      "answer": "<p>Unit testing is something I take seriously — not just to satisfy a checklist, but because it's genuinely caught more bugs than code review has in my experience. xUnit is my go-to framework; it's what the .NET team uses internally and has great async support.</p><h4>xUnit basics:</h4><pre><code class=\"language-csharp\">// Install: xunit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk\n\npublic class OrderServiceTests\n{\n    // [Fact] = single test case\n    [Fact]\n    public void CalculateTotal_WithTwoItems_ReturnsSumOfPrices()\n    {\n        // Arrange -- set up the scenario\n        var items = new List&lt;OrderItem&gt;\n        {\n            new OrderItem { Quantity = 2, UnitPrice = 10.00m },\n            new OrderItem { Quantity = 1, UnitPrice = 25.00m }\n        };\n\n        // Act -- call the thing you're testing\n        var total = OrderCalculator.CalculateTotal(items);\n\n        // Assert -- verify the result\n        Assert.Equal(45.00m, total);\n    }\n\n    // [Theory] + [InlineData] = parameterised test, runs once per data row\n    [Theory]\n    [InlineData(0, false)]\n    [InlineData(-1, false)]\n    [InlineData(1, true)]\n    [InlineData(100, true)]\n    public void IsValidQuantity_ReturnsExpectedResult(int quantity, bool expected)\n    {\n        var result = OrderValidator.IsValidQuantity(quantity);\n        Assert.Equal(expected, result);\n    }\n\n    // Testing exceptions\n    [Fact]\n    public void PlaceOrder_WithEmptyCart_ThrowsInvalidOperationException()\n    {\n        var service = new OrderService(/* deps */);\n        Assert.Throws&lt;InvalidOperationException&gt;(\n            () =&gt; service.PlaceOrder(new Cart { Items = new() }));\n    }\n\n    // Async tests\n    [Fact]\n    public async Task GetOrderAsync_WithValidId_ReturnsOrder()\n    {\n        // Arrange\n        var mockRepo = new Mock&lt;IOrderRepository&gt;();\n        mockRepo.Setup(r =&gt; r.GetByIdAsync(1))\n                .ReturnsAsync(new Order { Id = 1, Status = \"Pending\" });\n\n        var service = new OrderService(mockRepo.Object);\n\n        // Act\n        var order = await service.GetOrderAsync(1);\n\n        // Assert\n        Assert.NotNull(order);\n        Assert.Equal(\"Pending\", order.Status);\n    }\n}</code></pre><h4>What makes a good unit test:</h4><ul><li><strong>AAA structure</strong> — Arrange, Act, Assert. Every test follows this structure.</li><li><strong>One assertion per test</strong> (roughly) — when a test fails, you know exactly what broke.</li><li><strong>Descriptive name</strong> — <code>MethodName_Scenario_ExpectedResult</code>. I can read the test name and know what it tests without reading the body.</li><li><strong>Fast</strong> — unit tests should run in milliseconds. No real DB, no HTTP calls, no file I/O — mock those away.</li><li><strong>Independent</strong> — tests don't share state, don't depend on run order.</li><li><strong>Tests the contract, not the implementation</strong> — test what the method returns/does, not how it does it internally.</li></ul>",
+      "followUps": [
+        {
+          "question": "What is the difference between a Fact and a Theory in xUnit?",
+          "answer": "<p><code>[Fact]</code> is a test that always has the same input — no parameters. One test case. <code>[Theory]</code> is a parameterised test driven by data. Combined with <code>[InlineData]</code>, <code>[MemberData]</code>, or <code>[ClassData]</code>, xUnit runs the test method once per data row. This avoids writing the same test logic 10 times for 10 different inputs.</p><pre><code class=\"language-csharp\">[Theory]\n[InlineData(\"test@email.com\", true)]\n[InlineData(\"notanemail\", false)]\n[InlineData(\"\", false)]\n[InlineData(null, false)]\npublic void IsValidEmail_ReturnsExpectedResult(string email, bool expected)\n{\n    Assert.Equal(expected, EmailValidator.IsValid(email));\n}\n// Generates 4 separate test cases in Test Explorer</code></pre>"
+        }
+      ],
+      "tip": "<strong>Name your tests like documentation.</strong> If I have to read the test body to understand what it tests, the name is too vague. 'Test1()' tells me nothing. 'CalculateDiscount_PremiumUserOver100_Returns20PercentDiscount()' tells me everything.",
+      "tags": [
+        "unit-testing",
+        "xunit",
+        "tdd",
+        "testing",
+        "csharp"
+      ],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "testing-002",
+      "category": "testing",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you use Moq for mocking in unit tests? When should you mock vs not mock?",
+      "answer": "<p>Moq is a mocking framework that creates fake implementations of interfaces at runtime, so you can test a class in isolation without needing its real dependencies. I use it on almost every unit test that involves a service with external dependencies.</p><h4>Core Moq usage:</h4><pre><code class=\"language-csharp\">// Install: Moq\n\npublic class OrderServiceTests\n{\n    private readonly Mock&lt;IOrderRepository&gt; _mockRepo;\n    private readonly Mock&lt;IEmailService&gt; _mockEmail;\n    private readonly Mock&lt;ILogger&lt;OrderService&gt;&gt; _mockLogger;\n    private readonly OrderService _sut; // SUT = System Under Test\n\n    public OrderServiceTests()\n    {\n        _mockRepo  = new Mock&lt;IOrderRepository&gt;();\n        _mockEmail = new Mock&lt;IEmailService&gt;();\n        _mockLogger = new Mock&lt;ILogger&lt;OrderService&gt;&gt;();\n        _sut = new OrderService(_mockRepo.Object, _mockEmail.Object, _mockLogger.Object);\n    }\n\n    [Fact]\n    public async Task PlaceOrderAsync_ValidOrder_SavesAndSendsEmail()\n    {\n        // Setup -- define what mocks return\n        var cart = new Cart { UserId = 1, Items = new() { new CartItem { ProductId = 5, Qty = 2 } } };\n        _mockRepo.Setup(r =&gt; r.SaveOrderAsync(It.IsAny&lt;Order&gt;()))\n                 .ReturnsAsync(new Order { Id = 99 });\n\n        // Act\n        var orderId = await _sut.PlaceOrderAsync(cart);\n\n        // Assert the return value\n        Assert.Equal(99, orderId);\n\n        // Verify method was called -- did we actually send the email?\n        _mockEmail.Verify(\n            e =&gt; e.SendAsync(\n                It.Is&lt;string&gt;(s =&gt; s.Contains(\"order\")), // partial match on subject\n                It.IsAny&lt;string&gt;()),\n            Times.Once);\n\n        // Verify repo was called with correct data\n        _mockRepo.Verify(\n            r =&gt; r.SaveOrderAsync(It.Is&lt;Order&gt;(o =&gt; o.UserId == 1)),\n            Times.Once);\n    }\n\n    [Fact]\n    public async Task PlaceOrderAsync_RepoThrows_DoesNotSendEmail()\n    {\n        _mockRepo.Setup(r =&gt; r.SaveOrderAsync(It.IsAny&lt;Order&gt;()))\n                 .ThrowsAsync(new Exception(\"DB error\"));\n\n        await Assert.ThrowsAsync&lt;Exception&gt;(() =&gt; _sut.PlaceOrderAsync(new Cart()));\n\n        // Email should NOT be sent if save failed\n        _mockEmail.Verify(\n            e =&gt; e.SendAsync(It.IsAny&lt;string&gt;(), It.IsAny&lt;string&gt;()),\n            Times.Never);\n    }\n}</code></pre><h4>When to mock vs not mock:</h4><ul><li><strong>Mock:</strong> external dependencies — databases, HTTP clients, email services, file system, clocks (<code>IDateTime</code>), anything that has side effects or is slow.</li><li><strong>Don't mock:</strong> the class under test itself, simple value objects/DTOs, pure functions with no dependencies, things that are cheap and deterministic (like a string parser).</li><li><strong>Don't mock EF Core DbContext directly</strong> — it's painful. Instead, use an InMemory provider or SQLite in-memory for tests that need to verify EF queries. Or abstract behind a repository interface and mock the repository.</li></ul><h4>MockBehavior — useful for strict mocking:</h4><pre><code class=\"language-csharp\">// Strict mode -- any call not set up throws MockException\n// Forces you to be explicit about every call the SUT makes\nvar mock = new Mock&lt;IOrderRepository&gt;(MockBehavior.Strict);\n// Default is Loose -- unset calls return default values</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between a Mock, a Stub, and a Fake?",
+          "answer": "<p>These terms are often used interchangeably but have precise meanings:</p><ul><li><strong>Stub</strong> — returns canned data. You set it up to return a specific value. No verification of how it was called. Moq's <code>Setup().Returns()</code> creates a stub.</li><li><strong>Mock</strong> — a stub that also <em>records interactions</em>, allowing you to verify it was called correctly. Moq's <code>Verify()</code> makes it a mock. If you're not calling <code>Verify</code>, you're using Moq as a stub.</li><li><strong>Fake</strong> — a working implementation that takes shortcuts unsuitable for production. Example: an in-memory repository that implements <code>IOrderRepository</code> using a <code>List&lt;Order&gt;</code>. Faster to write integration-style tests with. The EF Core InMemory provider is a Fake.</li><li><strong>Spy</strong> — wraps a real object and records calls to it. Rarely needed in .NET.</li></ul>"
+        }
+      ],
+      "tip": "<strong>Don't over-mock.</strong> If you're mocking 5 dependencies to test one class, your class has too many dependencies (violates SRP). Mocking is a smell detector — lots of mocks in a test = class doing too much.",
+      "tags": [
+        "moq",
+        "mocking",
+        "unit-testing",
+        "testing",
+        "tdd"
+      ],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "testing-003",
+      "category": "testing",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "How do you write integration tests in ASP.NET Core? What is WebApplicationFactory?",
+      "answer": "<p>Integration tests verify that multiple components work together — the controller, service, EF Core, middleware, and routing all wired up correctly. I write far fewer integration tests than unit tests, but they catch a different class of bugs that unit tests miss (like a misconfigured DI registration or a wrong route).</p><h4>WebApplicationFactory — spin up your real app in tests</h4><pre><code class=\"language-csharp\">// Install: Microsoft.AspNetCore.Mvc.Testing\n\n// A shared test fixture — creates one instance of the app for the whole test class\npublic class OrderApiTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;\n{\n    private readonly HttpClient _client;\n\n    public OrderApiTests(WebApplicationFactory&lt;Program&gt; factory)\n    {\n        _client = factory\n            .WithWebHostBuilder(builder =&gt;\n            {\n                builder.ConfigureServices(services =&gt;\n                {\n                    // Replace real DB with in-memory DB\n                    var dbDescriptor = services.SingleOrDefault(\n                        d =&gt; d.ServiceType == typeof(DbContextOptions&lt;AppDbContext&gt;));\n                    if (dbDescriptor != null) services.Remove(dbDescriptor);\n\n                    services.AddDbContext&lt;AppDbContext&gt;(opts =&gt;\n                        opts.UseInMemoryDatabase(\"TestDb\"));\n\n                    // Replace real email service with fake\n                    services.AddSingleton&lt;IEmailService, FakeEmailService&gt;();\n                });\n            })\n            .CreateClient();\n    }\n\n    [Fact]\n    public async Task GetOrder_ValidId_Returns200WithOrder()\n    {\n        // Arrange -- seed data\n        // ... use a scope to add test data to in-memory DB\n\n        // Act -- real HTTP request through the real ASP.NET pipeline\n        var response = await _client.GetAsync(\"/api/orders/1\");\n\n        // Assert\n        response.EnsureSuccessStatusCode();\n        var order = await response.Content.ReadFromJsonAsync&lt;OrderDto&gt;();\n        Assert.NotNull(order);\n        Assert.Equal(1, order.Id);\n    }\n\n    [Fact]\n    public async Task CreateOrder_InvalidModel_Returns400()\n    {\n        var dto = new CreateOrderDto { }; // missing required fields\n        var response = await _client.PostAsJsonAsync(\"/api/orders\", dto);\n        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);\n    }\n\n    [Fact]\n    public async Task GetOrders_Unauthenticated_Returns401()\n    {\n        var response = await _client.GetAsync(\"/api/orders\");\n        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);\n    }\n}\n\n// Custom factory for authenticated requests\npublic class AuthenticatedApiTests : IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;\n{\n    private readonly HttpClient _client;\n\n    public AuthenticatedApiTests(WebApplicationFactory&lt;Program&gt; factory)\n    {\n        _client = factory.CreateClient();\n        // Add JWT token for all requests\n        var token = TestJwtGenerator.Generate(userId: 1, roles: new[] { \"Admin\" });\n        _client.DefaultRequestHeaders.Authorization =\n            new AuthenticationHeaderValue(\"Bearer\", token);\n    }\n}</code></pre><h4>SQLite in-memory for more realistic DB tests:</h4><pre><code class=\"language-csharp\">// Better than EF InMemory -- actually runs SQL, catches constraint violations etc.\nservices.AddDbContext&lt;AppDbContext&gt;(opts =&gt;\n    opts.UseSqlite(\"DataSource=:memory:\"));\n\n// Must open the connection and create schema\nvar sp = services.BuildServiceProvider();\nusing var scope = sp.CreateScope();\nvar db = scope.ServiceProvider.GetRequiredService&lt;AppDbContext&gt;();\ndb.Database.OpenConnection();\ndb.Database.EnsureCreated();</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the difference between unit tests, integration tests, and end-to-end tests?",
+          "answer": "<p>The <strong>testing pyramid</strong> model: lots of unit tests (base), fewer integration tests (middle), minimal E2E tests (top).</p><ul><li><strong>Unit tests</strong> — test a single class/method in isolation. Fast (ms), no external dependencies (mock everything). Catch logic bugs. Run on every save in your IDE.</li><li><strong>Integration tests</strong> — test multiple components working together. May use a real DB (in-memory or SQLite), real middleware pipeline. Slower (seconds). Catch wiring/configuration bugs. Run in CI on every PR.</li><li><strong>End-to-end (E2E) tests</strong> — test the entire system including frontend, via a real browser (Playwright, Selenium). Slowest (minutes). Catch user-facing bugs. Run in CI before production deployment only.</li></ul><p>The reason the pyramid has fewer E2E tests at the top: they're slow, flaky, hard to maintain, and expensive to run. Unit tests give 80% of the value at 5% of the cost. The right ratio for most projects: many unit tests, some integration tests for critical flows, a handful of E2E smoke tests.</p>"
+        }
+      ],
+      "tip": "<strong>IClassFixture vs collection fixtures:</strong> IClassFixture creates one app instance per test class. If you have multiple test classes that all need the same app, use a collection fixture — it's shared across all classes in the collection, speeding up your test suite significantly.",
+      "tags": [
+        "integration-testing",
+        "webapplicationfactory",
+        "aspnetcore",
+        "testing",
+        "httpclient"
+      ],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "testing-004",
+      "category": "testing",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is Test-Driven Development (TDD)? Do you practice it and when is it useful?",
+      "answer": "<p>TDD is writing the test <em>before</em> writing the code. The cycle is: Red (write a failing test) → Green (write minimum code to pass it) → Refactor (clean up). I'm going to be honest here: I don't do strict TDD for every line of code — very few experienced developers do. But I use it deliberately for specific scenarios.</p><h4>The TDD cycle in practice:</h4><pre><code class=\"language-csharp\">// STEP 1: RED -- write a failing test first\n[Fact]\npublic void ApplyDiscount_PremiumUserOver100_Returns20PercentOff()\n{\n    var calculator = new PricingCalculator();\n    var user = new User { IsPremium = true };\n    var price = calculator.ApplyDiscount(user, 120m);\n    Assert.Equal(96m, price); // 120 - 20% = 96\n    // Test fails -- PricingCalculator doesn't exist yet\n}\n\n// STEP 2: GREEN -- minimum code to pass the test\npublic class PricingCalculator\n{\n    public decimal ApplyDiscount(User user, decimal price)\n    {\n        if (user.IsPremium &amp;&amp; price &gt; 100)\n            return price * 0.80m;\n        return price;\n    }\n}\n// Test passes\n\n// STEP 3: REFACTOR -- improve code without breaking tests\npublic decimal ApplyDiscount(User user, decimal price)\n{\n    const decimal premiumThreshold = 100m;\n    const decimal premiumDiscount = 0.20m;\n\n    if (user.IsPremium &amp;&amp; price &gt; premiumThreshold)\n        return price * (1 - premiumDiscount);\n    return price;\n}\n// All tests still pass</code></pre><h4>When TDD genuinely helps me:</h4><ul><li><strong>Business logic with many edge cases</strong> — discount rules, tax calculations, state machine transitions. TDD forces you to enumerate all the cases before writing code.</li><li><strong>Fixing a bug</strong> — I write a test that reproduces the bug first. This proves I understand the bug AND guarantees it can never regress.</li><li><strong>Designing an API</strong> — writing the test first forces you to think about how the API should feel to use, not how it's implemented internally. You end up with cleaner interfaces.</li><li><strong>Core domain logic</strong> — anything in the domain layer is TDD-worthy.</li></ul><h4>When I don't do TDD:</h4><ul><li>CRUD endpoints with no business logic — the ORM handles most of it, integration tests are more valuable.</li><li>Infrastructure code (migrations, logging setup) — hard to unit test, integration tests are better.</li><li>Exploratory/spike code — write it first, then add tests once you know the shape of the solution.</li></ul><h4>The real benefit of TDD:</h4><p>It's not about the tests themselves — it's that the practice forces you to design code that's testable. Testable code = loosely coupled, single-responsibility, well-defined interfaces. The test suite is a side effect of good design.</p>",
+      "followUps": [
+        {
+          "question": "What is BDD (Behaviour Driven Development) and how is it different from TDD?",
+          "answer": "<p>BDD extends TDD by writing tests in a language that non-technical stakeholders can read and verify. Instead of <code>CalculateDiscount_PremiumUser_Returns20Percent()</code>, BDD uses Given/When/Then notation:</p><p><em>Given a premium user, When they purchase items totalling over £100, Then they receive a 20% discount.</em></p><p>Tools like <strong>SpecFlow</strong> (C#) let you write these in Gherkin syntax and map them to C# step definitions. The feature file is literally the specification, written by the product owner or QA, and the code behind it is the automated test. BDD is valuable when there's a business analyst or QA who can write the scenarios — the developer implements the steps. For solo devs or small teams, it adds overhead without much benefit. TDD with descriptive test names achieves most of the same goal.</p>"
+        }
+      ],
+      "tip": "<strong>TDD is a design tool, not just a testing technique.</strong> If your code is hard to test, that's the code telling you something is wrong with the design — too many dependencies, too much responsibility, or tightly coupled to infrastructure.",
+      "tags": [
+        "tdd",
+        "testing",
+        "unit-testing",
+        "bdd",
+        "design"
+      ],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "testing-005",
+      "category": "testing",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "What is code coverage and how do you measure it in .NET? What is a good coverage target?",
+      "answer": "<p>Code coverage measures what percentage of your code lines are executed by tests. It's a useful indicator but easily misunderstood — high coverage doesn't mean good tests, and chasing 100% coverage is often a waste of time.</p><h4>Measuring coverage in .NET:</h4><pre><code class=\"language-bash\"># Run tests with coverage collection (using Coverlet)\ndotnet test --collect:\"XPlat Code Coverage\"\n\n# Generate HTML report (install ReportGenerator first)\ndotnet tool install -g dotnet-reportgenerator-globaltool\nreportgenerator \\\n    -reports:\"**/coverage.cobertura.xml\" \\\n    -targetdir:\"coverage-report\" \\\n    -reporttypes:Html\nopen coverage-report/index.html</code></pre><h4>In CI (GitHub Actions):</h4><pre><code class=\"language-yaml\">- name: Run tests with coverage\n  run: dotnet test --collect:\"XPlat Code Coverage\"\n\n- name: Upload coverage to Codecov\n  uses: codecov/codecov-action@v3\n  with:\n    files: '**/coverage.cobertura.xml'</code></pre><h4>What to target — my honest opinion:</h4><ul><li><strong>Domain/business logic</strong> — aim for 80-90%+. This is where bugs cost money. Every branch of a discount rule, every state transition, should be tested.</li><li><strong>Application services</strong> — 70-80% is realistic. Mock heavy code.</li><li><strong>Infrastructure (repositories, migrations, startup)</strong> — 30-50% is fine. Integration tests cover this better than unit tests.</li><li><strong>Overall target</strong> — 70-80% is healthy for most projects. 100% is usually false confidence (tests written to boost coverage, not to catch bugs).</li></ul><h4>What coverage doesn't tell you:</h4><pre><code class=\"language-csharp\">// This has 100% line coverage\npublic decimal Divide(decimal a, decimal b) =&gt; a / b;\n\n[Fact]\npublic void Divide_Works() =&gt; Assert.Equal(2m, Divide(10, 5));\n\n// But what about Divide(10, 0)? DivideByZeroException.\n// Coverage says 100% but the important case is untested.\n// Branch coverage would catch this -- test both b!=0 and b==0 branches.</code></pre><p>Line coverage says 'this line was executed'. It doesn't say 'this line was tested with the right assertions'. Focus on coverage of <strong>branches</strong> and <strong>edge cases</strong>, not just line count.</p>",
+      "followUps": [
+        {
+          "question": "What is mutation testing and how is it different from code coverage?",
+          "answer": "<p>Mutation testing automatically introduces small bugs (mutations) into your code — flipping a <code>&gt;</code> to <code>&gt;=</code>, changing a <code>+</code> to <code>-</code>, removing a condition — and checks whether your tests catch them. If a mutation survives (tests still pass), your tests are too weak. The percentage of killed mutations is the 'mutation score' — a much stronger measure of test quality than line coverage.</p><p>In .NET, <strong>Stryker.NET</strong> is the mutation testing tool. It's slower than regular tests but reveals the actual quality of your test suite. I run it on the core domain layer periodically, not on every CI build. Finding a 60% mutation score on a class you thought was 'well tested' is a humbling experience.</p>"
+        }
+      ],
+      "tip": "<strong>Coverage is a floor, not a ceiling.</strong> Use it to find uncovered code that probably should be tested. Don't use it as a KPI — teams that chase coverage numbers write pointless tests that assert things like Assert.NotNull(result) without any real business assertion.",
+      "tags": [
+        "code-coverage",
+        "testing",
+        "coverlet",
+        "xunit",
+        "quality"
+      ],
+      "sortOrder": 5,
+      "isActive": true
+    }
+  ]
+}
