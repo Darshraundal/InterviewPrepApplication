@@ -1,0 +1,33 @@
+{
+  "projectId": "cs-pm-service",
+  "architectureSummary": {
+    "overview": "CS PM Service is a .NET 6 microservices system with 8 background worker services communicating asynchronously via Azure Service Bus. Each service owns its own SQL Server database. A YARP API gateway routes external requests. Deployed via Docker on Azure AKS.",
+    "diagramText": "Client → YARP Gateway → [OrderService | InventoryService | PaymentService | NotificationService | ReportService | AuditService | SchedulerService | ConfigService] ↔ Azure Service Bus"
+  },
+  "sections": [
+    {
+      "name": "Microservices & Messaging",
+      "questions": [
+        {
+          "id": "cspm-001",
+          "projectId": "cs-pm-service",
+          "sectionName": "Microservices & Messaging",
+          "questionText": "How did services communicate in the CS PM Service microservices architecture?",
+          "answer": "<p>Services communicated asynchronously via <strong>Azure Service Bus</strong>. No direct HTTP calls between services (except through the API gateway for synchronous queries). This decoupled services so a failure in one didn't cascade to others.</p><p><strong>Messaging pattern:</strong></p><pre><code class=\"language-csharp\">// Publisher (OrderService)\npublic class OrderCreatedPublisher\n{\n    private readonly ServiceBusSender _sender;\n\n    public async Task PublishAsync(Order order, CancellationToken ct)\n    {\n        var evt = new OrderCreatedEvent\n        {\n            OrderId = order.Id,\n            CustomerId = order.CustomerId,\n            Items = order.Items.Select(i => new OrderItemDto(i.ProductId, i.Quantity)).ToList(),\n            TotalAmount = order.TotalAmount,\n            CreatedAt = order.CreatedAt\n        };\n\n        var message = new ServiceBusMessage(\n            BinaryData.FromObjectAsJson(evt))\n        {\n            MessageId = order.Id.ToString(),        // deduplication key\n            CorrelationId = _correlationId,          // distributed tracing\n            Subject = \"OrderCreated\"\n        };\n\n        await _sender.SendMessageAsync(message, ct);\n    }\n}\n\n// Subscriber (InventoryService)\npublic class OrderCreatedConsumer : BackgroundService\n{\n    private readonly ServiceBusProcessor _processor;\n\n    protected override async Task ExecuteAsync(CancellationToken stoppingToken)\n    {\n        _processor.ProcessMessageAsync += HandleMessageAsync;\n        _processor.ProcessErrorAsync += HandleErrorAsync;\n        await _processor.StartProcessingAsync(stoppingToken);\n    }\n\n    private async Task HandleMessageAsync(ProcessMessageEventArgs args)\n    {\n        var evt = args.Message.Body.ToObjectFromJson&lt;OrderCreatedEvent&gt;();\n        await _inventoryService.ReserveStockAsync(evt.Items);\n        await args.CompleteMessageAsync(args.Message);  // ack = delete from queue\n    }\n}</code></pre>",
+          "followUpQuestions": ["What happens if a consumer fails to process a message?", "What is the dead-letter queue?"],
+          "importantForInterview": "Dead-letter queue (DLQ) receives messages that fail processing after max delivery count (default 10). Monitor the DLQ — messages there indicate processing bugs. Azure Service Bus has built-in duplicate detection via MessageId — set it to the entity's natural ID."
+        },
+        {
+          "id": "cspm-002",
+          "projectId": "cs-pm-service",
+          "sectionName": "Microservices & Messaging",
+          "questionText": "How did you configure the YARP API gateway in CS PM Service?",
+          "answer": "<p><strong>YARP (Yet Another Reverse Proxy)</strong> is Microsoft's .NET-native reverse proxy. We configured it to route external traffic to internal services based on path prefix.</p><pre><code class=\"language-json\">// yarp-config.json (loaded into YARP at startup)\n{\n  \"ReverseProxy\": {\n    \"Routes\": {\n      \"orders-route\": {\n        \"ClusterId\": \"orders-cluster\",\n        \"Match\": { \"Path\": \"/api/orders/{**catch-all}\" },\n        \"Transforms\": [\n          { \"PathRemovePrefix\": \"/api\" }  // strip /api prefix before forwarding\n        ]\n      },\n      \"inventory-route\": {\n        \"ClusterId\": \"inventory-cluster\",\n        \"Match\": { \"Path\": \"/api/inventory/{**catch-all}\" }\n      }\n    },\n    \"Clusters\": {\n      \"orders-cluster\": {\n        \"Destinations\": {\n          \"destination1\": { \"Address\": \"http://order-service:8080\" }\n        }\n      },\n      \"inventory-cluster\": {\n        \"Destinations\": {\n          \"destination1\": { \"Address\": \"http://inventory-service:8080\" }\n        }\n      }\n    }\n  }\n}</code></pre><pre><code class=\"language-csharp\">// Program.cs (Gateway service)\nbuilder.Services.AddReverseProxy()\n    .LoadFromConfig(builder.Configuration.GetSection(\"ReverseProxy\"));\n\n// Auth at gateway — services trust the gateway's forwarded claims\napp.UseAuthentication();\napp.UseAuthorization();\napp.MapReverseProxy();</code></pre><p>JWT validation happens once at the gateway. Internal services use <code>X-Forwarded-User</code> / <code>X-User-Id</code> headers populated by the gateway.</p>",
+          "followUpQuestions": ["How do you handle service discovery in Docker/Kubernetes?", "What is the difference between YARP and Ocelot?"],
+          "importantForInterview": "In Docker Compose, service names are the DNS hostnames (order-service resolves to the container). In Kubernetes, use ClusterIP service names. YARP supports Kubernetes service discovery via the Yarp.ReverseProxy.ServiceDiscovery.Kubernetes package."
+        }
+      ]
+    }
+  ],
+  "questions": []
+}

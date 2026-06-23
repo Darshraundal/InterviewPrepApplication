@@ -1,0 +1,546 @@
+{
+  "categoryId": "coding",
+  "questions": [
+    {
+      "id": "coding-001",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "Reverse a string in C# — multiple approaches",
+      "answer": "<pre><code class=\"language-csharp\">// Method 1: LINQ (cleanest for interviews)\nstring Reverse1(string s) =>\n    new string(s.Reverse().ToArray());\n\n// Method 2: Array.Reverse (most readable)\nstring Reverse2(string s)\n{\n    var chars = s.ToCharArray();\n    Array.Reverse(chars);\n    return new string(chars);\n}\n\n// Method 3: StringBuilder (manual, shows understanding)\nstring Reverse3(string s)\n{\n    var sb = new StringBuilder(s.Length);\n    for (int i = s.Length - 1; i >= 0; i--)\n        sb.Append(s[i]);\n    return sb.ToString();\n}\n\n// Method 4: Two-pointer in-place on char array\nstring Reverse4(string s)\n{\n    var chars = s.ToCharArray();\n    int left = 0, right = chars.Length - 1;\n    while (left &lt; right)\n    {\n        (chars[left], chars[right]) = (chars[right], chars[left]);\n        left++; right--;\n    }\n    return new string(chars);\n}\n\n// Edge cases to mention:\n// - null/empty string → return as-is\n// - Unicode surrogate pairs (emoji) break char-level reversal\n// - For Unicode safety: use StringInfo.GetTextElementEnumerator()</code></pre><p>Time: O(n) for all methods. Space: O(n) for all (strings are immutable in C#, always need a new string).</p>",
+      "followUps": [
+        {
+          "question": "How do you reverse a string without using built-in methods?",
+          "answer": "<p>Use the <strong>two-pointer swap</strong> on a char array — this avoids <code>Array.Reverse()</code>, <code>string.Reverse()</code>, or <code>StringBuilder</code>:</p><pre><code class=\"language-csharp\">string ReverseManual(string s)\n{\n    if (string.IsNullOrEmpty(s)) return s;\n    char[] chars = s.ToCharArray();  // ToCharArray is unavoidable (strings are immutable)\n    int left = 0, right = chars.Length - 1;\n    while (left &lt; right)\n    {\n        char temp = chars[left];\n        chars[left]  = chars[right];\n        chars[right] = temp;\n        left++;\n        right--;\n    }\n    return new string(chars);\n}</code></pre><p>This is O(n) time and O(n) space (the char array). If the interviewer truly means \"no API calls at all,\" you still need <code>ToCharArray()</code> or unsafe pointer access because strings are immutable in .NET — mention that constraint explicitly.</p>"
+        },
+        {
+          "question": "How do you reverse words in a sentence?",
+          "answer": "<p>Split on spaces, reverse the resulting array, and rejoin:</p><pre><code class=\"language-csharp\">// Clean approach — handles single spaces\nstring ReverseWords(string sentence)\n{\n    var words = sentence.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);\n    Array.Reverse(words);\n    return string.Join(' ', words);\n}\n// \"Hello World\" → \"World Hello\"\n// \"  the sky  is blue  \" → \"blue is sky the\"</code></pre><p><strong>Without Split/Join (two-pass approach):</strong> reverse the entire string, then reverse each individual word in place. This is an in-place O(n) algorithm often asked in follow-up.</p><pre><code class=\"language-csharp\">string ReverseWordsInPlace(string s)\n{\n    char[] chars = s.Trim().ToCharArray();\n    // Pass 1: reverse entire array\n    Reverse(chars, 0, chars.Length - 1);\n    // Pass 2: reverse each word back\n    int start = 0;\n    for (int i = 0; i &lt;= chars.Length; i++)\n    {\n        if (i == chars.Length || chars[i] == ' ')\n        {\n            Reverse(chars, start, i - 1);\n            start = i + 1;\n        }\n    }\n    return new string(chars);\n}\nvoid Reverse(char[] arr, int l, int r)\n{\n    while (l &lt; r) { (arr[l], arr[r]) = (arr[r], arr[l]); l++; r--; }\n}</code></pre>"
+        },
+        {
+          "question": "What about Unicode/emoji characters?",
+          "answer": "<p>C# <code>char</code> is a UTF-16 code unit, not a full Unicode code point. Emoji and supplementary characters are encoded as <strong>surrogate pairs</strong> — two <code>char</code> values that represent one visual character. Reversing at the <code>char</code> level splits these pairs and corrupts the string.</p><pre><code class=\"language-csharp\">// WRONG — breaks emoji\nstring bad = new string(\"Hello 😀\".Reverse().ToArray());\n// Result: \"😀 olleH\" looks right in debug but the emoji bytes are swapped\n\n// CORRECT — use StringInfo text elements\nstring ReverseUnicodeSafe(string s)\n{\n    var elements = new List&lt;string&gt;();\n    var enumerator = StringInfo.GetTextElementEnumerator(s);\n    while (enumerator.MoveNext())\n        elements.Add(enumerator.GetTextElement());\n    elements.Reverse();\n    return string.Concat(elements);\n}</code></pre><p>A <em>text element</em> (grapheme cluster) may span multiple <code>char</code> values. For production code handling user-generated text, always prefer <code>StringInfo</code> or the <code>System.Text.Unicode.Utf8</code> APIs. Mentioning this shows senior-level awareness of encoding.</p>"
+        }
+      ],
+      "tip": "<strong>Interview answer:</strong> Show Method 1 (LINQ) as the production approach, then Method 4 (two-pointer) to show you understand the algorithm. Mention the Unicode edge case — it shows senior-level thinking.",
+      "tags": [
+        "coding",
+        "string",
+        "algorithm"
+      ],
+      "sortOrder": 1,
+      "isActive": true
+    },
+    {
+      "id": "coding-002",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "very-high",
+      "question": "Check if a string is a palindrome",
+      "answer": "<pre><code class=\"language-csharp\">// Method 1: Two-pointer (most efficient)\nbool IsPalindrome(string s)\n{\n    int left = 0, right = s.Length - 1;\n    while (left &lt; right)\n    {\n        if (s[left] != s[right]) return false;\n        left++;\n        right--;\n    }\n    return true;\n}\n\n// Method 2: Compare with reversed (simple but creates extra string)\nbool IsPalindrome2(string s) =>\n    s == new string(s.Reverse().ToArray());\n\n// Variant: ignore case, non-alphanumeric (common follow-up)\nbool IsPalindromeAlphanumeric(string s)\n{\n    var clean = s.Where(char.IsLetterOrDigit)\n                 .Select(char.ToLower)\n                 .ToArray();\n    int l = 0, r = clean.Length - 1;\n    while (l &lt; r)\n    {\n        if (clean[l] != clean[r]) return false;\n        l++; r--;\n    }\n    return true;\n}\n\n// Examples:\n// IsPalindrome(\"racecar\") → true\n// IsPalindrome(\"hello\") → false\n// IsPalindromeAlphanumeric(\"A man a plan a canal Panama\") → true</code></pre><p>Time: O(n). Space: O(1) for two-pointer (O(n) if you create the reversed string).</p>",
+      "followUps": [
+        {
+          "question": "What is the longest palindromic substring?",
+          "answer": "<p>The classic O(n²) solution uses <strong>expand-around-center</strong>: for each character (and each gap between characters), expand outward while the characters match.</p><pre><code class=\"language-csharp\">string LongestPalindrome(string s)\n{\n    if (s.Length &lt; 2) return s;\n    int start = 0, maxLen = 1;\n\n    void Expand(int left, int right)\n    {\n        while (left >= 0 &amp;&amp; right &lt; s.Length &amp;&amp; s[left] == s[right])\n        {\n            if (right - left + 1 &gt; maxLen)\n            {\n                maxLen = right - left + 1;\n                start  = left;\n            }\n            left--; right++;\n        }\n    }\n\n    for (int i = 0; i &lt; s.Length; i++)\n    {\n        Expand(i, i);      // odd-length palindromes\n        Expand(i, i + 1);  // even-length palindromes\n    }\n    return s.Substring(start, maxLen);\n}\n// \"babad\" → \"bab\" (or \"aba\")\n// \"cbbd\"  → \"bb\"</code></pre><p>Time: O(n²), Space: O(1). Optimal is <strong>Manacher's Algorithm</strong> at O(n), but expand-around-center is expected in interviews.</p>"
+        },
+        {
+          "question": "How do you check if a number is a palindrome?",
+          "answer": "<p>Two approaches: convert to string (simple), or reverse mathematically without string conversion (more impressive).</p><pre><code class=\"language-csharp\">// Approach 1: convert to string\nbool IsNumberPalindrome(int n)\n{\n    if (n &lt; 0) return false;   // negative numbers are never palindromes\n    string s = n.ToString();\n    int l = 0, r = s.Length - 1;\n    while (l &lt; r) { if (s[l++] != s[r--]) return false; }\n    return true;\n}\n\n// Approach 2: no string conversion — reverse the second half\nbool IsNumberPalindromeNoString(int n)\n{\n    if (n &lt; 0 || (n % 10 == 0 &amp;&amp; n != 0)) return false;\n    int reversed = 0;\n    while (n &gt; reversed)     // stop at the midpoint\n    {\n        reversed = reversed * 10 + n % 10;\n        n /= 10;\n    }\n    // For even length: n == reversed\n    // For odd length:  n == reversed / 10 (middle digit doesn't matter)\n    return n == reversed || n == reversed / 10;\n}\n// 121 → true, 1221 → true, -121 → false, 10 → false</code></pre><p>Approach 2 avoids overflow concerns by only reversing half the number. Mention the negative and trailing-zero edge cases.</p>"
+        }
+      ],
+      "tip": "<strong>For numbers:</strong> Convert to string and use the same approach, OR reverse mathematically (no string conversion): extract digits via modulo and rebuild in reverse. Mention both.",
+      "tags": [
+        "coding",
+        "string",
+        "algorithm",
+        "two-pointer"
+      ],
+      "sortOrder": 2,
+      "isActive": true
+    },
+    {
+      "id": "coding-003",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Find the factorial of a number — recursive and iterative",
+      "answer": "<pre><code class=\"language-csharp\">// Iterative (preferred — no stack overflow risk)\nlong Factorial(int n)\n{\n    if (n &lt; 0) throw new ArgumentException(\"n must be non-negative\");\n    long result = 1;\n    for (int i = 2; i &lt;= n; i++)\n        result *= i;\n    return result;\n}\n\n// Recursive (elegant but stack overflow risk for large n)\nlong FactorialRecursive(int n)\n{\n    if (n &lt; 0) throw new ArgumentException(\"n must be non-negative\");\n    if (n &lt;= 1) return 1;  // base case\n    return n * FactorialRecursive(n - 1);\n}\n\n// With memoization (if calling frequently with same values)\nprivate static readonly Dictionary&lt;int, long&gt; _cache = new();\nlong FactorialMemo(int n)\n{\n    if (n &lt;= 1) return 1;\n    if (_cache.TryGetValue(n, out var cached)) return cached;\n    var result = n * FactorialMemo(n - 1);\n    _cache[n] = result;\n    return result;\n}\n\n// Note: long overflows at 21! (use BigInteger for large n)\n// using System.Numerics;\nBigInteger FactorialBig(int n)\n{\n    BigInteger result = 1;\n    for (int i = 2; i &lt;= n; i++) result *= i;\n    return result;\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What's the maximum factorial that fits in a long?",
+          "answer": "<p><code>long</code> (Int64) has a max value of <strong>9,223,372,036,854,775,807</strong>. The largest factorial that fits is <strong>20!</strong> = 2,432,902,008,176,640,000. <strong>21!</strong> overflows.</p><pre><code class=\"language-csharp\">// Verified:\nlong f20 = 2_432_902_008_176_640_000;  // 20! — fits in long\n// 21! = 51,090,942,171,709,440,000 — exceeds long.MaxValue\n\n// Guard against overflow:\nlong SafeFactorial(int n)\n{\n    if (n &gt; 20) throw new OverflowException(\"Result exceeds long capacity; use BigInteger\");\n    long result = 1;\n    for (int i = 2; i &lt;= n; i++) result *= i;\n    return result;\n}</code></pre><p>Knowing this boundary is a signal of production-quality thinking. Overflow bugs are real — a famous example is NASA's Mars Climate Orbiter lost in 1999 due to unit conversion overflow. Always validate input range when returning numeric results.</p>"
+        },
+        {
+          "question": "How would you compute factorial of very large numbers?",
+          "answer": "<p>Use <code>System.Numerics.BigInteger</code>, which supports arbitrary-precision integers — no upper bound on size, only memory.</p><pre><code class=\"language-csharp\">using System.Numerics;\n\nBigInteger FactorialBig(int n)\n{\n    if (n &lt; 0) throw new ArgumentException(\"n must be non-negative\");\n    BigInteger result = BigInteger.One;\n    for (int i = 2; i &lt;= n; i++)\n        result *= i;\n    return result;\n}\n\n// Example:\n// FactorialBig(100) = 93326215443944152681699238856266700490715968264381621468592963895217599993229915608941463976156518286253697920827223758251185210916864000000000000000000000000\n// (158 digits!)</code></pre><p>For extremely large factorials (n > 10,000), even BigInteger multiplication becomes slow. Advanced approaches include <strong>prime factorization splitting</strong> or parallelizing the multiplication tree — but BigInteger is the correct answer for a standard interview. Mention <code>BigInteger.ToString()</code> produces the full decimal representation.</p>"
+        }
+      ],
+      "tip": "<strong>20! = 2,432,902,008,176,640,000</strong> (fits in long). <strong>21!</strong> overflows long. Mention this — it shows awareness of integer overflow, a common production bug.",
+      "tags": [
+        "coding",
+        "algorithm",
+        "recursion",
+        "math"
+      ],
+      "sortOrder": 3,
+      "isActive": true
+    },
+    {
+      "id": "coding-004",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Find the Fibonacci sequence — iterative, recursive, and dynamic programming",
+      "answer": "<pre><code class=\"language-csharp\">// Naive recursive — O(2^n), terrible for large n\nlong FibRecursive(int n)\n{\n    if (n &lt;= 1) return n;\n    return FibRecursive(n - 1) + FibRecursive(n - 2);\n}\n\n// Iterative — O(n) time, O(1) space (best for interviews)\nlong FibIterative(int n)\n{\n    if (n &lt;= 1) return n;\n    long prev = 0, curr = 1;\n    for (int i = 2; i &lt;= n; i++)\n    {\n        long next = prev + curr;\n        prev = curr;\n        curr = next;\n    }\n    return curr;\n}\n\n// Memoization — O(n) time, O(n) space\nlong FibMemo(int n, Dictionary&lt;int, long&gt;? memo = null)\n{\n    memo ??= new Dictionary&lt;int, long&gt;();\n    if (n &lt;= 1) return n;\n    if (memo.TryGetValue(n, out var cached)) return cached;\n    var result = FibMemo(n - 1, memo) + FibMemo(n - 2, memo);\n    memo[n] = result;\n    return result;\n}\n\n// Using IEnumerable to stream the sequence\nIEnumerable&lt;long&gt; FibSequence()\n{\n    long prev = 0, curr = 1;\n    yield return prev;\n    yield return curr;\n    while (true)\n    {\n        long next = prev + curr;\n        yield return next;\n        prev = curr;\n        curr = next;\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the time complexity of each approach?",
+          "answer": "<p>Each Fibonacci approach has a very different complexity profile:</p><ul><li><strong>Naive recursive:</strong> O(2ⁿ) time — every call branches into two calls, forming a binary tree of height n. Fib(50) makes ~2 trillion calls. Space: O(n) call stack.</li><li><strong>Memoization (top-down DP):</strong> O(n) time — each unique subproblem computed once, result cached. Space: O(n) for the memo dictionary + O(n) call stack.</li><li><strong>Iterative (bottom-up DP):</strong> O(n) time, O(1) space — only two variables needed, no recursion. This is the optimal solution for most inputs.</li><li><strong>Matrix exponentiation:</strong> O(log n) time — compute Fibonacci using repeated squaring of a 2×2 matrix. Used when n is astronomically large (e.g., Fib(10^18) mod p in competitive programming). Space: O(1).</li></ul><p>In an interview, always offer the iterative solution as your preferred answer and explain why it dominates: same time complexity as memoization but better space and no stack overflow risk.</p>"
+        },
+        {
+          "question": "How do you get the first N Fibonacci numbers?",
+          "answer": "<p>Three clean approaches depending on the use case:</p><pre><code class=\"language-csharp\">// Option 1: Array (if you need random access by index)\nlong[] FirstNFib(int n)\n{\n    if (n &lt;= 0) return Array.Empty&lt;long&gt;();\n    var fib = new long[n];\n    fib[0] = 0;\n    if (n &gt; 1) fib[1] = 1;\n    for (int i = 2; i &lt; n; i++)\n        fib[i] = fib[i - 1] + fib[i - 2];\n    return fib;\n}  // FirstNFib(7) → [0, 1, 1, 2, 3, 5, 8]\n\n// Option 2: IEnumerable with yield (lazy — only computes what's consumed)\nIEnumerable&lt;long&gt; FibSequence()\n{\n    long prev = 0, curr = 1;\n    yield return prev;\n    yield return curr;\n    while (true)\n    {\n        long next = prev + curr;\n        yield return next;\n        (prev, curr) = (curr, next);\n    }\n}\n// Usage: var first10 = FibSequence().Take(10).ToList();\n\n// Option 3: List (if you need a materialized list)\nList&lt;long&gt; FirstNFibList(int n) =&gt;\n    FibSequence().Take(n).ToList();</code></pre><p>The <code>IEnumerable</code> + <code>Take(n)</code> approach is the most Pythonic/LINQ-idiomatic C# pattern and shows understanding of lazy evaluation — use it when you don't need indexed access.</p>"
+        }
+      ],
+      "tip": "<strong>Recursive Fibonacci is O(2^n)</strong> — interview interviewers ask it to see if you know to use memoization/iteration instead. Always show the iterative approach as your preferred solution, then explain memoization as a way to add caching to the recursive version.",
+      "tags": [
+        "coding",
+        "algorithm",
+        "recursion",
+        "dynamic-programming"
+      ],
+      "sortOrder": 4,
+      "isActive": true
+    },
+    {
+      "id": "coding-005",
+      "category": "coding",
+      "difficulty": "medium",
+      "frequency": "very-high",
+      "question": "Find duplicates in an array",
+      "answer": "<pre><code class=\"language-csharp\">// Method 1: HashSet — O(n) time, O(n) space\nIEnumerable&lt;int&gt; FindDuplicates(int[] arr)\n{\n    var seen = new HashSet&lt;int&gt;();\n    var duplicates = new HashSet&lt;int&gt;();\n    foreach (var num in arr)\n    {\n        if (!seen.Add(num))     // Add returns false if already present\n            duplicates.Add(num);\n    }\n    return duplicates;\n}\n\n// Method 2: LINQ GroupBy (concise)\nIEnumerable&lt;int&gt; FindDuplicatesLinq(int[] arr) =>\n    arr.GroupBy(x => x)\n       .Where(g => g.Count() &gt; 1)\n       .Select(g => g.Key);\n\n// Method 3: Sort + adjacent comparison — O(n log n), O(1) extra space\nIEnumerable&lt;int&gt; FindDuplicatesSorted(int[] arr)\n{\n    Array.Sort(arr);\n    var result = new List&lt;int&gt;();\n    for (int i = 1; i &lt; arr.Length; i++)\n        if (arr[i] == arr[i-1] &amp;&amp; (result.Count == 0 || result[^1] != arr[i]))\n            result.Add(arr[i]);\n    return result;\n}\n\n// Variant: find all elements that appear more than once, with count\nDictionary&lt;int, int&gt; CountFrequency(int[] arr) =>\n    arr.GroupBy(x => x)\n       .ToDictionary(g => g.Key, g => g.Count());\n\n// Example:\n// Input:  [1, 3, 4, 2, 2, 3]\n// Output: [2, 3]</code></pre>",
+      "followUps": [
+        {
+          "question": "What if elements are in range 1..n? (cycle detection)",
+          "answer": "<p>If array values are guaranteed to be in range <code>[1, n]</code> where n is the array length, you can treat the array as a linked list and use <strong>Floyd's cycle detection (tortoise and hare)</strong> to find the duplicate in O(n) time and O(1) space:</p><pre><code class=\"language-csharp\">// Array values in range [1, n], exactly one duplicate — O(n) time, O(1) space\nint FindDuplicateFloyd(int[] nums)\n{\n    // Phase 1: detect cycle\n    int slow = nums[0], fast = nums[0];\n    do\n    {\n        slow = nums[slow];\n        fast = nums[nums[fast]];\n    } while (slow != fast);\n\n    // Phase 2: find cycle entrance (the duplicate)\n    slow = nums[0];\n    while (slow != fast)\n    {\n        slow = nums[slow];\n        fast = nums[fast];\n    }\n    return slow;\n}\n// [1, 3, 4, 2, 2] → 2</code></pre><p>Alternatively, use <strong>index negation</strong>: for each value v, negate <code>nums[v]</code>; if you encounter a negative value, the index is the duplicate.</p><pre><code class=\"language-csharp\">int FindDuplicateNegation(int[] nums)\n{\n    foreach (int v in nums)\n    {\n        int idx = Math.Abs(v);\n        if (nums[idx] &lt; 0) return idx;  // already marked → duplicate\n        nums[idx] = -nums[idx];\n    }\n    return -1;  // no duplicate found\n}\n// Note: modifies the input array</code></pre>"
+        },
+        {
+          "question": "Find the only duplicate in an array of 1..n",
+          "answer": "<p>Classic interview variant: array has n+1 elements, values in range [1, n], exactly one number appears twice. Multiple elegant solutions:</p><pre><code class=\"language-csharp\">// Method 1: Sum formula — O(n) time, O(1) space (simplest)\nint FindDuplicateSum(int[] nums)\n{\n    int n = nums.Length - 1;\n    long expectedSum = (long)n * (n + 1) / 2;\n    long actualSum   = nums.Sum();\n    return (int)(actualSum - expectedSum);\n}\n// Works only when exactly one number is duplicated (won't work if multiple duplicates)\n\n// Method 2: XOR — O(n) time, O(1) space\nint FindDuplicateXor(int[] nums)\n{\n    int n = nums.Length - 1;\n    int xor = 0;\n    for (int i = 1; i &lt;= n; i++) xor ^= i;\n    foreach (int v in nums)      xor ^= v;\n    return xor;  // remaining value is the duplicate\n}\n// XOR cancels out pairs; the unpaired (duplicated) number remains\n\n// Method 3: Floyd's cycle detection (handles multiple duplicates too)\n// See previous answer</code></pre><p>The XOR method is elegant and worth memorizing. The sum formula is the simplest but fails if there are multiple duplicates or values outside [1, n].</p>"
+        }
+      ],
+      "tip": "<strong>If values are in range 1..n:</strong> Floyd's cycle detection or XOR trick can solve in O(n) time and O(1) space — but these are advanced. For most interviews, the HashSet approach is expected and optimal enough.",
+      "tags": [
+        "coding",
+        "array",
+        "hashset",
+        "algorithm"
+      ],
+      "sortOrder": 5,
+      "isActive": true
+    },
+    {
+      "id": "coding-006",
+      "category": "coding",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Find the two numbers in an array that sum to a target (Two Sum)",
+      "answer": "<pre><code class=\"language-csharp\">// O(n) — HashMap approach (optimal)\nint[] TwoSum(int[] nums, int target)\n{\n    var seen = new Dictionary&lt;int, int&gt;();  // value → index\n    for (int i = 0; i &lt; nums.Length; i++)\n    {\n        int complement = target - nums[i];\n        if (seen.TryGetValue(complement, out int j))\n            return [j, i];  // found\n        seen[nums[i]] = i;\n    }\n    throw new ArgumentException(\"No solution\");\n}\n\n// O(n log n) — Two pointer (if array is sorted, or if you can sort it)\nint[] TwoSumSorted(int[] sortedNums, int target)\n{\n    int left = 0, right = sortedNums.Length - 1;\n    while (left &lt; right)\n    {\n        int sum = sortedNums[left] + sortedNums[right];\n        if (sum == target)  return [left, right];\n        if (sum &lt; target)   left++;\n        else                right--;\n    }\n    throw new ArgumentException(\"No solution\");\n}\n\n// O(n²) — Brute force (mention but don't use)\nint[] TwoSumBrute(int[] nums, int target)\n{\n    for (int i = 0; i &lt; nums.Length; i++)\n        for (int j = i + 1; j &lt; nums.Length; j++)\n            if (nums[i] + nums[j] == target)\n                return [i, j];\n    throw new ArgumentException(\"No solution\");\n}\n\n// Example: nums = [2, 7, 11, 15], target = 9 → [0, 1]</code></pre>",
+      "followUps": [
+        {
+          "question": "What if there are multiple pairs?",
+          "answer": "<p>Return all pairs instead of stopping at the first. Use a HashSet of seen values (not indices) and collect all valid pairs:</p><pre><code class=\"language-csharp\">// Return all unique pairs that sum to target\nList&lt;(int, int)&gt; TwoSumAllPairs(int[] nums, int target)\n{\n    var seen  = new HashSet&lt;int&gt;();\n    var pairs = new HashSet&lt;(int, int)&gt;();\n    foreach (int num in nums)\n    {\n        int complement = target - num;\n        if (seen.Contains(complement))\n        {\n            // Normalize order so (2,7) and (7,2) are treated as one pair\n            var pair = num &lt; complement ? (num, complement) : (complement, num);\n            pairs.Add(pair);\n        }\n        seen.Add(num);\n    }\n    return pairs.ToList();\n}\n// [2, 7, 4, 5, 3, 6], target=9 → [(2,7), (4,5), (3,6)]</code></pre><p>Key subtlety: normalizing pair order (smaller first) prevents counting (2,7) and (7,2) as separate pairs. If the question asks for indices rather than values, you need a different approach since the same value can appear at multiple indices.</p>"
+        },
+        {
+          "question": "What if the array is sorted?",
+          "answer": "<p>If the array is already sorted, the <strong>two-pointer approach</strong> is O(n) time and O(1) space — better than the HashMap approach (which needs O(n) extra space):</p><pre><code class=\"language-csharp\">// O(n) time, O(1) space — for sorted input\nint[] TwoSumSorted(int[] nums, int target)\n{\n    int left = 0, right = nums.Length - 1;\n    while (left &lt; right)\n    {\n        int sum = nums[left] + nums[right];\n        if      (sum == target) return [left, right];\n        else if (sum &lt; target)  left++;   // need bigger sum\n        else                    right--;  // need smaller sum\n    }\n    throw new ArgumentException(\"No solution\");\n}\n// [1, 2, 3, 4, 6], target=6 → [1, 3]  (nums[1]+nums[3]=2+4=6)</code></pre><p>The two-pointer works because: if the sum is too small, moving the left pointer right increases the sum; if too large, moving the right pointer left decreases it. This narrows the search space by one element each iteration.</p>"
+        },
+        {
+          "question": "What about Three Sum?",
+          "answer": "<p>Find all unique triplets that sum to zero. Sort the array, fix one element, then use two-pointer on the rest — O(n²) total:</p><pre><code class=\"language-csharp\">IList&lt;IList&lt;int&gt;&gt; ThreeSum(int[] nums)\n{\n    Array.Sort(nums);\n    var result = new List&lt;IList&lt;int&gt;&gt;();\n\n    for (int i = 0; i &lt; nums.Length - 2; i++)\n    {\n        if (i &gt; 0 &amp;&amp; nums[i] == nums[i - 1]) continue;  // skip duplicates\n        if (nums[i] &gt; 0) break;                          // no solution possible\n\n        int left = i + 1, right = nums.Length - 1;\n        while (left &lt; right)\n        {\n            int sum = nums[i] + nums[left] + nums[right];\n            if (sum == 0)\n            {\n                result.Add([nums[i], nums[left], nums[right]]);\n                while (left &lt; right &amp;&amp; nums[left]  == nums[left + 1])  left++;   // skip dupes\n                while (left &lt; right &amp;&amp; nums[right] == nums[right - 1]) right--;  // skip dupes\n                left++; right--;\n            }\n            else if (sum &lt; 0) left++;\n            else              right--;\n        }\n    }\n    return result;\n}\n// [-1,0,1,2,-1,-4] → [[-1,-1,2],[-1,0,1]]</code></pre><p>Time: O(n²), Space: O(1) extra (ignoring output). The duplicate-skipping logic is the subtle part interviewers check for.</p>"
+        }
+      ],
+      "tip": "<strong>Walk through the HashMap approach step by step:</strong> for each element, compute what complement you need, check if you've seen it. This one-pass O(n) approach is the canonical answer. The interviewer is testing if you know when to trade space for time.",
+      "tags": [
+        "coding",
+        "array",
+        "hashmap",
+        "two-pointer",
+        "algorithm"
+      ],
+      "sortOrder": 6,
+      "isActive": true
+    },
+    {
+      "id": "coding-007",
+      "category": "coding",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Remove duplicates from a sorted array in-place",
+      "answer": "<pre><code class=\"language-csharp\">// O(n) time, O(1) space — two-pointer in-place\nint RemoveDuplicates(int[] nums)\n{\n    if (nums.Length == 0) return 0;\n\n    int uniqueCount = 1;  // first element is always unique\n    for (int i = 1; i &lt; nums.Length; i++)\n    {\n        if (nums[i] != nums[i - 1])  // found a new unique value\n        {\n            nums[uniqueCount] = nums[i];  // place it at next unique position\n            uniqueCount++;\n        }\n    }\n    return uniqueCount;  // first uniqueCount elements are the deduplicated array\n}\n\n// Example:\n// Input:  [1, 1, 2, 3, 3, 4]\n// After:  [1, 2, 3, 4, _, _]  (first 4 elements matter)\n// Return: 4\n\n// LINQ alternative (creates new array, O(n) space)\nint[] RemoveDuplicatesLinq(int[] sorted) =>\n    sorted.Distinct().ToArray();  // works on unsorted too (uses HashSet internally)\n\n// For unsorted array with distinct values preserved:\nint[] RemoveDuplicatesUnsorted(int[] nums)\n{\n    var seen = new HashSet&lt;int&gt;();\n    return nums.Where(seen.Add).ToArray();  // seen.Add returns false for duplicates\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What if the array allows each element at most twice?",
+          "answer": "<p>Generalize the slow-fast pointer: allow up to k occurrences. For k=2, compare the current element against the element at position <code>uniqueCount - 2</code> (two positions back in the deduplicated section):</p><pre><code class=\"language-csharp\">// Allow each element at most twice — O(n) time, O(1) space\nint RemoveDuplicatesAtMostTwice(int[] nums)\n{\n    if (nums.Length &lt;= 2) return nums.Length;\n\n    int writePos = 2;  // first two elements always kept\n    for (int i = 2; i &lt; nums.Length; i++)\n    {\n        // Only write if current element != element 2 positions back in result\n        if (nums[i] != nums[writePos - 2])\n        {\n            nums[writePos] = nums[i];\n            writePos++;\n        }\n    }\n    return writePos;\n}\n// [1,1,1,2,2,3] → [1,1,2,2,3], return 5\n// [0,0,1,1,1,2,3,3] → [0,0,1,1,2,3,3], return 7\n\n// General version — allow at most k occurrences\nint RemoveDuplicatesAtMostK(int[] nums, int k)\n{\n    if (nums.Length &lt;= k) return nums.Length;\n    int writePos = k;\n    for (int i = k; i &lt; nums.Length; i++)\n        if (nums[i] != nums[writePos - k])\n            nums[writePos++] = nums[i];\n    return writePos;\n}</code></pre><p>The key insight: compare against <code>nums[writePos - k]</code> rather than the previous element. This elegantly generalizes to any k without extra state.</p>"
+        },
+        {
+          "question": "What about removing duplicates from an unsorted array?",
+          "answer": "<p>Without sorting, you can't compare adjacent elements, so you need a HashSet to track seen values. Preserving original order:</p><pre><code class=\"language-csharp\">// Preserve original order, remove duplicates — O(n) time, O(n) space\nint[] RemoveDuplicatesUnsorted(int[] nums)\n{\n    var seen = new HashSet&lt;int&gt;();\n    return nums.Where(seen.Add).ToArray();\n    // seen.Add returns true if element was newly inserted (not a duplicate)\n}\n// [3, 1, 4, 1, 5, 9, 2, 6, 5] → [3, 1, 4, 5, 9, 2, 6]\n\n// In-place variant (modifies input, O(n) space for HashSet)\nint RemoveDuplicatesUnsortedInPlace(int[] nums)\n{\n    var seen = new HashSet&lt;int&gt;();\n    int writePos = 0;\n    foreach (int num in nums)\n    {\n        if (seen.Add(num))        // true = not seen before\n            nums[writePos++] = num;\n    }\n    return writePos;\n}\n// You cannot do O(1) space for unsorted deduplication while preserving order\n// without sorting first (which takes O(n log n))</code></pre><p>Trade-off summary: <strong>sorted array → O(1) space with two pointers</strong>. <strong>Unsorted array → O(n) space with HashSet</strong>, or sort first and then apply the sorted algorithm at the cost of O(n log n) time.</p>"
+        }
+      ],
+      "tip": "<strong>Slow-fast pointer pattern:</strong> slow pointer (uniqueCount) tracks where to write next unique element. Fast pointer (i) scans the array. This O(1) space pattern applies to many array modification problems.",
+      "tags": [
+        "coding",
+        "array",
+        "two-pointer",
+        "algorithm"
+      ],
+      "sortOrder": 7,
+      "isActive": true
+    },
+    {
+      "id": "coding-008",
+      "category": "coding",
+      "difficulty": "medium",
+      "frequency": "high",
+      "question": "Find the maximum subarray sum (Kadane's Algorithm)",
+      "answer": "<pre><code class=\"language-csharp\">// Kadane's Algorithm — O(n) time, O(1) space\nint MaxSubarraySum(int[] nums)\n{\n    if (nums.Length == 0) throw new ArgumentException(\"Empty array\");\n\n    int maxSum = nums[0];\n    int currentSum = nums[0];\n\n    for (int i = 1; i &lt; nums.Length; i++)\n    {\n        // Either extend current subarray or start fresh from nums[i]\n        currentSum = Math.Max(nums[i], currentSum + nums[i]);\n        maxSum = Math.Max(maxSum, currentSum);\n    }\n    return maxSum;\n}\n\n// Variant: also return the subarray indices\n(int maxSum, int start, int end) MaxSubarrayWithIndices(int[] nums)\n{\n    int maxSum = nums[0], currentSum = nums[0];\n    int maxStart = 0, maxEnd = 0, tempStart = 0;\n\n    for (int i = 1; i &lt; nums.Length; i++)\n    {\n        if (nums[i] &gt; currentSum + nums[i])\n        {\n            currentSum = nums[i];\n            tempStart = i;\n        }\n        else\n        {\n            currentSum += nums[i];\n        }\n        if (currentSum &gt; maxSum)\n        {\n            maxSum = currentSum;\n            maxStart = tempStart;\n            maxEnd = i;\n        }\n    }\n    return (maxSum, maxStart, maxEnd);\n}\n\n// Example:\n// [-2, 1, -3, 4, -1, 2, 1, -5, 4] → 6 (subarray [4, -1, 2, 1])</code></pre>",
+      "followUps": [
+        {
+          "question": "What if the array is all negative?",
+          "answer": "<p>Kadane's algorithm handles this correctly as written — it returns the <strong>least negative element</strong> (the maximum possible subarray sum when all values are negative). The key is initializing both <code>maxSum</code> and <code>currentSum</code> to <code>nums[0]</code> (not 0), and starting the loop from index 1.</p><pre><code class=\"language-csharp\">// Works correctly for all-negative arrays:\nint MaxSubarraySum(int[] nums)\n{\n    int maxSum = nums[0];      // NOT initialized to 0\n    int currentSum = nums[0]; // NOT initialized to 0\n    for (int i = 1; i &lt; nums.Length; i++)\n    {\n        currentSum = Math.Max(nums[i], currentSum + nums[i]);\n        maxSum     = Math.Max(maxSum, currentSum);\n    }\n    return maxSum;\n}\n// [-3, -1, -2] → -1  (correct: least negative)\n// [-5, -3, -5] → -3  (correct)</code></pre><p><strong>Common mistake:</strong> initializing <code>maxSum = 0</code> — this wrongly returns 0 for all-negative arrays (implying the empty subarray is valid). If the problem says \"non-empty subarray,\" you must initialize to <code>nums[0]</code>. If the empty subarray is allowed, initializing to 0 is correct — clarify this with the interviewer.</p>"
+        },
+        {
+          "question": "What is the circular maximum subarray?",
+          "answer": "<p>In a circular array, the maximum subarray can either: (1) not wrap around — solved by standard Kadane's, or (2) wrap around — which is the total sum minus the minimum subarray sum (the middle we exclude).</p><pre><code class=\"language-csharp\">int MaxSubarrayCircular(int[] nums)\n{\n    // Case 1: max subarray does NOT wrap — standard Kadane's\n    int maxSum = nums[0], currentMax = nums[0];\n    // Case 2: max subarray WRAPS — totalSum - minSubarraySum\n    int minSum = nums[0], currentMin = nums[0];\n    int totalSum = nums[0];\n\n    for (int i = 1; i &lt; nums.Length; i++)\n    {\n        currentMax = Math.Max(nums[i], currentMax + nums[i]);\n        maxSum     = Math.Max(maxSum, currentMax);\n\n        currentMin = Math.Min(nums[i], currentMin + nums[i]);\n        minSum     = Math.Min(minSum, currentMin);\n\n        totalSum  += nums[i];\n    }\n\n    // If all elements are negative, wrapping isn't valid (would be empty subarray)\n    if (maxSum &lt; 0) return maxSum;\n\n    return Math.Max(maxSum, totalSum - minSum);\n}\n// [1, -2, 3, -2] → 3  (no wrap)\n// [5, -3, 5]    → 10 (wraps: [5,5])\n// [-3,-2,-3]    → -2 (all negative: least negative)</code></pre><p>The insight is elegant: a wrapping subarray = total array - the minimum (non-wrapping) subarray in the middle. Time: O(n), Space: O(1).</p>"
+        }
+      ],
+      "tip": "<strong>Kadane's key insight:</strong> at each position, you decide to either extend the previous subarray or start a new one from the current element. Whichever is larger becomes the current sum. Keep track of the global maximum.",
+      "tags": [
+        "coding",
+        "array",
+        "dynamic-programming",
+        "algorithm"
+      ],
+      "sortOrder": 8,
+      "isActive": true
+    },
+    {
+      "id": "coding-009",
+      "category": "coding",
+      "difficulty": "medium",
+      "frequency": "medium",
+      "question": "Implement a stack using a queue and a queue using a stack",
+      "answer": "<pre><code class=\"language-csharp\">// Stack using two queues — push O(n), pop O(1)\npublic class StackUsingQueues&lt;T&gt;\n{\n    private Queue&lt;T&gt; _q1 = new();\n    private Queue&lt;T&gt; _q2 = new();\n\n    public void Push(T item)\n    {\n        _q2.Enqueue(item);               // enqueue to empty q2\n        while (_q1.Count &gt; 0)           // move all q1 to q2\n            _q2.Enqueue(_q1.Dequeue());\n        (_q1, _q2) = (_q2, _q1);        // swap references (q1 is now the stack)\n    }\n\n    public T Pop()  => _q1.Dequeue();\n    public T Peek() => _q1.Peek();\n    public bool IsEmpty => _q1.Count == 0;\n}\n\n// Queue using two stacks — enqueue O(1), dequeue amortized O(1)\npublic class QueueUsingStacks&lt;T&gt;\n{\n    private Stack&lt;T&gt; _inbox  = new();   // new items go here\n    private Stack&lt;T&gt; _outbox = new();   // items dequeued from here\n\n    public void Enqueue(T item) => _inbox.Push(item);\n\n    public T Dequeue()\n    {\n        if (_outbox.Count == 0)           // outbox empty: refill from inbox\n        {\n            while (_inbox.Count &gt; 0)\n                _outbox.Push(_inbox.Pop()); // reverses order = FIFO\n        }\n        return _outbox.Pop();\n    }\n\n    public T Peek()\n    {\n        if (_outbox.Count == 0)\n            while (_inbox.Count &gt; 0)\n                _outbox.Push(_inbox.Pop());\n        return _outbox.Peek();\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the amortized complexity of QueueUsingStacks.Dequeue()?",
+          "answer": "<p>Amortized O(1) per dequeue. Here's the formal argument:</p><p>Each element follows this lifecycle: <strong>Enqueue → pushed onto inbox → (at most once) moved to outbox → popped from outbox</strong>. Every element is pushed and popped at most twice total — once in inbox, once in outbox. Even if a single <code>Dequeue()</code> triggers moving all n elements from inbox to outbox (an O(n) operation), the cost was pre-paid by the n prior Enqueue calls. Averaged over any sequence of n operations, the cost per operation is O(1).</p><p>This is the <strong>accounting method</strong> of amortized analysis: charge each <code>Enqueue()</code> a virtual \"credit\" that covers the eventual outbox transfer. When the transfer happens, you use the stored credits — no single operation is billed more than O(1) amortized.</p><p>In contrast, <code>StackUsingQueues.Pop()</code> is truly O(1) always, but <code>Push()</code> is worst-case O(n) — we chose to pay the cost upfront at push time rather than deferring it. Both designs are valid with different tradeoff profiles.</p>"
+        },
+        {
+          "question": "What is the Min Stack problem?",
+          "answer": "<p>Design a stack that supports <code>Push</code>, <code>Pop</code>, <code>Peek</code>, and <code>GetMin</code> — all in O(1) time. The trick is maintaining a parallel <em>min stack</em> that tracks the minimum at each level:</p><pre><code class=\"language-csharp\">public class MinStack\n{\n    private Stack&lt;int&gt; _data = new();\n    private Stack&lt;int&gt; _mins = new();  // parallel min tracking\n\n    public void Push(int val)\n    {\n        _data.Push(val);\n        // Push to mins if it's the new minimum (or mins is empty)\n        int newMin = _mins.Count == 0 ? val : Math.Min(val, _mins.Peek());\n        _mins.Push(newMin);\n    }\n\n    public void Pop()\n    {\n        _data.Pop();\n        _mins.Pop();  // always pop in sync\n    }\n\n    public int Top()    => _data.Peek();\n    public int GetMin() => _mins.Peek();  // O(1)\n}\n\n// Example:\n// Push(3) → data:[3],  mins:[3]\n// Push(5) → data:[5,3], mins:[3,3]\n// Push(1) → data:[1,5,3], mins:[1,3,3]\n// GetMin() → 1\n// Pop()    → data:[5,3],  mins:[3,3]\n// GetMin() → 3</code></pre><p>Space is O(n) for the parallel min stack. An alternative using O(1) extra space stores the difference from the current minimum in the main stack, but that's an advanced optimization.</p>"
+        }
+      ],
+      "tip": "<strong>Amortized O(1) for dequeue:</strong> each element crosses from inbox to outbox at most once. Even though a single dequeue might take O(n) to refill, the average across N operations is O(1). This is the amortized analysis explanation interviewers want.",
+      "tags": [
+        "coding",
+        "stack",
+        "queue",
+        "data-structures"
+      ],
+      "sortOrder": 9,
+      "isActive": true
+    },
+    {
+      "id": "coding-010",
+      "category": "coding",
+      "difficulty": "hard",
+      "frequency": "medium",
+      "question": "Implement binary search",
+      "answer": "<pre><code class=\"language-csharp\">// Iterative — O(log n) time, O(1) space (preferred)\nint BinarySearch(int[] sortedArr, int target)\n{\n    int left = 0, right = sortedArr.Length - 1;\n    while (left &lt;= right)\n    {\n        int mid = left + (right - left) / 2;  // avoid integer overflow vs (left+right)/2\n        if (sortedArr[mid] == target) return mid;\n        if (sortedArr[mid] &lt; target)  left = mid + 1;\n        else                           right = mid - 1;\n    }\n    return -1;  // not found\n}\n\n// Recursive\nint BinarySearchRecursive(int[] arr, int target, int left, int right)\n{\n    if (left &gt; right) return -1;\n    int mid = left + (right - left) / 2;\n    if (arr[mid] == target) return mid;\n    if (arr[mid] &lt; target)  return BinarySearchRecursive(arr, target, mid + 1, right);\n    else                     return BinarySearchRecursive(arr, target, left, mid - 1);\n}\n\n// Find first occurrence of target (lower bound)\nint FirstOccurrence(int[] sorted, int target)\n{\n    int left = 0, right = sorted.Length - 1, result = -1;\n    while (left &lt;= right)\n    {\n        int mid = left + (right - left) / 2;\n        if (sorted[mid] == target) { result = mid; right = mid - 1; }  // continue left\n        else if (sorted[mid] &lt; target) left = mid + 1;\n        else right = mid - 1;\n    }\n    return result;\n}\n\n// .NET built-in: Array.BinarySearch(sortedArray, target)\n// Returns index if found, ~index of next larger element if not found</code></pre>",
+      "followUps": [
+        {
+          "question": "What is the time complexity?",
+          "answer": "<p>Binary search is <strong>O(log n)</strong> time and O(1) space (iterative) or O(log n) space (recursive, due to call stack).</p><p><strong>Why O(log n)?</strong> Each iteration halves the search space. Starting with n elements: after 1 step → n/2, after 2 → n/4, after k → n/2ᵏ. Search ends when n/2ᵏ = 1, so k = log₂(n). For n=1,000,000, binary search takes at most 20 iterations. For n=1,000,000,000, it takes at most 30 iterations — this is the power of logarithmic scaling.</p><p><strong>Comparison:</strong></p><ul><li>Linear search (unsorted): O(n) — must check every element in worst case</li><li>Binary search (sorted): O(log n) — eliminates half the elements per step</li><li>.NET's <code>Array.BinarySearch()</code>: O(log n) — same algorithm built in</li><li>Dictionary/HashSet lookup: O(1) average — but requires hashing, not sorting</li></ul><p>Binary search requires the data to be sorted — that's the precondition. If sorting is needed, the total cost is O(n log n) for the sort plus O(log n) per query.</p>"
+        },
+        {
+          "question": "How do you search in a rotated sorted array?",
+          "answer": "<p>A rotated sorted array like <code>[4,5,6,7,0,1,2]</code> was sorted but then rotated at some pivot. Modified binary search: at each step, one of the two halves is guaranteed to be normally sorted — use that to decide which half to search.</p><pre><code class=\"language-csharp\">int SearchRotated(int[] nums, int target)\n{\n    int left = 0, right = nums.Length - 1;\n    while (left &lt;= right)\n    {\n        int mid = left + (right - left) / 2;\n        if (nums[mid] == target) return mid;\n\n        // Determine which half is sorted\n        if (nums[left] &lt;= nums[mid])  // left half is sorted\n        {\n            // Is target in the sorted left half?\n            if (nums[left] &lt;= target &amp;&amp; target &lt; nums[mid])\n                right = mid - 1;   // search left\n            else\n                left = mid + 1;    // search right\n        }\n        else  // right half is sorted\n        {\n            // Is target in the sorted right half?\n            if (nums[mid] &lt; target &amp;&amp; target &lt;= nums[right])\n                left = mid + 1;    // search right\n            else\n                right = mid - 1;   // search left\n        }\n    }\n    return -1;\n}\n// [4,5,6,7,0,1,2], target=0 → index 4\n// [4,5,6,7,0,1,2], target=3 → -1</code></pre><p>Time: O(log n) — same as standard binary search. The key insight is that even in a rotated array, at least one half around the midpoint is always contiguous and sorted.</p>"
+        }
+      ],
+      "tip": "<strong>mid = left + (right - left) / 2</strong> — not (left + right) / 2. The latter can overflow if left and right are both large ints. This is a classic bug that crashed the Java standard library binary search implementation in 2006. Always mention it.",
+      "tags": [
+        "coding",
+        "binary-search",
+        "algorithm",
+        "array"
+      ],
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "id": "coding-011",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Print a pyramid (triangle) star pattern with N rows in C#.",
+      "answer": "<p>Pyramid patterns are a classic programming exercise that tests understanding of nested loops and string padding.</p><h4>Right-angled triangle (simple):</h4><pre><code class=\"language-csharp\">// Right-angled triangle\nvoid PrintRightTriangle(int rows)\n{\n    for (int i = 1; i <= rows; i++)\n    {\n        Console.WriteLine(new string('*', i));\n    }\n}\n// Output for rows=4:\n// *\n// **\n// ***\n// ****</code></pre><h4>Full symmetric pyramid:</h4><pre><code class=\"language-csharp\">void PrintPyramid(int rows)\n{\n    for (int i = 1; i <= rows; i++)\n    {\n        // Leading spaces\n        Console.Write(new string(' ', rows - i));\n        // Stars (2*i - 1 stars on each row)\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}\n// Output for rows=4:\n//    *\n//   ***\n//  *****\n// *******</code></pre><h4>Inverted pyramid:</h4><pre><code class=\"language-csharp\">void PrintInvertedPyramid(int rows)\n{\n    for (int i = rows; i >= 1; i--)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}\n// Output for rows=4:\n// *******\n//  *****\n//   ***\n//    *</code></pre><h4>Diamond pattern (pyramid + inverted pyramid):</h4><pre><code class=\"language-csharp\">void PrintDiamond(int rows)\n{\n    // Upper half (including middle)\n    for (int i = 1; i <= rows; i++)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n    // Lower half\n    for (int i = rows - 1; i >= 1; i--)\n    {\n        Console.Write(new string(' ', rows - i));\n        Console.WriteLine(new string('*', 2 * i - 1));\n    }\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you print a number pyramid (Floyd's triangle)?",
+          "answer": "<pre><code class=\"language-csharp\">void PrintFloydsTriangle(int rows)\n{\n    int num = 1;\n    for (int i = 1; i <= rows; i++)\n    {\n        for (int j = 1; j <= i; j++)\n        {\n            Console.Write(num++ + \" \");\n        }\n        Console.WriteLine();\n    }\n}\n// Output:\n// 1\n// 2 3\n// 4 5 6\n// 7 8 9 10</code></pre>"
+        }
+      ],
+      "tip": "<strong>Formula:</strong> For a symmetric pyramid with N rows, row i has (2*i - 1) stars and (N - i) leading spaces. The pattern in the outer loop controls rows; the inner loops control spaces and stars.",
+      "tags": [
+        "pattern",
+        "loops",
+        "pyramid",
+        "coding"
+      ],
+      "sortOrder": 11,
+      "isActive": true
+    },
+    {
+      "id": "coding-012",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Swap two numbers without using a temporary variable in C#.",
+      "answer": "<p>Classic interview question — three common approaches.</p><h4>Method 1: Arithmetic (addition and subtraction)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\na = a + b;  // a = 15\nb = a - b;  // b = 15 - 10 = 5  (original a)\na = a - b;  // a = 15 - 5  = 10 (original b)\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5\n\n// Limitation: integer overflow risk for very large numbers</code></pre><h4>Method 2: XOR bitwise (no overflow)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\na = a ^ b;  // a = 5 XOR 10 = 15 (binary: 0101 ^ 1010 = 1111)\nb = a ^ b;  // b = 15 XOR 10 = 5  (original a)\na = a ^ b;  // a = 15 XOR 5  = 10 (original b)\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5\n\n// Works for integers, no overflow — but only works for value types!\n// WARNING: if a and b are the same variable (same reference), XOR makes it 0!</code></pre><h4>Method 3: Tuple deconstruction (modern C#, cleanest)</h4><pre><code class=\"language-csharp\">int a = 5, b = 10;\n\n(a, b) = (b, a); // compiler creates a temp internally but it's elegant\n\nConsole.WriteLine($\"a={a}, b={b}\"); // a=10, b=5</code></pre><h4>Method 4: Multiplication/division (only for non-zero)</h4><pre><code class=\"language-csharp\">// Avoid — fails if either value is 0\na = a * b; b = a / b; a = a / b;</code></pre>",
+      "followUps": [
+        {
+          "question": "Why is the temp variable approach still preferred in production?",
+          "answer": "<p>In production code, <strong>always use the tuple swap <code>(a, b) = (b, a)</code></strong> — it's readable, safe, and the compiler optimises it. The arithmetic and XOR tricks are interview knowledge but have real limitations: arithmetic can overflow for large integers, XOR only works for integer types, and both are harder to read. The temporary variable approach is also perfectly fine — the compiler optimises it to the same machine code. Code clarity matters more than micro-optimisations for a swap operation.</p>"
+        }
+      ],
+      "tip": "<strong>In a C# interview, show all three methods</strong> (arithmetic, XOR, tuple) and mention which you'd actually use in production (tuple or temp variable). This demonstrates breadth of knowledge and practical judgment.",
+      "tags": [
+        "swap",
+        "variables",
+        "xor",
+        "arithmetic",
+        "coding"
+      ],
+      "sortOrder": 12,
+      "isActive": true
+    },
+    {
+      "id": "coding-013",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "medium",
+      "question": "Reverse each word individually in a sentence while keeping the words in their original positions.",
+      "answer": "<p>The task: given \"Rajesh is good boy\", reverse each word's characters but keep the words in the same order → \"hselajR si doog yob\".</p><h4>Method 1: LINQ (clean and concise)</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    return string.Join(\" \",\n        sentence.Split(' ')\n                .Select(word => new string(word.Reverse().ToArray())));\n}\n\nConsole.WriteLine(ReverseEachWord(\"Rajesh is good boy\"));\n// Output: hselajR si doog yob</code></pre><h4>Method 2: Manual loop</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    string[] words  = sentence.Split(' ');\n    var result = new StringBuilder();\n\n    for (int i = 0; i < words.Length; i++)\n    {\n        char[] chars = words[i].ToCharArray();\n        Array.Reverse(chars);\n        result.Append(new string(chars));\n        if (i < words.Length - 1)\n            result.Append(' ');\n    }\n    return result.ToString();\n}\n</code></pre><h4>Method 3: Reverse whole string then reverse each word (in-place approach)</h4><pre><code class=\"language-csharp\">// Used when you want to reverse word ORDER (not characters)\n// e.g., \"hello world\" → \"world hello\"\nstring ReverseWordOrder(string sentence)\n{\n    return string.Join(\" \", sentence.Split(' ').Reverse());\n}\n// \"Rajesh is good boy\" → \"boy good is Rajesh\"</code></pre><h4>Handling edge cases:</h4><pre><code class=\"language-csharp\">string ReverseEachWord(string sentence)\n{\n    if (string.IsNullOrWhiteSpace(sentence)) return sentence;\n\n    return string.Join(\" \",\n        sentence.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)\n                .Select(word => new string(word.Reverse().ToArray())));\n}</code></pre>",
+      "followUps": [
+        {
+          "question": "How do you reverse a string without using the Reverse() method?",
+          "answer": "<pre><code class=\"language-csharp\">// Method 1: Two-pointer approach\nstring ReverseString(string s)\n{\n    char[] chars = s.ToCharArray();\n    int left = 0, right = chars.Length - 1;\n    while (left < right)\n    {\n        (chars[left], chars[right]) = (chars[right], chars[left]); // swap\n        left++;\n        right--;\n    }\n    return new string(chars);\n}\n\n// Method 2: StringBuilder\nstring ReverseString(string s)\n{\n    var sb = new StringBuilder(s.Length);\n    for (int i = s.Length - 1; i >= 0; i--)\n        sb.Append(s[i]);\n    return sb.ToString();\n}\n\n// Note: String is immutable in C# — always work with char[] or StringBuilder for modification</code></pre>"
+        }
+      ],
+      "tip": "<strong>Distinguish the two reversal tasks:</strong> 'Reverse each word in place' = reverse the characters within each word, words stay in same positions. 'Reverse word order' = words swap positions, characters within each word stay the same. Clarify which one the interviewer means.",
+      "tags": [
+        "string",
+        "reverse",
+        "split",
+        "linq",
+        "coding"
+      ],
+      "sortOrder": 13,
+      "isActive": true
+    },
+    {
+      "id": "coding-014",
+      "category": "coding",
+      "difficulty": "easy",
+      "frequency": "high",
+      "question": "Find the first non-repeating character in a string.",
+      "answer": "<p>Classic string question. The goal is to find the first character that appears exactly once in the string. I'll walk through my thinking:</p>\n\n<h4>Approach 1: Dictionary (O(n) time, O(1) space — 26 chars max)</h4>\n<pre><code>public static char? FirstNonRepeating(string s)\n{\n    if (string.IsNullOrEmpty(s)) return null;\n\n    var freq = new Dictionary<char, int>();\n\n    // First pass: count frequencies\n    foreach (char c in s)\n        freq[c] = freq.GetValueOrDefault(c, 0) + 1;\n\n    // Second pass: find first with count == 1\n    foreach (char c in s)\n        if (freq[c] == 1) return c;\n\n    return null; // all characters repeat\n}\n\n// Usage:\nConsole.WriteLine(FirstNonRepeating(\"aabbcde\"));  // 'c'\nConsole.WriteLine(FirstNonRepeating(\"aabb\"));     // null\nConsole.WriteLine(FirstNonRepeating(\"swiss\"));    // 'w'</code></pre>\n\n<h4>Approach 2: LINQ one-liner (readable but slower)</h4>\n<pre><code>public static char? FirstNonRepeatingLinq(string s)\n{\n    return s.GroupBy(c => c)\n            .FirstOrDefault(g => g.Count() == 1)\n            ?.Key;\n}</code></pre>\n\n<h4>Approach 3: Array instead of Dictionary (slightly faster)</h4>\n<pre><code>public static char? FirstNonRepeatingArray(string s)\n{\n    int[] count = new int[256]; // ASCII\n    foreach (char c in s) count[c]++;\n    foreach (char c in s) if (count[c] == 1) return c;\n    return null;\n}</code></pre>\n\n<h4>Complexity:</h4>\n<ul>\n<li>Time: O(n) — two passes through the string</li>\n<li>Space: O(1) — the dictionary/array size is bounded by the character set (26 or 256), not the input length</li>\n</ul>\n\n<p>In an interview I'd start with the Dictionary approach and mention that for ASCII-only strings, an int array is faster due to no hashing overhead. If the interviewer asks about Unicode, the Dictionary handles it naturally while the fixed array doesn't.</p>",
+      "followUps": [
+        {
+          "question": "What if the string contains Unicode characters?",
+          "answer": ""
+        },
+        {
+          "question": "How would you find the first repeating character instead?",
+          "answer": ""
+        },
+        {
+          "question": "Can you do it in a single pass?",
+          "answer": ""
+        }
+      ],
+      "tip": "Mention that array[256] is O(1) space because it's bounded by character set size, not input size.",
+      "tags": [
+        "coding",
+        "string",
+        "dictionary",
+        "frequency",
+        "hash-map"
+      ],
+      "sortOrder": 14,
+      "isActive": true
+    },
+    {
+      "id": "coding-015",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Find the largest number in an array in C#.",
+      "answer": "<p>A classic warm-up question. Three approaches — pick based on context:</p><pre><code class=\"language-csharp\">int[] arr = { 10, 25, 5, 40, 15 };\n\n// Approach 1: LINQ — clean, idiomatic C#\nint maxLinq = arr.Max();\nConsole.WriteLine($\"LINQ: {maxLinq}\"); // 40\n\n// Approach 2: Manual foreach — shows understanding of iteration\nint max = arr[0]; // start with first element, not int.MinValue\nforeach (int num in arr)\n{\n    if (num > max)\n        max = num;\n}\nConsole.WriteLine($\"Manual: {max}\"); // 40\n\n// Approach 3: Array.Sort / Array.Max — if you need sorted too\nint maxSort = arr.OrderByDescending(x => x).First();\n\n// Edge case: empty array\nif (arr.Length == 0) throw new InvalidOperationException(\"Array is empty\");\n\n// For custom objects: use MaxBy() (LINQ in .NET 6+)\nvar employees = new[] { new { Name = \"A\", Salary = 50000 }, new { Name = \"B\", Salary = 80000 } };\nvar topEarner = employees.MaxBy(e => e.Salary);\nConsole.WriteLine(topEarner.Name); // B</code></pre><p>In a real codebase I'd use <code>arr.Max()</code> — it's clear and handles the empty case with a meaningful exception. I'd only write the manual loop if asked to avoid LINQ or if I needed to track the index along with the value.</p>",
+      "followUps": [
+        {
+          "question": "How do you find both the max value and its index simultaneously?",
+          "answer": ""
+        },
+        {
+          "question": "What happens if you call arr.Max() on an empty array?",
+          "answer": ""
+        },
+        {
+          "question": "How would you find the top N largest numbers?",
+          "answer": ""
+        }
+      ],
+      "tip": "Use arr.Max() in production. For interviews, demonstrate the manual foreach approach to show you understand the logic, then mention LINQ as the idiomatic choice.",
+      "tags": [
+        "array",
+        "max",
+        "LINQ",
+        "iteration",
+        "coding problem"
+      ],
+      "sortOrder": 15,
+      "isActive": true
+    },
+    {
+      "id": "coding-016",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Check whether a number is prime in C#.",
+      "answer": "<p>A number is prime if it's greater than 1 and has no divisors other than 1 and itself. The key optimization: you only need to check up to √n, not n/2 or n itself.</p><pre><code class=\"language-csharp\">// Basic implementation — O(√n) time\npublic static bool IsPrime(int n)\n{\n    if (n &lt; 2) return false; // 0 and 1 are not prime\n    if (n == 2) return true;  // 2 is the only even prime\n    if (n % 2 == 0) return false; // eliminate even numbers early\n\n    // Only check odd divisors up to √n\n    for (int i = 3; i * i &lt;= n; i += 2)\n    {\n        if (n % i == 0) return false;\n    }\n    return true;\n}\n\n// Usage\nConsole.WriteLine(IsPrime(7));   // True\nConsole.WriteLine(IsPrime(10));  // False\nConsole.WriteLine(IsPrime(97));  // True\n\n// Print all primes up to 50\nvar primes = Enumerable.Range(2, 49).Where(IsPrime);\nConsole.WriteLine(string.Join(\", \", primes));\n// 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47\n\n// For large ranges, use Sieve of Eratosthenes\npublic static bool[] SieveOfEratosthenes(int limit)\n{\n    bool[] isPrime = new bool[limit + 1];\n    Array.Fill(isPrime, true);\n    isPrime[0] = isPrime[1] = false;\n\n    for (int i = 2; i * i &lt;= limit; i++)\n    {\n        if (isPrime[i])\n            for (int j = i * i; j &lt;= limit; j += i)\n                isPrime[j] = false;\n    }\n    return isPrime;\n}</code></pre><p><strong>Why i * i &lt;= n instead of i &lt;= n/2?</strong> If n has a factor larger than √n, the corresponding co-factor must be smaller than √n, so we'd already have found it. This cuts iterations roughly in half compared to checking up to n/2.</p>",
+      "followUps": [
+        {
+          "question": "Why do you only need to check up to √n?",
+          "answer": ""
+        },
+        {
+          "question": "What is the Sieve of Eratosthenes and when is it better?",
+          "answer": ""
+        },
+        {
+          "question": "How would you find all prime numbers up to 1 million efficiently?",
+          "answer": ""
+        }
+      ],
+      "tip": "Loop up to i * i <= n (not n/2). Skip even numbers after checking n==2. The Sieve of Eratosthenes is better when you need to find ALL primes in a range.",
+      "tags": [
+        "prime number",
+        "algorithm",
+        "math",
+        "coding problem",
+        "Sieve of Eratosthenes"
+      ],
+      "sortOrder": 16,
+      "isActive": true
+    },
+    {
+      "id": "coding-017",
+      "category": "coding",
+      "difficulty": "Easy",
+      "frequency": "High",
+      "question": "Count occurrences of each character in a string in C#.",
+      "answer": "<p>This is a standard Dictionary-based frequency counting problem. It tests whether you know to use a hash map for O(1) lookups.</p><pre><code class=\"language-csharp\">string input = \"dotnetdeveloper\";\n\n// Approach 1: Dictionary (explicit) — shows the logic clearly\nvar freq = new Dictionary&lt;char, int&gt;();\nforeach (char c in input)\n{\n    if (freq.ContainsKey(c))\n        freq[c]++;\n    else\n        freq[c] = 1;\n}\n\n// Modern C# shorthand using GetValueOrDefault\nvar freq2 = new Dictionary&lt;char, int&gt;();\nforeach (char c in input)\n    freq2[c] = freq2.GetValueOrDefault(c) + 1;\n\n// Print results\nforeach (var kv in freq2.OrderBy(x => x.Key))\n    Console.WriteLine($\"'{kv.Key}': {kv.Value}\");\n\n// Approach 2: LINQ GroupBy — one-liner\nvar charCounts = input\n    .GroupBy(c => c)\n    .ToDictionary(g => g.Key, g => g.Count());\n\nforeach (var kv in charCounts.OrderByDescending(x => x.Value))\n    Console.WriteLine($\"'{kv.Key}': {kv.Value}\");\n\n// Approach 3: Handle case-insensitive counting\nvar caseInsensitive = input.ToLower()\n    .GroupBy(c => c)\n    .ToDictionary(g => g.Key, g => g.Count());\n\n// Approach 4: Check if all characters are unique\nbool allUnique = input.Length == input.Distinct().Count();\nConsole.WriteLine($\"All unique: {allUnique}\");</code></pre><p>In real code I use the LINQ <code>GroupBy</code> approach for readability. In a performance-critical loop I'd use the manual Dictionary with <code>GetValueOrDefault</code> to avoid double-lookup. For ASCII strings, a <code>int[128]</code> array indexed by char gives even faster performance.</p>",
+      "followUps": [
+        {
+          "question": "How would you optimize this for ASCII-only strings?",
+          "answer": ""
+        },
+        {
+          "question": "How do you find the most frequent character using this approach?",
+          "answer": ""
+        },
+        {
+          "question": "How does this differ from finding the first non-repeating character?",
+          "answer": ""
+        }
+      ],
+      "tip": "Dictionary<char, int> for O(n) solution. Use freq[c] = freq.GetValueOrDefault(c) + 1 as a clean one-liner. LINQ GroupBy().ToDictionary() is the idiomatic C# approach.",
+      "tags": [
+        "Dictionary",
+        "frequency counting",
+        "string manipulation",
+        "LINQ",
+        "coding problem"
+      ],
+      "sortOrder": 17,
+      "isActive": true
+    },
+    {
+      "id": "coding-018",
+      "category": "coding",
+      "difficulty": "Medium",
+      "frequency": "Medium",
+      "question": "Find the missing numbers from a sorted integer array in C#.",
+      "answer": "<p>Given a sorted array that should be a complete sequence (e.g., 1 to N), find which numbers are missing. Key insight: the expected value at index i is arr[0] + i, so any deviation means a gap.</p><pre><code class=\"language-csharp\">// Approach 1: Expected vs actual comparison — O(n) time\npublic static List&lt;int&gt; FindMissingNumbers(int[] arr)\n{\n    var missing = new List&lt;int&gt;();\n    if (arr.Length == 0) return missing;\n\n    int expected = arr[0]; // start from first element\n    foreach (int num in arr)\n    {\n        while (expected &lt; num) // fill gap between expected and actual\n        {\n            missing.Add(expected);\n            expected++;\n        }\n        expected++; // move past current number\n    }\n    return missing;\n}\n\nint[] arr = { 1, 2, 4, 6, 7 };\nvar missing = FindMissingNumbers(arr);\nConsole.WriteLine(string.Join(\", \", missing)); // 3, 5\n\n// Approach 2: HashSet for unsorted arrays — O(n) time+space\npublic static List&lt;int&gt; FindMissingUnsorted(int[] arr, int min, int max)\n{\n    var set = new HashSet&lt;int&gt;(arr);\n    return Enumerable.Range(min, max - min + 1)\n                     .Where(n => !set.Contains(n))\n                     .ToList();\n}\n\n// Approach 3: Math formula (only if exactly ONE number missing, 1 to N)\n// Sum of 1..N = N*(N+1)/2, missing = expectedSum - actualSum\npublic static int FindSingleMissing(int[] arr)\n{\n    int n = arr.Length + 1; // because one is missing\n    int expectedSum = n * (n + 1) / 2;\n    int actualSum = arr.Sum();\n    return expectedSum - actualSum;\n}\n\nint[] oneGap = { 1, 2, 3, 5 };\nConsole.WriteLine(FindSingleMissing(oneGap)); // 4</code></pre><p>The math formula approach for single missing number is elegant and O(n) with O(1) space — interviewers love it. The HashSet approach works for any range and handles multiple missing values efficiently.</p>",
+      "followUps": [
+        {
+          "question": "How would you find the missing number in 1..N using XOR?",
+          "answer": ""
+        },
+        {
+          "question": "What if the array isn't sorted?",
+          "answer": ""
+        },
+        {
+          "question": "How does the math sum formula break down if multiple numbers are missing?",
+          "answer": ""
+        }
+      ],
+      "tip": "For single missing in 1..N: use expectedSum = N*(N+1)/2, then missing = expectedSum - arr.Sum(). For multiple missing: HashSet for unsorted, or walk with expected counter for sorted arrays.",
+      "tags": [
+        "array",
+        "missing numbers",
+        "HashSet",
+        "algorithm",
+        "coding problem"
+      ],
+      "sortOrder": 18,
+      "isActive": true
+    },
+    {
+      "id": "coding-019",
+      "category": "coding",
+      "difficulty": "Medium",
+      "frequency": "High",
+      "question": "Find the second highest number in an array in C#.",
+      "answer": "<p>A common array question with several edge cases. The trick is handling duplicates and arrays with fewer than 2 distinct values.</p><pre><code class=\"language-csharp\">int[] arr = { 7, 2, 9, 4, 9, 3 };\n\n// Approach 1: LINQ — clean but O(n log n)\nint? secondHighest = arr.Distinct().OrderByDescending(x => x).Skip(1).FirstOrDefault();\nConsole.WriteLine(secondHighest); // 7\n\n// Approach 2: Single pass O(n) — two variables, handles duplicates\npublic static int? SecondHighest(int[] arr)\n{\n    if (arr.Length &lt; 2) return null;\n\n    int first = int.MinValue;\n    int second = int.MinValue;\n\n    foreach (int n in arr)\n    {\n        if (n > first)\n        {\n            second = first; // old first becomes second\n            first = n;\n        }\n        else if (n > second &amp;&amp; n != first) // != first handles duplicates\n        {\n            second = n;\n        }\n    }\n\n    return second == int.MinValue ? null : second;\n}\n\n// Test cases\nConsole.WriteLine(SecondHighest(new[] { 7, 2, 9, 4, 9, 3 })); // 7\nConsole.WriteLine(SecondHighest(new[] { 5, 5, 5 }));           // null (no second distinct)\nConsole.WriteLine(SecondHighest(new[] { 1 }));                  // null (only one element)\nConsole.WriteLine(SecondHighest(new[] { 3, 1 }));              // 1\n\n// Approach 3: Using sorted set for top-N generalization\npublic static int? SecondHighestSortedSet(int[] arr)\n{\n    var sorted = new SortedSet&lt;int&gt;(arr); // removes duplicates, O(n log n)\n    if (sorted.Count &lt; 2) return null;\n    sorted.Remove(sorted.Max);\n    return sorted.Max;\n}</code></pre><p>In interviews, the O(n) two-variable approach gets the best marks because it's efficient and forces you to handle duplicate values explicitly. The <code>n != first</code> check is the key detail that trips people up.</p>",
+      "followUps": [
+        {
+          "question": "How would you generalize this to find the Kth highest element?",
+          "answer": ""
+        },
+        {
+          "question": "What happens if all elements in the array are the same?",
+          "answer": ""
+        },
+        {
+          "question": "How would you use a min-heap to find the top-K elements?",
+          "answer": ""
+        }
+      ],
+      "tip": "O(n) two-variable approach is optimal. Key detail: use n != first to handle duplicates (otherwise {9,9,7} would return 9 as the second highest instead of 7). Handle the case where second stays int.MinValue.",
+      "tags": [
+        "array",
+        "second highest",
+        "algorithm",
+        "sorting",
+        "coding problem"
+      ],
+      "sortOrder": 19,
+      "isActive": true
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Shell xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+       xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+       xmlns:pages="clr-namespace:InterviewPrepPortal.Mobile.Pages"
+       Title="Interview Prep"
+       x:Class="InterviewPrepPortal.Mobile.AppShell"
+       BackgroundColor="{StaticResource SurfaceDark}"
+       Shell.FlyoutBehavior="Disabled">
+
+    <TabBar>
+        <ShellContent Title="Home" Route="home">
+            <ShellContent.ContentTemplate>
+                <DataTemplate x:DataType="x:Object">
+                    <pages:HomePage />
+                </DataTemplate>
+            </ShellContent.ContentTemplate>
+        </ShellContent>
+
+        <ShellContent Title="Categories" Route="categories">
+            <ShellContent.ContentTemplate>
+                <DataTemplate x:DataType="x:Object">
+                    <pages:CategoriesPage />
+                </DataTemplate>
+            </ShellContent.ContentTemplate>
+        </ShellContent>
+
+        <ShellContent Title="Projects" Route="projects">
+            <ShellContent.ContentTemplate>
+                <DataTemplate x:DataType="x:Object">
+                    <pages:ProjectsPage />
+                </DataTemplate>
+            </ShellContent.ContentTemplate>
+        </ShellContent>
+
+        <ShellContent Title="Search" Route="search">
+            <ShellContent.ContentTemplate>
+                <DataTemplate x:DataType="x:Object">
+                    <pages:SearchPage />
+                </DataTemplate>
+            </ShellContent.ContentTemplate>
+        </ShellContent>
+
+        <ShellContent Title="Progress" Route="progress">
+            <ShellContent.ContentTemplate>
+                <DataTemplate x:DataType="x:Object">
+                    <pages:ProgressPage />
+                </DataTemplate>
+            </ShellContent.ContentTemplate>
+        </ShellContent>
+    </TabBar>
+
+</Shell>
