@@ -8,45 +8,11 @@
        Shell.FlyoutBehavior="Disabled">
 
     <TabBar>
-        <ShellContent Title="Home" Route="home">
-            <ShellContent.ContentTemplate>
-                <DataTemplate x:DataType="x:Object">
-                    <pages:HomePage />
-                </DataTemplate>
-            </ShellContent.ContentTemplate>
-        </ShellContent>
-
-        <ShellContent Title="Categories" Route="categories">
-            <ShellContent.ContentTemplate>
-                <DataTemplate x:DataType="x:Object">
-                    <pages:CategoriesPage />
-                </DataTemplate>
-            </ShellContent.ContentTemplate>
-        </ShellContent>
-
-        <ShellContent Title="Projects" Route="projects">
-            <ShellContent.ContentTemplate>
-                <DataTemplate x:DataType="x:Object">
-                    <pages:ProjectsPage />
-                </DataTemplate>
-            </ShellContent.ContentTemplate>
-        </ShellContent>
-
-        <ShellContent Title="Search" Route="search">
-            <ShellContent.ContentTemplate>
-                <DataTemplate x:DataType="x:Object">
-                    <pages:SearchPage />
-                </DataTemplate>
-            </ShellContent.ContentTemplate>
-        </ShellContent>
-
-        <ShellContent Title="Progress" Route="progress">
-            <ShellContent.ContentTemplate>
-                <DataTemplate x:DataType="x:Object">
-                    <pages:ProgressPage />
-                </DataTemplate>
-            </ShellContent.ContentTemplate>
-        </ShellContent>
+        <ShellContent Title="Home" Route="home" ContentTemplate="{DataTemplate pages:HomePage}" />
+        <ShellContent Title="Categories" Route="categories" ContentTemplate="{DataTemplate pages:CategoriesPage}" />
+        <ShellContent Title="Projects" Route="projects" ContentTemplate="{DataTemplate pages:ProjectsPage}" />
+        <ShellContent Title="Search" Route="search" ContentTemplate="{DataTemplate pages:SearchPage}" />
+        <ShellContent Title="Progress" Route="progress" ContentTemplate="{DataTemplate pages:ProgressPage}" />
     </TabBar>
 
 </Shell>
